@@ -7,6 +7,7 @@ on:
 
 jobs:
   backup-main-to-azure-devops:
+    if: ${{ !github.event.repository.fork }}
     name: Backup `main` branch to secondary repository using SSH
     runs-on: ubuntu-latest
 
