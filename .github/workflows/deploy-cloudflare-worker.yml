@@ -8,11 +8,12 @@ on:
 
 jobs:
   deploy:
+    if: ${{ github.repository != 'Rexezuge-CloudflareWorkers/Mail-Meow' }}
     name: Deploy to Cloudflare
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -20,7 +21,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm install
 
       - name: Deploy with Wrangler

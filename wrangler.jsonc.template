@@ -1,0 +1,23 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "mail-meow",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-11-06",
+	"preview_urls": false,
+	"workers_dev": true,
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	},
+	"placement": {
+		"mode": "smart"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "mail-meow-db",
+			"database_id": "00000000-0000-0000-0000-000000000000"
+		}
+	],
+	"vars": {}
+}
