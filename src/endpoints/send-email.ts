@@ -1,26 +1,41 @@
-import { OpenAPIRoute } from 'chanfana';
+import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
 import { ApiKeyDAO, OAuthDAO } from '@/dao';
 import { BadRequestError } from '@/error';
 import axios from 'axios';
 
-export class SendEmail extends OpenAPIRoute {
+interface SendEmailRequest extends IRequest {
+  to: string;
+  subject: string;
+  body: string;
+  contentType?: 'text' | 'html';
+}
+
+interface SendEmailResponse extends IResponse {
+  success: boolean;
+  message: string;
+}
+
+interface SendEmailEnv extends IEnv {
+  DB: D1Database;
+  api_key: string;
+}
+
+export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, SendEmailEnv> {
   schema = {
     tags: ['Email'],
     summary: 'Send email using OAuth credentials',
-    request: {
-      body: {
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                to: { type: 'string', format: 'email' },
-                subject: { type: 'string' },
-                body: { type: 'string' },
-                contentType: { type: 'string', enum: ['text', 'html'], default: 'text' },
-              },
-              required: ['to', 'subject', 'body'],
+    requestBody: {
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object' as const,
+            properties: {
+              to: { type: 'string' as const, format: 'email' as const },
+              subject: { type: 'string' as const },
+              body: { type: 'string' as const },
+              contentType: { type: 'string' as const, enum: ['text', 'html'], default: 'text' },
             },
+            required: ['to', 'subject', 'body'],
           },
         },
       },
@@ -31,10 +46,10 @@ export class SendEmail extends OpenAPIRoute {
         content: {
           'application/json': {
             schema: {
-              type: 'object',
+              type: 'object' as const,
               properties: {
-                success: { type: 'boolean' },
-                message: { type: 'string' },
+                success: { type: 'boolean' as const },
+                message: { type: 'string' as const },
               },
             },
           },
@@ -43,9 +58,9 @@ export class SendEmail extends OpenAPIRoute {
     },
   };
 
-  async handle(request: Request, env: Env, context: any, data: any) {
-    const { api_key } = data.params;
-    const { to, subject, body, contentType = 'text' } = data.body;
+  protected async handleRequest(request: SendEmailRequest, env: SendEmailEnv, ctx: APIContext<SendEmailEnv>): Promise<SendEmailResponse> {
+    const api_key = ctx.req.param('api_key');
+    const { to, subject, body, contentType = 'text' } = request;
 
     const apiKeyDAO = new ApiKeyDAO(env.DB);
     const oauthDAO = new OAuthDAO(env.DB);
@@ -81,7 +96,7 @@ export class SendEmail extends OpenAPIRoute {
         },
       };
 
-      const response = await axios.post('https://graph.microsoft.com/v1.0/me/sendMail', emailData, {
+      await axios.post('https://graph.microsoft.com/v1.0/me/sendMail', emailData, {
         headers: {
           Authorization: `Bearer ${oauthRecord.access_token}`,
           'Content-Type': 'application/json',

@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "cf-typegen": "wrangler types",
-    "predeploy": "npm install && npm run prettier && npm run lint",
+    "predeploy": "npm install && npm run prettier && npm run lint && npm run tsc",
     "deploy": "wrangler deploy --dry-run",
     "postdeploy": "wrangler deploy",
     "prettier": "prettier --write .",
     "lint": "echo 'eslint --ext .ts,.tsx --fix .'",
+    "tsc": "tsc --noemit",
     "dev": "wrangler dev",
     "devRemote": "wrangler dev --remote",
     "test": "vitest --run || 1"

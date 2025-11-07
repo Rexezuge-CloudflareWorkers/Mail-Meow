@@ -1,24 +1,37 @@
-import { OpenAPIRoute } from 'chanfana';
+import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
 import { UserDAO } from '@/dao';
 import { comparePassword } from '@/utils';
 import { BadRequestError } from '@/error';
 
-export class DeleteUser extends OpenAPIRoute {
+interface DeleteUserRequest extends IRequest {
+  email: string;
+  password: string;
+}
+
+interface DeleteUserResponse extends IResponse {
+  success: boolean;
+  message: string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface DeleteUserEnv extends IEnv {
+  DB: D1Database;
+}
+
+export class DeleteUser extends IAPIRoute<DeleteUserRequest, DeleteUserResponse, DeleteUserEnv> {
   schema = {
     tags: ['User'],
     summary: 'Delete user account',
-    request: {
-      body: {
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                email: { type: 'string', format: 'email' },
-                password: { type: 'string' },
-              },
-              required: ['email', 'password'],
+    requestBody: {
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object' as const,
+            properties: {
+              email: { type: 'string' as const, format: 'email' as const },
+              password: { type: 'string' as const },
             },
+            required: ['email', 'password'],
           },
         },
       },
@@ -29,10 +42,10 @@ export class DeleteUser extends OpenAPIRoute {
         content: {
           'application/json': {
             schema: {
-              type: 'object',
+              type: 'object' as const,
               properties: {
-                success: { type: 'boolean' },
-                message: { type: 'string' },
+                success: { type: 'boolean' as const },
+                message: { type: 'string' as const },
               },
             },
           },
@@ -41,18 +54,21 @@ export class DeleteUser extends OpenAPIRoute {
     },
   };
 
-  async handle(request: Request, env: Env, context: any, data: any) {
-    const { email, password } = data.body;
+  protected async handleRequest(
+    request: DeleteUserRequest,
+    env: DeleteUserEnv,
+    _ctx: APIContext<DeleteUserEnv>,
+  ): Promise<DeleteUserResponse> {
     const userDAO = new UserDAO(env.DB);
 
     // Find user
-    const user = await userDAO.findByEmail(email);
+    const user = await userDAO.findByEmail(request.email);
     if (!user) {
       throw new BadRequestError('User not found');
     }
 
     // Verify password
-    const isValidPassword = await comparePassword(password, user.password_hash);
+    const isValidPassword = await comparePassword(request.password, user.password_hash);
     if (!isValidPassword) {
       throw new BadRequestError('Invalid password');
     }

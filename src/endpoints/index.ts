@@ -1,3 +1,5 @@
+export { IAPIRoute } from './IAPIRoute';
+export type { IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
 export { RegisterUser } from './register-user';
 export { DeleteUser } from './delete-user';
 export { GenerateApiKey } from './generate-api-key';

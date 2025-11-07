@@ -1,25 +1,40 @@
-import { OpenAPIRoute } from 'chanfana';
+import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
 import { ApiKeyDAO, OAuthDAO } from '@/dao';
 import { BadRequestError } from '@/error';
 
-export class BindOAuth extends OpenAPIRoute {
+interface BindOAuthRequest extends IRequest {
+  provider: string;
+  access_token: string;
+  refresh_token?: string;
+  expires_at?: string;
+}
+
+interface BindOAuthResponse extends IResponse {
+  success: boolean;
+  message: string;
+}
+
+interface BindOAuthEnv extends IEnv {
+  DB: D1Database;
+  api_key: string;
+}
+
+export class BindOAuth extends IAPIRoute<BindOAuthRequest, BindOAuthResponse, BindOAuthEnv> {
   schema = {
     tags: ['OAuth'],
     summary: 'Bind OAuth credentials',
-    request: {
-      body: {
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                provider: { type: 'string' },
-                access_token: { type: 'string' },
-                refresh_token: { type: 'string' },
-                expires_at: { type: 'string' },
-              },
-              required: ['provider', 'access_token'],
+    requestBody: {
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object' as const,
+            properties: {
+              provider: { type: 'string' as const },
+              access_token: { type: 'string' as const },
+              refresh_token: { type: 'string' as const },
+              expires_at: { type: 'string' as const },
             },
+            required: ['provider', 'access_token'],
           },
         },
       },
@@ -30,10 +45,10 @@ export class BindOAuth extends OpenAPIRoute {
         content: {
           'application/json': {
             schema: {
-              type: 'object',
+              type: 'object' as const,
               properties: {
-                success: { type: 'boolean' },
-                message: { type: 'string' },
+                success: { type: 'boolean' as const },
+                message: { type: 'string' as const },
               },
             },
           },
@@ -42,9 +57,9 @@ export class BindOAuth extends OpenAPIRoute {
     },
   };
 
-  async handle(request: Request, env: Env, context: any, data: any) {
-    const { api_key } = data.params;
-    const { provider, access_token, refresh_token, expires_at } = data.body;
+  protected async handleRequest(request: BindOAuthRequest, env: BindOAuthEnv, ctx: APIContext<BindOAuthEnv>): Promise<BindOAuthResponse> {
+    const api_key = ctx.req.param('api_key');
+    const { provider, access_token, refresh_token, expires_at } = request;
 
     const apiKeyDAO = new ApiKeyDAO(env.DB);
     const oauthDAO = new OAuthDAO(env.DB);

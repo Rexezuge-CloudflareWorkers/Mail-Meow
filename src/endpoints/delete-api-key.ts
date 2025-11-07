@@ -1,25 +1,39 @@
-import { OpenAPIRoute } from 'chanfana';
+import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
 import { UserDAO, ApiKeyDAO } from '@/dao';
 import { comparePassword } from '@/utils';
 import { BadRequestError } from '@/error';
 
-export class DeleteApiKey extends OpenAPIRoute {
+interface DeleteApiKeyRequest extends IRequest {
+  email: string;
+  password: string;
+  api_key: string;
+}
+
+interface DeleteApiKeyResponse extends IResponse {
+  success: boolean;
+  message: string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface DeleteApiKeyEnv extends IEnv {
+  DB: D1Database;
+}
+
+export class DeleteApiKey extends IAPIRoute<DeleteApiKeyRequest, DeleteApiKeyResponse, DeleteApiKeyEnv> {
   schema = {
     tags: ['API Key'],
     summary: 'Delete API key',
-    request: {
-      body: {
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                email: { type: 'string', format: 'email' },
-                password: { type: 'string' },
-                api_key: { type: 'string' },
-              },
-              required: ['email', 'password', 'api_key'],
+    requestBody: {
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object' as const,
+            properties: {
+              email: { type: 'string' as const, format: 'email' as const },
+              password: { type: 'string' as const },
+              api_key: { type: 'string' as const },
             },
+            required: ['email', 'password', 'api_key'],
           },
         },
       },
@@ -30,10 +44,10 @@ export class DeleteApiKey extends OpenAPIRoute {
         content: {
           'application/json': {
             schema: {
-              type: 'object',
+              type: 'object' as const,
               properties: {
-                success: { type: 'boolean' },
-                message: { type: 'string' },
+                success: { type: 'boolean' as const },
+                message: { type: 'string' as const },
               },
             },
           },
@@ -42,30 +56,32 @@ export class DeleteApiKey extends OpenAPIRoute {
     },
   };
 
-  async handle(request: Request, env: Env, context: any, data: any) {
-    const { email, password, api_key } = data.body;
+  protected async handleRequest(
+    request: DeleteApiKeyRequest,
+    env: DeleteApiKeyEnv,
+    _ctx: APIContext<DeleteApiKeyEnv>,
+  ): Promise<DeleteApiKeyResponse> {
     const userDAO = new UserDAO(env.DB);
     const apiKeyDAO = new ApiKeyDAO(env.DB);
 
     // Find and verify user
-    const user = await userDAO.findByEmail(email);
+    const user = await userDAO.findByEmail(request.email);
     if (!user) {
       throw new BadRequestError('User not found');
     }
 
-    const isValidPassword = await comparePassword(password, user.password_hash);
+    const isValidPassword = await comparePassword(request.password, user.password_hash);
     if (!isValidPassword) {
       throw new BadRequestError('Invalid password');
     }
 
-    // Verify API key belongs to user
-    const apiKeyRecord = await apiKeyDAO.findByApiKey(api_key);
+    // Find and delete API key
+    const apiKeyRecord = await apiKeyDAO.findByApiKey(request.api_key);
     if (!apiKeyRecord || apiKeyRecord.user_id !== user.id) {
       throw new BadRequestError('API key not found or does not belong to user');
     }
 
-    // Delete API key
-    const deleted = await apiKeyDAO.delete(api_key);
+    const deleted = await apiKeyDAO.delete(apiKeyRecord.id);
     if (!deleted) {
       throw new BadRequestError('Failed to delete API key');
     }

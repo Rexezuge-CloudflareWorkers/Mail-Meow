@@ -1,25 +1,41 @@
-import { OpenAPIRoute } from 'chanfana';
-import { z } from 'zod';
+import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
 import { UserDAO } from '@/dao';
 import { hashPassword } from '@/utils';
 import { BadRequestError } from '@/error';
 
-export class RegisterUser extends OpenAPIRoute {
+interface RegisterUserRequest extends IRequest {
+  email: string;
+  password: string;
+}
+
+interface RegisterUserResponse extends IResponse {
+  success: boolean;
+  result: {
+    id: string;
+    email: string;
+    created_at: string;
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface RegisterUserEnv extends IEnv {
+  DB: D1Database;
+}
+
+export class RegisterUser extends IAPIRoute<RegisterUserRequest, RegisterUserResponse, RegisterUserEnv> {
   schema = {
     tags: ['User'],
     summary: 'Register a new user',
-    request: {
-      body: {
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                email: { type: 'string', format: 'email' },
-                password: { type: 'string', minLength: 6 },
-              },
-              required: ['email', 'password'],
+    requestBody: {
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object' as const,
+            properties: {
+              email: { type: 'string' as const, format: 'email' as const },
+              password: { type: 'string' as const, minLength: 6 },
             },
+            required: ['email', 'password'],
           },
         },
       },
@@ -30,15 +46,15 @@ export class RegisterUser extends OpenAPIRoute {
         content: {
           'application/json': {
             schema: {
-              type: 'object',
+              type: 'object' as const,
               properties: {
-                success: { type: 'boolean' },
+                success: { type: 'boolean' as const },
                 result: {
-                  type: 'object',
+                  type: 'object' as const,
                   properties: {
-                    id: { type: 'string' },
-                    email: { type: 'string' },
-                    created_at: { type: 'string' },
+                    id: { type: 'string' as const },
+                    email: { type: 'string' as const },
+                    created_at: { type: 'string' as const },
                   },
                 },
               },
@@ -49,24 +65,27 @@ export class RegisterUser extends OpenAPIRoute {
     },
   };
 
-  async handle(request: Request, env: Env, context: any, data: any) {
-    const { email, password } = request.json();
+  protected async handleRequest(
+    request: RegisterUserRequest,
+    env: RegisterUserEnv,
+    _ctx: APIContext<RegisterUserEnv>,
+  ): Promise<RegisterUserResponse> {
     const userDAO = new UserDAO(env.DB);
 
     // Check if user already exists
-    const existingUser = await userDAO.findByEmail(email);
+    const existingUser = await userDAO.findByEmail(request.email);
     if (existingUser) {
       throw new BadRequestError('User already exists');
     }
 
     // Create new user
     const userId = crypto.randomUUID();
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(request.password);
 
     const user = await userDAO.create({
       id: userId,
-      email,
-      password: password,
+      email: request.email,
+      password: request.password,
       password_hash: passwordHash,
     });
 

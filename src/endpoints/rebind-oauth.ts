@@ -1,25 +1,40 @@
-import { OpenAPIRoute } from 'chanfana';
+import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
 import { ApiKeyDAO, OAuthDAO } from '@/dao';
 import { BadRequestError } from '@/error';
 
-export class RebindOAuth extends OpenAPIRoute {
+interface RebindOAuthRequest extends IRequest {
+  provider: string;
+  access_token: string;
+  refresh_token?: string;
+  expires_at?: string;
+}
+
+interface RebindOAuthResponse extends IResponse {
+  success: boolean;
+  message: string;
+}
+
+interface RebindOAuthEnv extends IEnv {
+  DB: D1Database;
+  api_key: string;
+}
+
+export class RebindOAuth extends IAPIRoute<RebindOAuthRequest, RebindOAuthResponse, RebindOAuthEnv> {
   schema = {
     tags: ['OAuth'],
     summary: 'Update OAuth credentials',
-    request: {
-      body: {
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                provider: { type: 'string' },
-                access_token: { type: 'string' },
-                refresh_token: { type: 'string' },
-                expires_at: { type: 'string' },
-              },
-              required: ['access_token'],
+    requestBody: {
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object' as const,
+            properties: {
+              provider: { type: 'string' as const },
+              access_token: { type: 'string' as const },
+              refresh_token: { type: 'string' as const },
+              expires_at: { type: 'string' as const },
             },
+            required: ['provider', 'access_token'],
           },
         },
       },
@@ -30,10 +45,10 @@ export class RebindOAuth extends OpenAPIRoute {
         content: {
           'application/json': {
             schema: {
-              type: 'object',
+              type: 'object' as const,
               properties: {
-                success: { type: 'boolean' },
-                message: { type: 'string' },
+                success: { type: 'boolean' as const },
+                message: { type: 'string' as const },
               },
             },
           },
@@ -42,9 +57,13 @@ export class RebindOAuth extends OpenAPIRoute {
     },
   };
 
-  async handle(request: Request, env: Env, context: any, data: any) {
-    const { api_key } = data.params;
-    const { provider, access_token, refresh_token, expires_at } = data.body;
+  protected async handleRequest(
+    request: RebindOAuthRequest,
+    env: RebindOAuthEnv,
+    ctx: APIContext<RebindOAuthEnv>,
+  ): Promise<RebindOAuthResponse> {
+    const api_key = ctx.req.param('api_key');
+    const { provider, access_token, refresh_token, expires_at } = request;
 
     const apiKeyDAO = new ApiKeyDAO(env.DB);
     const oauthDAO = new OAuthDAO(env.DB);
@@ -55,16 +74,22 @@ export class RebindOAuth extends OpenAPIRoute {
       throw new BadRequestError('Invalid API key');
     }
 
+    // Find existing OAuth record
+    const existingOAuth = await oauthDAO.findByUserId(apiKeyRecord.user_id);
+    if (!existingOAuth) {
+      throw new BadRequestError('No OAuth credentials found. Use POST to create.');
+    }
+
     // Update OAuth record
-    const updatedOAuth = await oauthDAO.update(apiKeyRecord.user_id, {
+    const updated = await oauthDAO.update(existingOAuth.id, {
       provider,
       access_token,
       refresh_token,
       expires_at,
     });
 
-    if (!updatedOAuth) {
-      throw new BadRequestError('No OAuth credentials found to update');
+    if (!updated) {
+      throw new BadRequestError('Failed to update OAuth credentials');
     }
 
     return {

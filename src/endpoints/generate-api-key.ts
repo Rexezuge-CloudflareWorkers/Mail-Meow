@@ -1,24 +1,40 @@
-import { OpenAPIRoute } from 'chanfana';
+import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
 import { UserDAO, ApiKeyDAO } from '@/dao';
 import { comparePassword, generateApiKey } from '@/utils';
 import { BadRequestError } from '@/error';
 
-export class GenerateApiKey extends OpenAPIRoute {
+interface GenerateApiKeyRequest extends IRequest {
+  email: string;
+  password: string;
+}
+
+interface GenerateApiKeyResponse extends IResponse {
+  success: boolean;
+  result: {
+    api_key: string;
+    created_at: string;
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface GenerateApiKeyEnv extends IEnv {
+  DB: D1Database;
+}
+
+export class GenerateApiKey extends IAPIRoute<GenerateApiKeyRequest, GenerateApiKeyResponse, GenerateApiKeyEnv> {
   schema = {
     tags: ['API Key'],
     summary: 'Generate API key for user',
-    request: {
-      body: {
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                email: { type: 'string', format: 'email' },
-                password: { type: 'string' },
-              },
-              required: ['email', 'password'],
+    requestBody: {
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object' as const,
+            properties: {
+              email: { type: 'string' as const, format: 'email' as const },
+              password: { type: 'string' as const },
             },
+            required: ['email', 'password'],
           },
         },
       },
@@ -29,14 +45,14 @@ export class GenerateApiKey extends OpenAPIRoute {
         content: {
           'application/json': {
             schema: {
-              type: 'object',
+              type: 'object' as const,
               properties: {
-                success: { type: 'boolean' },
+                success: { type: 'boolean' as const },
                 result: {
-                  type: 'object',
+                  type: 'object' as const,
                   properties: {
-                    api_key: { type: 'string' },
-                    created_at: { type: 'string' },
+                    api_key: { type: 'string' as const },
+                    created_at: { type: 'string' as const },
                   },
                 },
               },
@@ -47,18 +63,21 @@ export class GenerateApiKey extends OpenAPIRoute {
     },
   };
 
-  async handle(request: Request, env: Env, context: any, data: any) {
-    const { email, password } = data.body;
+  protected async handleRequest(
+    request: GenerateApiKeyRequest,
+    env: GenerateApiKeyEnv,
+    _ctx: APIContext<GenerateApiKeyEnv>,
+  ): Promise<GenerateApiKeyResponse> {
     const userDAO = new UserDAO(env.DB);
     const apiKeyDAO = new ApiKeyDAO(env.DB);
 
     // Find and verify user
-    const user = await userDAO.findByEmail(email);
+    const user = await userDAO.findByEmail(request.email);
     if (!user) {
       throw new BadRequestError('User not found');
     }
 
-    const isValidPassword = await comparePassword(password, user.password_hash);
+    const isValidPassword = await comparePassword(request.password, user.password_hash);
     if (!isValidPassword) {
       throw new BadRequestError('Invalid password');
     }
