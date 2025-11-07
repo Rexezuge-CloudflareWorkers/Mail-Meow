@@ -23,6 +23,15 @@ export class BindOAuth extends IAPIRoute<BindOAuthRequest, BindOAuthResponse, Bi
   schema = {
     tags: ['OAuth'],
     summary: 'Bind OAuth credentials',
+    parameters: [
+      {
+        name: 'api_key',
+        in: 'path' as const,
+        required: true,
+        schema: { type: 'string' as const },
+        description: 'API key for authentication',
+      },
+    ],
     requestBody: {
       content: {
         'application/json': {

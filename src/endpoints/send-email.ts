@@ -24,6 +24,15 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
   schema = {
     tags: ['Email'],
     summary: 'Send email using OAuth credentials',
+    parameters: [
+      {
+        name: 'api_key',
+        in: 'path' as const,
+        required: true,
+        schema: { type: 'string' as const },
+        description: 'API key for authentication',
+      },
+    ],
     requestBody: {
       content: {
         'application/json': {

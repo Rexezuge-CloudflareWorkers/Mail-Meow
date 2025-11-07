@@ -20,6 +20,15 @@ export class DeleteBoundOAuth extends IAPIRoute<DeleteBoundOAuthRequest, DeleteB
   schema = {
     tags: ['OAuth'],
     summary: 'Delete OAuth credentials',
+    parameters: [
+      {
+        name: 'api_key',
+        in: 'path' as const,
+        required: true,
+        schema: { type: 'string' as const },
+        description: 'API key for authentication',
+      },
+    ],
     requestBody: {
       content: {
         'application/json': {
