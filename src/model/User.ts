@@ -1,6 +1,8 @@
 export interface User {
+  id: number;
   email: string;
-  password_hash: string;
+  hashed_password: string;
+  api_key: string | null;
   created_at: string;
   updated_at: string;
 }

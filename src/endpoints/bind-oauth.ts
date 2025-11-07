@@ -1,12 +1,12 @@
 import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
-import { ApiKeyDAO, OAuthDAO } from '@/dao';
+import { UserDAO, OAuthDAO } from '@/dao';
 import { BadRequestError } from '@/error';
 
 interface BindOAuthRequest extends IRequest {
   provider: string;
-  access_token: string;
-  refresh_token?: string;
-  expires_at?: string;
+  client_id: string;
+  client_secret: string;
+  refresh_token: string;
 }
 
 interface BindOAuthResponse extends IResponse {
@@ -30,11 +30,11 @@ export class BindOAuth extends IAPIRoute<BindOAuthRequest, BindOAuthResponse, Bi
             type: 'object' as const,
             properties: {
               provider: { type: 'string' as const },
-              access_token: { type: 'string' as const },
+              client_id: { type: 'string' as const },
+              client_secret: { type: 'string' as const },
               refresh_token: { type: 'string' as const },
-              expires_at: { type: 'string' as const },
             },
-            required: ['provider', 'access_token'],
+            required: ['provider', 'client_id', 'client_secret', 'refresh_token'],
           },
         },
       },
@@ -59,31 +59,30 @@ export class BindOAuth extends IAPIRoute<BindOAuthRequest, BindOAuthResponse, Bi
 
   protected async handleRequest(request: BindOAuthRequest, env: BindOAuthEnv, ctx: APIContext<BindOAuthEnv>): Promise<BindOAuthResponse> {
     const api_key = ctx.req.param('api_key');
-    const { provider, access_token, refresh_token, expires_at } = request;
+    const { provider, client_id, client_secret, refresh_token } = request;
 
-    const apiKeyDAO = new ApiKeyDAO(env.DB);
+    const userDAO = new UserDAO(env.DB);
     const oauthDAO = new OAuthDAO(env.DB);
 
     // Verify API key
-    const apiKeyRecord = await apiKeyDAO.findByApiKey(api_key);
-    if (!apiKeyRecord) {
+    const user = await userDAO.findByApiKey(api_key);
+    if (!user) {
       throw new BadRequestError('Invalid API key');
     }
 
-    // Check if OAuth already exists for this user
-    const existingOAuth = await oauthDAO.findByUserId(apiKeyRecord.user_id);
+    // Check if OAuth already exists for this user and provider
+    const existingOAuth = await oauthDAO.findByUserIdAndProvider(user.id, provider);
     if (existingOAuth) {
-      throw new BadRequestError('OAuth credentials already bound. Use PUT to update.');
+      throw new BadRequestError('OAuth credentials already bound for this provider. Use PUT to update.');
     }
 
     // Create OAuth record
     await oauthDAO.create({
-      id: crypto.randomUUID(),
-      user_id: apiKeyRecord.user_id,
+      user_id: user.id,
       provider,
-      access_token,
+      client_id,
+      client_secret,
       refresh_token,
-      expires_at,
     });
 
     return {

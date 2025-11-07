@@ -1,5 +1,5 @@
 import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
-import { UserDAO, ApiKeyDAO } from '@/dao';
+import { UserDAO } from '@/dao';
 import { comparePassword, generateApiKey } from '@/utils';
 import { BadRequestError } from '@/error';
 
@@ -69,7 +69,6 @@ export class GenerateApiKey extends IAPIRoute<GenerateApiKeyRequest, GenerateApi
     _ctx: APIContext<GenerateApiKeyEnv>,
   ): Promise<GenerateApiKeyResponse> {
     const userDAO = new UserDAO(env.DB);
-    const apiKeyDAO = new ApiKeyDAO(env.DB);
 
     // Find and verify user
     const user = await userDAO.findByEmail(request.email);
@@ -77,24 +76,20 @@ export class GenerateApiKey extends IAPIRoute<GenerateApiKeyRequest, GenerateApi
       throw new BadRequestError('User not found');
     }
 
-    const isValidPassword = await comparePassword(request.password, user.password_hash);
+    const isValidPassword = await comparePassword(request.password, user.hashed_password);
     if (!isValidPassword) {
       throw new BadRequestError('Invalid password');
     }
 
-    // Generate API key
+    // Generate and update API key
     const apiKey = generateApiKey();
-    const apiKeyRecord = await apiKeyDAO.create({
-      id: crypto.randomUUID(),
-      user_id: user.id,
-      api_key: apiKey,
-    });
+    await userDAO.updateApiKey(user.id, apiKey);
 
     return {
       success: true,
       result: {
-        api_key: apiKeyRecord.api_key,
-        created_at: apiKeyRecord.created_at,
+        api_key: apiKey,
+        created_at: user.created_at,
       },
     };
   }

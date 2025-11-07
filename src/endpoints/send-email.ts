@@ -1,13 +1,13 @@
 import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
-import { ApiKeyDAO, OAuthDAO } from '@/dao';
+import { UserDAO, OAuthDAO } from '@/dao';
 import { BadRequestError } from '@/error';
-import axios from 'axios';
 
 interface SendEmailRequest extends IRequest {
   to: string;
   subject: string;
   body: string;
   contentType?: 'text' | 'html';
+  provider?: string;
 }
 
 interface SendEmailResponse extends IResponse {
@@ -34,6 +34,7 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
               subject: { type: 'string' as const },
               body: { type: 'string' as const },
               contentType: { type: 'string' as const, enum: ['text', 'html'], default: 'text' },
+              provider: { type: 'string' as const, enum: ['gmail', 'microsoft_personal'], default: 'gmail' },
             },
             required: ['to', 'subject', 'body'],
           },
@@ -60,56 +61,31 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
 
   protected async handleRequest(request: SendEmailRequest, env: SendEmailEnv, ctx: APIContext<SendEmailEnv>): Promise<SendEmailResponse> {
     const api_key = ctx.req.param('api_key');
-    const { to, subject, body, contentType = 'text' } = request;
+    const { to, subject, body, contentType = 'text', provider = 'gmail' } = request;
 
-    const apiKeyDAO = new ApiKeyDAO(env.DB);
+    const userDAO = new UserDAO(env.DB);
     const oauthDAO = new OAuthDAO(env.DB);
 
     // Verify API key
-    const apiKeyRecord = await apiKeyDAO.findByApiKey(api_key);
-    if (!apiKeyRecord) {
+    const user = await userDAO.findByApiKey(api_key);
+    if (!user) {
       throw new BadRequestError('Invalid API key');
     }
 
-    // Get OAuth credentials
-    const oauthRecord = await oauthDAO.findByUserId(apiKeyRecord.user_id);
+    // Get OAuth credentials for the specified provider
+    const oauthRecord = await oauthDAO.findByUserIdAndProvider(user.id, provider);
     if (!oauthRecord) {
-      throw new BadRequestError('No OAuth credentials found. Please bind OAuth first.');
+      throw new BadRequestError(`No OAuth credentials found for ${provider}. Please bind OAuth first.`);
     }
 
-    // Send email using Microsoft Graph API
-    try {
-      const emailData = {
-        message: {
-          subject: subject,
-          body: {
-            contentType: contentType === 'html' ? 'HTML' : 'Text',
-            content: body,
-          },
-          toRecipients: [
-            {
-              emailAddress: {
-                address: to,
-              },
-            },
-          ],
-        },
-      };
+    // Note: This is a simplified implementation
+    // In a real implementation, you would need to:
+    // 1. Use the refresh_token to get a new access_token
+    // 2. Use the appropriate API for each provider (Gmail API vs Microsoft Graph API)
+    // 3. Handle token refresh and error cases properly
 
-      await axios.post('https://graph.microsoft.com/v1.0/me/sendMail', emailData, {
-        headers: {
-          Authorization: `Bearer ${oauthRecord.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      return {
-        success: true,
-        message: 'Email sent successfully',
-      };
-    } catch (error: any) {
-      console.error('Email sending failed:', error.response?.data || error.message);
-      throw new BadRequestError('Failed to send email. Please check your OAuth credentials.');
-    }
+    throw new BadRequestError(
+      'Email sending functionality requires additional implementation for OAuth token management and provider-specific APIs',
+    );
   }
 }

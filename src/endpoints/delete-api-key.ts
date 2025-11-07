@@ -1,12 +1,11 @@
 import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
-import { UserDAO, ApiKeyDAO } from '@/dao';
+import { UserDAO } from '@/dao';
 import { comparePassword } from '@/utils';
 import { BadRequestError } from '@/error';
 
 interface DeleteApiKeyRequest extends IRequest {
   email: string;
   password: string;
-  api_key: string;
 }
 
 interface DeleteApiKeyResponse extends IResponse {
@@ -31,9 +30,8 @@ export class DeleteApiKey extends IAPIRoute<DeleteApiKeyRequest, DeleteApiKeyRes
             properties: {
               email: { type: 'string' as const, format: 'email' as const },
               password: { type: 'string' as const },
-              api_key: { type: 'string' as const },
             },
-            required: ['email', 'password', 'api_key'],
+            required: ['email', 'password'],
           },
         },
       },
@@ -62,7 +60,6 @@ export class DeleteApiKey extends IAPIRoute<DeleteApiKeyRequest, DeleteApiKeyRes
     _ctx: APIContext<DeleteApiKeyEnv>,
   ): Promise<DeleteApiKeyResponse> {
     const userDAO = new UserDAO(env.DB);
-    const apiKeyDAO = new ApiKeyDAO(env.DB);
 
     // Find and verify user
     const user = await userDAO.findByEmail(request.email);
@@ -70,18 +67,17 @@ export class DeleteApiKey extends IAPIRoute<DeleteApiKeyRequest, DeleteApiKeyRes
       throw new BadRequestError('User not found');
     }
 
-    const isValidPassword = await comparePassword(request.password, user.password_hash);
+    const isValidPassword = await comparePassword(request.password, user.hashed_password);
     if (!isValidPassword) {
       throw new BadRequestError('Invalid password');
     }
 
-    // Find and delete API key
-    const apiKeyRecord = await apiKeyDAO.findByApiKey(request.api_key);
-    if (!apiKeyRecord || apiKeyRecord.user_id !== user.id) {
-      throw new BadRequestError('API key not found or does not belong to user');
+    if (!user.api_key) {
+      throw new BadRequestError('No API key found for user');
     }
 
-    const deleted = await apiKeyDAO.delete(apiKeyRecord.id);
+    // Clear API key
+    const deleted = await userDAO.clearApiKey(user.id);
     if (!deleted) {
       throw new BadRequestError('Failed to delete API key');
     }

@@ -3,52 +3,49 @@ import { OAuth, OAuthRequest } from '@/model';
 export class OAuthDAO {
   constructor(private db: D1Database) {}
 
-  async create(data: OAuthRequest & { id: string; user_id: string }): Promise<OAuth> {
-    const now = new Date().toISOString();
+  async create(data: OAuthRequest & { user_id: number }): Promise<OAuth> {
     const result = await this.db
-      .prepare(
-        'INSERT INTO oauth_tokens (id, user_id, provider, access_token, refresh_token, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      )
-      .bind(data.id, data.user_id, data.provider, data.access_token, data.refresh_token, data.expires_at, now, now)
+      .prepare('INSERT INTO oauth (user_id, provider, client_id, client_secret, refresh_token) VALUES (?, ?, ?, ?, ?)')
+      .bind(data.user_id, data.provider, data.client_id, data.client_secret, data.refresh_token)
       .run();
 
     if (!result.success) {
-      throw new Error('Failed to create OAuth token');
+      throw new Error('Failed to create OAuth');
     }
 
-    return {
-      id: data.id,
-      user_id: data.user_id,
-      provider: data.provider,
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-      expires_at: data.expires_at,
-      created_at: now,
-      updated_at: now,
-    };
+    return this.findById(result.meta.last_row_id as number) as Promise<OAuth>;
   }
 
-  async findByUserId(userId: string): Promise<OAuth | null> {
-    const result = await this.db.prepare('SELECT * FROM oauth_tokens WHERE user_id = ?').bind(userId).first<OAuth>();
+  async findById(id: number): Promise<OAuth | null> {
+    const result = await this.db.prepare('SELECT * FROM oauth WHERE id = ?').bind(id).first<OAuth>();
     return result || null;
   }
 
-  async update(userId: string, data: Partial<OAuthRequest>): Promise<OAuth | null> {
-    const now = new Date().toISOString();
-    const result = await this.db
-      .prepare('UPDATE oauth_tokens SET access_token = ?, refresh_token = ?, expires_at = ?, updated_at = ? WHERE user_id = ?')
-      .bind(data.access_token, data.refresh_token, data.expires_at, now, userId)
-      .run();
-
-    if (!result.success) {
-      throw new Error('Failed to update OAuth token');
-    }
-
-    return this.findByUserId(userId);
+  async findByUserId(userId: number): Promise<OAuth[]> {
+    const result = await this.db.prepare('SELECT * FROM oauth WHERE user_id = ?').bind(userId).all<OAuth>();
+    return result.results || [];
   }
 
-  async delete(userId: string): Promise<boolean> {
-    const result = await this.db.prepare('DELETE FROM oauth_tokens WHERE user_id = ?').bind(userId).run();
-    return result.success && result.changes > 0;
+  async findByUserIdAndProvider(userId: number, provider: string): Promise<OAuth | null> {
+    const result = await this.db.prepare('SELECT * FROM oauth WHERE user_id = ? AND provider = ?').bind(userId, provider).first<OAuth>();
+    return result || null;
+  }
+
+  async update(id: number, data: Partial<OAuthRequest>): Promise<boolean> {
+    const result = await this.db
+      .prepare('UPDATE oauth SET client_id = ?, client_secret = ?, refresh_token = ? WHERE id = ?')
+      .bind(data.client_id, data.client_secret, data.refresh_token, id)
+      .run();
+    return result.success && (result.meta.changes || 0) > 0;
+  }
+
+  async delete(id: number): Promise<boolean> {
+    const result = await this.db.prepare('DELETE FROM oauth WHERE id = ?').bind(id).run();
+    return result.success && (result.meta.changes || 0) > 0;
+  }
+
+  async deleteByUserIdAndProvider(userId: number, provider: string): Promise<boolean> {
+    const result = await this.db.prepare('DELETE FROM oauth WHERE user_id = ? AND provider = ?').bind(userId, provider).run();
+    return result.success && (result.meta.changes || 0) > 0;
   }
 }

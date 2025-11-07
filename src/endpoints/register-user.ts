@@ -84,7 +84,7 @@ export class RegisterUser extends IAPIRoute<RegisterUserRequest, RegisterUserRes
     const user = await userDAO.create({
       email: request.email,
       password: request.password,
-      password_hash: passwordHash,
+      hashed_password: passwordHash,
     });
 
     return {

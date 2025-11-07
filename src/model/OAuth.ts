@@ -1,17 +1,16 @@
 export interface OAuth {
-  id: string;
-  user_id: string;
+  id: number;
+  user_id: number;
   provider: string;
-  access_token: string;
-  refresh_token?: string;
-  expires_at?: string;
+  client_id: string;
+  client_secret: string;
+  refresh_token: string;
   created_at: string;
-  updated_at: string;
 }
 
 export interface OAuthRequest {
   provider: string;
-  access_token: string;
-  refresh_token?: string;
-  expires_at?: string;
+  client_id: string;
+  client_secret: string;
+  refresh_token: string;
 }

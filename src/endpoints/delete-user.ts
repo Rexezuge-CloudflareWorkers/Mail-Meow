@@ -68,7 +68,7 @@ export class DeleteUser extends IAPIRoute<DeleteUserRequest, DeleteUserResponse,
     }
 
     // Verify password
-    const isValidPassword = await comparePassword(request.password, user.password_hash);
+    const isValidPassword = await comparePassword(request.password, user.hashed_password);
     if (!isValidPassword) {
       throw new BadRequestError('Invalid password');
     }

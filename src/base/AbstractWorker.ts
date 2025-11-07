@@ -8,7 +8,13 @@ abstract class AbstractWorker {
   public async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url: URL = new URL(request.url);
     if ('/__scheduled' === url.pathname) {
-      await this.scheduled(null, env, ctx);
+      // Create a mock ScheduledController for manual trigger
+      const mockScheduledController = {
+        scheduledTime: Date.now(),
+        cron: '',
+        noRetry: () => {},
+      } as ScheduledController;
+      await this.scheduled(mockScheduledController, env, ctx);
       return new Response(null, { status: 204 });
     }
 

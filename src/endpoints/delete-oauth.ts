@@ -1,9 +1,10 @@
 import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
-import { ApiKeyDAO, OAuthDAO } from '@/dao';
+import { UserDAO, OAuthDAO } from '@/dao';
 import { BadRequestError } from '@/error';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface DeleteBoundOAuthRequest extends IRequest {}
+interface DeleteBoundOAuthRequest extends IRequest {
+  provider: string;
+}
 
 interface DeleteBoundOAuthResponse extends IResponse {
   success: boolean;
@@ -19,6 +20,19 @@ export class DeleteBoundOAuth extends IAPIRoute<DeleteBoundOAuthRequest, DeleteB
   schema = {
     tags: ['OAuth'],
     summary: 'Delete OAuth credentials',
+    requestBody: {
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object' as const,
+            properties: {
+              provider: { type: 'string' as const },
+            },
+            required: ['provider'],
+          },
+        },
+      },
+    },
     responses: {
       '200': {
         description: 'OAuth credentials deleted successfully',
@@ -38,30 +52,26 @@ export class DeleteBoundOAuth extends IAPIRoute<DeleteBoundOAuthRequest, DeleteB
   };
 
   protected async handleRequest(
-    _request: DeleteBoundOAuthRequest,
+    request: DeleteBoundOAuthRequest,
     env: DeleteBoundOAuthEnv,
     ctx: APIContext<DeleteBoundOAuthEnv>,
   ): Promise<DeleteBoundOAuthResponse> {
     const api_key = ctx.req.param('api_key');
+    const { provider } = request;
 
-    const apiKeyDAO = new ApiKeyDAO(env.DB);
+    const userDAO = new UserDAO(env.DB);
     const oauthDAO = new OAuthDAO(env.DB);
 
     // Verify API key
-    const apiKeyRecord = await apiKeyDAO.findByApiKey(api_key);
-    if (!apiKeyRecord) {
+    const user = await userDAO.findByApiKey(api_key);
+    if (!user) {
       throw new BadRequestError('Invalid API key');
     }
 
-    // Find and delete OAuth record
-    const oauthRecord = await oauthDAO.findByUserId(apiKeyRecord.user_id);
-    if (!oauthRecord) {
-      throw new BadRequestError('No OAuth credentials found');
-    }
-
-    const deleted = await oauthDAO.delete(oauthRecord.id);
+    // Delete OAuth record for specific provider
+    const deleted = await oauthDAO.deleteByUserIdAndProvider(user.id, provider);
     if (!deleted) {
-      throw new BadRequestError('Failed to delete OAuth credentials');
+      throw new BadRequestError('No OAuth credentials found for this provider');
     }
 
     return {
