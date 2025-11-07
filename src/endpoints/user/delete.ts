@@ -1,6 +1,5 @@
 import { OpenAPIRoute } from "chanfana";
 import { comparePassword } from "utils";
-import { z } from "zod";
 
 export class DeleteUser extends OpenAPIRoute {
     schema = {
@@ -10,10 +9,14 @@ export class DeleteUser extends OpenAPIRoute {
             body: {
                 content: {
                     "application/json": {
-                        schema: z.object({
-                            email: z.string().email(),
-                            password: z.string().min(6),
-                        }),
+                        schema: {
+                            type: "object",
+                            properties: {
+                                email: { type: "string", format: "email" },
+                                password: { type: "string", minLength: 6 },
+                            },
+                            required: ["email", "password"],
+                        },
                     },
                 },
             },
@@ -35,8 +38,7 @@ export class DeleteUser extends OpenAPIRoute {
             }
 
             // 校验数据格式
-            const validatedData = this.schema.request.body.content["application/json"].schema.parse(requestBody);
-            const { email, password } = validatedData;
+            const { email, password } = requestBody;
 
             // 获取用户信息
             const user = await c.env.DB.prepare(
@@ -61,9 +63,6 @@ export class DeleteUser extends OpenAPIRoute {
 
             return c.json({ message: "User deleted successfully" }, 200);
         } catch (error) {
-            if (error instanceof z.ZodError) {
-                return c.json({ error: "Invalid input data", details: error.errors }, 400);
-            }
             return c.json({ error: "Internal Server Error", details: error.message }, 500);
         }
     }

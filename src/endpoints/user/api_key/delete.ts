@@ -1,6 +1,6 @@
 import { OpenAPIRoute } from "chanfana";
 import { comparePassword } from "../../../utils";
-import { z } from "zod";
+
 
 export class DeleteApiKey extends OpenAPIRoute {
     schema = {
@@ -10,10 +10,10 @@ export class DeleteApiKey extends OpenAPIRoute {
             body: {
                 content: {
                     "application/json": {
-                        schema: z.object({
-                            email: z.string().email(),
-                            password: z.string().min(6), // 确保密码最少6位
-                        }),
+                        schema: { type: "object", properties: {
+                            email: { type: "string", format: "email" },
+                            password: { type: "string", minLength: 6 }, // 确保密码最少6位
+                        }, required: ["email", "password"] },
                     },
                 },
             },
@@ -36,7 +36,7 @@ export class DeleteApiKey extends OpenAPIRoute {
             }
 
             // 校验数据格式
-            const validatedData = this.schema.request.body.content["application/json"].schema.parse(requestBody);
+            const validatedData = requestBody;
             const { email, password } = validatedData;
 
             // 查询用户信息，仅获取第一个匹配的用户
@@ -67,7 +67,7 @@ export class DeleteApiKey extends OpenAPIRoute {
 
             return c.json({ message: "API key deleted successfully" }, 200);
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (error instanceof Error) {
                 return c.json({ error: "Invalid input data", details: error.errors }, 400);
             }
             console.error("Error deleting API key:", error);

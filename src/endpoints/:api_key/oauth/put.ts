@@ -1,5 +1,5 @@
 import { OpenAPIRoute } from "chanfana";
-import { z } from "zod";
+
 import { apiKeyParam } from "../param";
 
 export class RebindOAuth extends OpenAPIRoute {
@@ -11,12 +11,16 @@ export class RebindOAuth extends OpenAPIRoute {
             body: {
                 content: {
                     "application/json": {
-                        schema: z.object({
-                            provider: z.enum(["gmail", "outlook", "microsoft_personal"]),
-                            client_id: z.string(),
-                            client_secret: z.string(),
-                            refresh_token: z.string(),
-                        }),
+                        schema: {
+                            type: "object",
+                            properties: {
+                                provider: { type: "string", enum: ["gmail", "outlook", "microsoft_personal"] },
+                                client_id: { type: "string" },
+                                client_secret: { type: "string" },
+                                refresh_token: { type: "string" },
+                            },
+                            required: ["provider", "client_id", "client_secret", "refresh_token"],
+                        },
                     },
                 },
             },
@@ -44,7 +48,7 @@ export class RebindOAuth extends OpenAPIRoute {
             }
 
             // 校验数据格式
-            const validatedData = this.schema.request.body.content["application/json"].schema.parse(requestBody);
+            const validatedData = requestBody;
             const { provider, client_id, client_secret, refresh_token } = validatedData;
 
             // 获取用户 ID
@@ -77,7 +81,7 @@ export class RebindOAuth extends OpenAPIRoute {
 
             return c.json({ message: "OAuth credentials rebound successfully" }, 200);
         } catch (error) {
-            if (error instanceof z.ZodError) {
+            if (error instanceof Error) {
                 return c.json({ error: "Invalid input data", details: error.errors }, 400);
             }
             console.error("Error rebinding OAuth:", error);
