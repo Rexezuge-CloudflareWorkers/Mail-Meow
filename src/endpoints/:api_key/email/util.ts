@@ -23,6 +23,15 @@ export async function getAccessToken(provider: string, client_id: string, client
                 refresh_token,
                 scope: "https://graph.microsoft.com/.default",
             });
+        } else if (provider === "microsoft_personal") {
+            tokenUrl = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
+            requestData = new URLSearchParams({
+                client_id,
+                client_secret,
+                grant_type: "refresh_token",
+                refresh_token,
+                scope: "https://graph.microsoft.com/Mail.Send offline_access",
+            });
         } else {
             throw new Error("Unsupported email provider");
         }
@@ -54,7 +63,7 @@ export async function sendEmail(from: string, to: string, subject: string, body:
                     },
                 }
             );
-        } else if (provider === "outlook") {
+        } else if (provider === "outlook" || provider === "microsoft_personal") {
             await axios.post(
                 "https://graph.microsoft.com/v1.0/me/sendMail",
                 {

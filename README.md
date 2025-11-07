@@ -5,7 +5,7 @@
 ## 功能介绍 🎉
 
 - **创建 API Key**：用户可以生成自己的 API Key，方便管理和使用。(๑•̀ㅂ•́)و✧
-- **OAuth 连接**：支持 Gmail 和 Outlook 的 OAuth 连接，安全又便捷！🔒✨
+- **OAuth 连接**：支持 Gmail、Outlook 和 Microsoft 个人账户的 OAuth 连接，安全又便捷！🔒✨
 - **邮件推送**：通过简单的 POST API，你可以轻松推送消息到任何邮箱地址。📤💌
 
 ## 快速开始 🚀
@@ -28,10 +28,15 @@ curl -X POST "https://api.mailmeow.com/api/user/api_key" \
 -H "Content-Type: application/json" \
 -d '{"email": "your_email@example.com", "password": "your_password"}'
 
-# 绑定 OAuth
+# 绑定 OAuth (Gmail)
 curl -X POST "https://api.mailmeow.com/api/{api_key}/oauth" \
 -H "Content-Type: application/json" \
 -d '{"provider": "gmail", "client_id": "your_client_id", "client_secret": "your_client_secret", "refresh_token": "your_refresh_token"}'
+
+# 绑定 OAuth (Microsoft 个人账户)
+curl -X POST "https://api.mailmeow.com/api/{api_key}/oauth" \
+-H "Content-Type: application/json" \
+-d '{"provider": "microsoft_personal", "client_id": "your_client_id", "client_secret": "your_client_secret", "refresh_token": "your_refresh_token"}'
 
 # 发送邮件
 curl -X POST "https://api.mailmeow.com/api/{api_key}/email" \

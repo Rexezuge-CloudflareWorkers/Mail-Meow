@@ -12,7 +12,7 @@ export class BindOAuth extends OpenAPIRoute {
                 content: {
                     "application/json": {
                         schema: z.object({
-                            provider: z.enum(["gmail", "outlook"]),
+                            provider: z.enum(["gmail", "outlook", "microsoft_personal"]),
                             client_id: z.string(),
                             client_secret: z.string(),
                             refresh_token: z.string(),
