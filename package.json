@@ -9,16 +9,16 @@
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
-		"axios": "^1.8.2",
-		"bcryptjs": "^3.0.2",
-		"chanfana": "^2.6.3",
-		"hono": "^4.7.4",
-		"zod": "^3.24.2"
+		"axios": "^1.13.2",
+		"bcryptjs": "^3.0.3",
+		"chanfana": "^2.8.3",
+		"hono": "^4.10.4",
+		"zod": "^4.1.12"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20250311.0",
-		"@types/node": "22.13.10",
+		"@cloudflare/workers-types": "^4.20251106.1",
+		"@types/node": "24.10.0",
 		"@types/service-worker-mock": "^2.0.4",
-		"wrangler": "^3.114.1"
+		"wrangler": "^4.46.0"
 	}
 }
