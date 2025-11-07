@@ -10,7 +10,7 @@
 		"head_sampling_rate": 1
 	},
 	"placement": {
-		"mode": "smart"
+		"mode": "off"
 	},
 	"d1_databases": [
 		{
