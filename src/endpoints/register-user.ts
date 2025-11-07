@@ -11,7 +11,6 @@ interface RegisterUserRequest extends IRequest {
 interface RegisterUserResponse extends IResponse {
   success: boolean;
   result: {
-    id: string;
     email: string;
     created_at: string;
   };
@@ -83,7 +82,6 @@ export class RegisterUser extends IAPIRoute<RegisterUserRequest, RegisterUserRes
     const passwordHash = await hashPassword(request.password);
 
     const user = await userDAO.create({
-      id: userId,
       email: request.email,
       password: request.password,
       password_hash: passwordHash,
@@ -92,7 +90,6 @@ export class RegisterUser extends IAPIRoute<RegisterUserRequest, RegisterUserRes
     return {
       success: true,
       result: {
-        id: user.id,
         email: user.email,
         created_at: user.created_at,
       },

@@ -1,5 +1,4 @@
 export interface User {
-  id: string;
   email: string;
   password_hash: string;
   created_at: string;
@@ -12,7 +11,6 @@ export interface CreateUserRequest {
 }
 
 export interface UserResponse {
-  id: string;
   email: string;
   created_at: string;
 }
