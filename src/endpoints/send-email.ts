@@ -124,7 +124,7 @@ async function getAccessToken(provider: string, client_id: string, client_secret
         client_secret,
         grant_type: 'refresh_token',
         refresh_token,
-        scope: 'https://graph.microsoft.com/.default',
+        scope: 'https://graph.microsoft.com/Mail.Send offline_access',
       });
     } else {
       throw new Error(`Unsupported provider: ${provider}`);
