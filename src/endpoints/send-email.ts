@@ -46,7 +46,7 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
     },
     responses: {
       '200': {
-        description: 'Email sent successfully',
+        description: 'The email was sent successfully.',
         content: {
           'application/json': {
             schema: {
@@ -96,7 +96,7 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
       // Send email
       await sendEmail(senderEmail, to, subject, text, accessToken, provider);
 
-      return { message: 'Email sent successfully' };
+      return { message: 'The email was sent successfully.' };
     } catch (error) {
       throw new InternalServerError(`Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
