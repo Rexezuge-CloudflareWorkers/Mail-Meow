@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "cf-typegen": "wrangler types",
-    "predeploy": "npm install && npm run prettier && npm run lint && npm run tsc",
+    "predeploy": "npm install && npm run cf-typegen && npm run prettier && npm run lint && npm run tsc",
     "deploy": "wrangler deploy --dry-run",
     "postdeploy": "wrangler deploy",
     "prettier": "prettier --write .",
