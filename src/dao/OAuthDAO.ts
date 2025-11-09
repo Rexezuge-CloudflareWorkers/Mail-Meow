@@ -76,4 +76,13 @@ export class OAuthDAO {
     const result = await this.db.prepare('DELETE FROM oauth WHERE user_id = ? AND provider = ?').bind(userId, provider).run();
     return result.success && (result.meta.changes || 0) > 0;
   }
+
+  async updateRefreshToken(id: number, newRefreshToken: string): Promise<boolean> {
+    const oauth = await this.findById(id);
+    if (!oauth) return false;
+
+    const { encrypted: encryptedRefreshToken } = await encryptData(newRefreshToken, this.masterKey, oauth.salt);
+    const result = await this.db.prepare('UPDATE oauth SET encrypted_refresh_token = ? WHERE id = ?').bind(encryptedRefreshToken, id).run();
+    return result.success && (result.meta.changes || 0) > 0;
+  }
 }

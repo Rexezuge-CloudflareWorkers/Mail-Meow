@@ -101,10 +101,15 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
 
     try {
       // Get Access Token
-      const accessToken = await getAccessToken(provider, client_id, client_secret, refresh_token);
+      const tokenResult = await getAccessToken(provider, client_id, client_secret, refresh_token);
+
+      // Update refresh token if Microsoft returned a new one
+      if (provider === 'microsoft_personal' && tokenResult.newRefreshToken) {
+        await oauthDAO.updateRefreshToken(oauthRecord.id, tokenResult.newRefreshToken);
+      }
 
       // Send email
-      await sendEmail(senderEmail, to, subject, text, accessToken, provider);
+      await sendEmail(senderEmail, to, subject, text, tokenResult.accessToken, provider);
 
       return { message: 'The email was sent successfully.' };
     } catch (error) {
@@ -114,7 +119,12 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
 }
 
 // Get OAuth Access Token
-async function getAccessToken(provider: string, client_id: string, client_secret: string, refresh_token: string): Promise<string> {
+async function getAccessToken(
+  provider: string,
+  client_id: string,
+  client_secret: string,
+  refresh_token: string,
+): Promise<{ accessToken: string; newRefreshToken?: string }> {
   try {
     let tokenUrl: string;
     let requestData: URLSearchParams;
@@ -146,12 +156,15 @@ async function getAccessToken(provider: string, client_id: string, client_secret
       body: requestData,
     });
 
-    const data = (await response.json()) as { access_token?: string; error?: string };
+    const data = (await response.json()) as { access_token?: string; refresh_token?: string; error?: string };
     if (!response.ok || !data.access_token) {
       throw new Error(`Failed to get access token: ${data.error || 'Unknown error'}`);
     }
 
-    return data.access_token;
+    return {
+      accessToken: data.access_token,
+      newRefreshToken: data.refresh_token,
+    };
   } catch (error) {
     throw new Error(`Token refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
