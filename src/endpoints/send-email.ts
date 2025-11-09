@@ -14,7 +14,7 @@ interface SendEmailResponse extends IResponse {
 
 interface SendEmailEnv extends IEnv {
   DB: D1Database;
-  MASTER_KEY: string;
+  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret;
 }
 
 export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, SendEmailEnv> {
@@ -71,7 +71,8 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
     const { to, subject, text } = request;
 
     const userDAO = new UserDAO(env.DB);
-    const oauthDAO = new OAuthDAO(env.DB, env.MASTER_KEY);
+    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
+    const oauthDAO = new OAuthDAO(env.DB, masterKey);
 
     // Get user by API key
     const user = await userDAO.findByApiKey(api_key);

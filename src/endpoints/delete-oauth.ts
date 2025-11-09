@@ -13,8 +13,7 @@ interface DeleteBoundOAuthResponse extends IResponse {
 
 interface DeleteBoundOAuthEnv extends IEnv {
   DB: D1Database;
-  MASTER_KEY: string;
-  api_key: string;
+  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret;
 }
 
 export class DeleteBoundOAuth extends IAPIRoute<DeleteBoundOAuthRequest, DeleteBoundOAuthResponse, DeleteBoundOAuthEnv> {
@@ -70,7 +69,8 @@ export class DeleteBoundOAuth extends IAPIRoute<DeleteBoundOAuthRequest, DeleteB
     const { provider } = request;
 
     const userDAO = new UserDAO(env.DB);
-    const oauthDAO = new OAuthDAO(env.DB, env.MASTER_KEY);
+    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
+    const oauthDAO = new OAuthDAO(env.DB, masterKey);
 
     // Verify API key
     const user = await userDAO.findByApiKey(api_key);

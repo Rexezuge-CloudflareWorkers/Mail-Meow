@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS oauth_encrypted (
     encrypted_refresh_token TEXT NOT NULL,
     salt TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id),
     UNIQUE(user_id, provider)
 );

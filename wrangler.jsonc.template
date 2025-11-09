@@ -16,8 +16,15 @@
 		{
 			"binding": "DB",
 			"database_name": "mail-meow-db",
-			"database_id": "00000000-0000-0000-0000-000000000000"
-		}
+			"database_id": "00000000-0000-0000-0000-000000000000",
+		},
+	],
+	"secrets_store_secrets": [
+		{
+		"binding": "AES_ENCRYPTION_KEY_SECRET",
+		"store_id": "00000000000000000000000000000000",
+		"secret_name": "mail-meow-aes-encryption-key",
+		},
 	],
 	"vars": {}
 }

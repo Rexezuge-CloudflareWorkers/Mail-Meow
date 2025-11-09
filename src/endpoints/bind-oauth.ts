@@ -16,8 +16,7 @@ interface BindOAuthResponse extends IResponse {
 
 interface BindOAuthEnv extends IEnv {
   DB: D1Database;
-  MASTER_KEY: string;
-  api_key: string;
+  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret;
 }
 
 export class BindOAuth extends IAPIRoute<BindOAuthRequest, BindOAuthResponse, BindOAuthEnv> {
@@ -72,7 +71,8 @@ export class BindOAuth extends IAPIRoute<BindOAuthRequest, BindOAuthResponse, Bi
     const { provider, client_id, client_secret, refresh_token } = request;
 
     const userDAO = new UserDAO(env.DB);
-    const oauthDAO = new OAuthDAO(env.DB, env.MASTER_KEY);
+    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
+    const oauthDAO = new OAuthDAO(env.DB, masterKey);
 
     // Verify API key
     const user = await userDAO.findByApiKey(api_key);
