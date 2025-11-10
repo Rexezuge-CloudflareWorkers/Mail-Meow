@@ -80,7 +80,7 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
       throw new BadRequestError('Invalid API key');
     }
 
-    const senderEmail = user.email;
+    const senderEmail: string = user.email;
 
     // Get OAuth credentials (get the first available provider)
     const oauthRecords = await oauthDAO.findByUserId(user.id);
@@ -111,8 +111,8 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
       // Send email
       const originUrl: string = new URL(request.raw.url).origin; // https://example.com
       const unsubscribeUrl: string = getUnsubscribeUrl(originUrl);
-      const processedBody: string = text + getFooter(unsubscribeUrl);
-      await sendEmail(senderEmail, to, subject, processedBody, tokenResult.accessToken, provider);
+      const _processedBody: string = text + getFooter(unsubscribeUrl);
+      await sendEmail(senderEmail, to, subject, text, tokenResult.accessToken, provider);
 
       return { message: 'The email was sent successfully.' };
     } catch (error) {
