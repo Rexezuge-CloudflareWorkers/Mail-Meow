@@ -8,4 +8,5 @@ export { BindOAuth } from './bind-oauth';
 export { RebindOAuth } from './rebind-oauth';
 export { DeleteBoundOAuth } from './delete-oauth';
 export { SendEmail } from './send-email';
+export { SendSNS } from './send-sns';
 export { GenerateMasterKey } from './generate-master-key';

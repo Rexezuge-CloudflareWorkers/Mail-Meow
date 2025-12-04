@@ -15,3 +15,10 @@ export interface OAuthRequest {
   client_secret: string;
   refresh_token: string;
 }
+
+export interface SNSRequest {
+  provider: 'amazon-sns';
+  access_key_id: string;
+  secret_access_key: string;
+  topic_arn: string;
+}

@@ -15,6 +15,7 @@
     "test": "vitest --run || 1"
   },
   "dependencies": {
+    "aws4fetch": "^1.0.20",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "chanfana": "^2.8.3",
@@ -25,14 +26,14 @@
     "@cloudflare/workers-types": "^4.20251107.0",
     "@types/node": "24.10.0",
     "@types/service-worker-mock": "^2.0.4",
-    "wrangler": "^4.46.0",
-    "vitest": "^4.0.8",
     "eslint": "^9.39.x",
     "eslint-config-prettier": "^10.1.x",
     "eslint-plugin-prettier": "^5.5.x",
     "globals": "^16.5.x",
     "prettier": "^3.6.x",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.x"
+    "typescript-eslint": "^8.46.x",
+    "vitest": "^4.0.8",
+    "wrangler": "^4.46.0"
   }
 }

@@ -1,15 +1,17 @@
 import { IAPIRoute, IRequest, IResponse, IEnv, APIContext } from './IAPIRoute';
 import { UserDAO, OAuthDAO } from '@/dao';
 import { BadRequestError, InternalServerError } from '@/error';
+import { AwsClient } from 'aws4fetch';
 
 interface SendEmailRequest extends IRequest {
-  to: string;
+  to?: string;
   subject: string;
   text: string;
 }
 
 interface SendEmailResponse extends IResponse {
   message: string;
+  messageId?: string;
 }
 
 interface SendEmailEnv extends IEnv {
@@ -20,7 +22,7 @@ interface SendEmailEnv extends IEnv {
 export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, SendEmailEnv> {
   schema = {
     tags: ['Email'],
-    summary: "Send an email using user's OAuth credentials",
+    summary: "Send an email using user's OAuth credentials or publish to SNS",
     parameters: [
       {
         name: 'api_key',
@@ -40,20 +42,21 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
               subject: { type: 'string' as const },
               text: { type: 'string' as const },
             },
-            required: ['to', 'subject', 'text'],
+            required: ['subject', 'text'],
           },
         },
       },
     },
     responses: {
       '200': {
-        description: 'The email was sent successfully.',
+        description: 'The email was sent or message was published successfully.',
         content: {
           'application/json': {
             schema: {
               type: 'object' as const,
               properties: {
                 message: { type: 'string' as const },
+                messageId: { type: 'string' as const },
               },
             },
           },
@@ -80,12 +83,32 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
       throw new BadRequestError('Invalid API key');
     }
 
+    // Check for SNS credentials first
+    const snsCredentials = await oauthDAO.getDecryptedSNS(user.id);
+    if (snsCredentials) {
+      try {
+        const { access_key_id, secret_access_key, topic_arn } = snsCredentials;
+        const messageId = await publishToSNS(access_key_id, secret_access_key, topic_arn, text, subject);
+        return {
+          message: 'The message was published to SNS successfully.',
+          messageId,
+        };
+      } catch (error) {
+        throw new InternalServerError(`Failed to publish to SNS: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // Fall back to email if no SNS credentials
+    if (!to) {
+      throw new BadRequestError('to field is required for email sending');
+    }
+
     const senderEmail: string = user.email;
 
     // Get OAuth credentials (get the first available provider)
     const oauthRecords = await oauthDAO.findByUserId(user.id);
     if (!oauthRecords || oauthRecords.length === 0) {
-      throw new BadRequestError('OAuth credentials not found');
+      throw new BadRequestError('No credentials found. Please bind OAuth or SNS credentials first.');
     }
 
     const oauthRecord = oauthRecords[0]; // Use the first available OAuth provider
@@ -119,6 +142,53 @@ export class SendEmail extends IAPIRoute<SendEmailRequest, SendEmailResponse, Se
       throw new InternalServerError(`Failed to send email: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+}
+
+async function publishToSNS(
+  accessKeyId: string,
+  secretAccessKey: string,
+  topicArn: string,
+  message: string,
+  subject?: string,
+): Promise<string> {
+  const region = topicArn.split(':')[3];
+  const client = new AwsClient({
+    accessKeyId,
+    secretAccessKey,
+    region,
+    service: 'sns',
+  });
+
+  const params = new URLSearchParams({
+    Action: 'Publish',
+    TopicArn: topicArn,
+    Message: message,
+    Version: '2010-03-31',
+  });
+
+  if (subject) {
+    params.append('Subject', subject);
+  }
+
+  const url = `https://sns.${region}.amazonaws.com/`;
+  const response = await client.fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`SNS API error: ${response.status} ${errorText}`);
+  }
+
+  const responseText = await response.text();
+  const messageIdMatch = responseText.match(/<MessageId>([^<]+)<\/MessageId>/);
+  const messageId = messageIdMatch ? messageIdMatch[1] : 'unknown';
+
+  return messageId;
 }
 
 // Get OAuth Access Token
