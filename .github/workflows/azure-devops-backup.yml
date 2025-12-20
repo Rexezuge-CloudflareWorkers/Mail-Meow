@@ -1,4 +1,5 @@
-name: Backup Main Branch (SSH) to Azure DevOps
+# $version: v4-1766267229
+name: Backup Main Branch to Azure DevOps
 
 on:
   push:
@@ -8,7 +9,7 @@ on:
 jobs:
   backup-main-to-azure-devops:
     if: ${{ !github.event.repository.fork }}
-    name: Backup `main` branch to secondary repository using SSH
+    name: Backup main Branch
     runs-on: ubuntu-latest
 
     steps:
@@ -29,15 +30,12 @@ jobs:
           mkdir -p ~/.ssh
           echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-
-          # Optional: Disable host key checking for automation (only if host is trusted)
           echo -e "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-
           # Ensure ssh-agent is running
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_rsa
 
-      - name: Add SSH Remote and Push `main` Branch
+      - name: Add SSH Remote and Push main Branch
         env:
           REMOTE_REPO_URL: ${{ secrets.BACKUP_REPO_AZURE_DEVOPS_REPO_URL }}
         run: |
