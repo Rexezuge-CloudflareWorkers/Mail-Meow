@@ -46,10 +46,6 @@ async function generateAESGCMKey(): Promise<string> {
   return btoa(String.fromCharCode(...new Uint8Array(exported)));
 }
 
-function generateHMACSecret(): string {
-  return randomBytes(32).toString('base64');
-}
-
 function createSecret(storeId: string, secretName: string, secretValue: string): void {
   console.log(`Creating secret: ${secretName}`);
   exec(`echo "${secretValue}" | npx wrangler secrets-store secret create ${storeId} --name ${secretName} --scopes workers --remote`);
