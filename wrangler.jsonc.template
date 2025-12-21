@@ -1,10 +1,11 @@
 {
-  // "$version": 1766288015,
+  // "$version": 1766288096,
   // "$minimumVersion": 1766030299,
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mail-meow",
   "main": "src/index.ts",
   "compatibility_date": "2025-12-20",
+  "compatibility_flags": [],
   "preview_urls": false,
   "workers_dev": true,
   "minify": true,
