@@ -3,7 +3,6 @@
 import { execSync } from 'child_process';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { randomBytes } from 'crypto';
 import { parse } from 'jsonc-parser';
 
 interface WranglerConfig {
