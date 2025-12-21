@@ -1,5 +1,5 @@
 {
-  // "$version": 1766288096,
+  // "$version": 1766288207,
   // "$minimumVersion": 1766030299,
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mail-meow",
@@ -22,6 +22,7 @@
       "head_sampling_rate": 1,
     },
   },
+  "routes": [],
   "placement": {
     "mode": "off"
   },
