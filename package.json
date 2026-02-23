@@ -16,10 +16,10 @@
   },
   "dependencies": {
     "aws4fetch": "^1.0.20",
-    "axios": "^1.13.2",
+    "axios": "^1.13.5",
     "bcryptjs": "^3.0.3",
     "chanfana": "^3.0.0",
-    "hono": "^4.11.1",
+    "hono": "^4.11.10",
     "zod": "^4.2.1"
   },
   "devDependencies": {
@@ -35,6 +35,6 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.50.x",
     "vitest": "^4.0.16",
-    "wrangler": "^4.56.0"
+    "wrangler": "^4.59.1"
   }
 }
