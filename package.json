@@ -20,7 +20,7 @@
     "bcryptjs": "^3.0.3",
     "chanfana": "^3.0.0",
     "hono": "^4.12.2",
-    "zod": "^4.2.1"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260304.0",
