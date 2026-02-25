@@ -9,6 +9,8 @@ jobs:
   sync:
     if: ${{ github.event.repository.fork }}
     name: Sync latest commits from upstream
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
