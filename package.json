@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260304.0",
-    "@types/node": "25.3.x",
+    "@types/node": "25.5.x",
     "@types/service-worker-mock": "^2.0.4",
     "eslint": "^10.0.x",
     "eslint-config-prettier": "^10.1.x",
