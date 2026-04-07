@@ -1,16 +1,15 @@
-# $version: v2-1774540352
+# v2-1775586941
 name: Scheduled Version Update
 
 on:
   schedule:
-    - cron: '0 0 1 * *'
+    - cron: '0 0 1,15 * *'
 
 permissions:
   contents: write
 
 jobs:
   update-version:
-    if: ${{ !github.event.repository.fork }}
     runs-on: ubuntu-latest
 
     steps:
