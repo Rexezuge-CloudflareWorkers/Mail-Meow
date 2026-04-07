@@ -1,4 +1,4 @@
-# v2-1775586941
+# v3-1775588220
 name: Scheduled Version Update
 
 on:
@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   update-version:
+    if: ${{ !github.event.repository.fork }}
     runs-on: ubuntu-latest
 
     steps:
