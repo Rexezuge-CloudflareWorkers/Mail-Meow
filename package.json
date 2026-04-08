@@ -19,7 +19,7 @@
     "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
     "chanfana": "^3.3.0",
-    "hono": "^4.12.10",
+    "hono": "^4.12.12",
     "zod": "^4.3.6"
   },
   "devDependencies": {
