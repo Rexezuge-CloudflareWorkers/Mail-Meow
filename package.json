@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "aws4fetch": "^1.0.20",
-    "axios": "^1.14.0",
+    "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",
     "chanfana": "^3.3.0",
     "hono": "^4.12.12",
