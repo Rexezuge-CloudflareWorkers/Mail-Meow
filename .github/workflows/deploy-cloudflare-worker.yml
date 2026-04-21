@@ -1,9 +1,10 @@
 name: Deploy Cloudflare Worker
 
-permissions:
-  contents: read
-
 on:
+  push:
+    branches:
+      - main
+  pull_request:
   workflow_dispatch:
   workflow_run:
     workflows: [Upstream Sync]
@@ -11,9 +12,10 @@ on:
 
 jobs:
   deploy:
-    if: ${{ github.repository != 'Rexezuge-CloudflareWorkers/Mail-Meow' }}
     name: Deploy to Cloudflare
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout Repository
@@ -46,19 +48,28 @@ jobs:
           fi
 
       - name: Initialize Cloudflare Secrets Store
+        if: ${{ github.event_name != 'pull_request' }}
         run: npx tsx scripts/init-secrets.ts
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Apply Database Migration
-        run: yes | npx wrangler d1 migrations apply --remote mail-meow-db
+        if: ${{ github.event_name != 'pull_request' }}
+        run: yes | npx wrangler d1 migrations apply --remote aws-access-bridge-db
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Dry Run Deploy with Wrangler
+        run: npx wrangler deploy --dry-run
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy with Wrangler
-        run: npm run deploy
+        if: ${{ github.event_name != 'pull_request' }}
+        run: npx wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
