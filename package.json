@@ -28,7 +28,7 @@
     "eslint": "^10.2.x",
     "eslint-config-prettier": "^10.1.x",
     "eslint-plugin-prettier": "^5.5.x",
-    "globals": "^17.4.x",
+    "globals": "^17.5.x",
     "jsonc-parser": "^3.3.x",
     "prettier": "^3.8.x",
     "typescript": "^6.0.2",
