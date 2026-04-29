@@ -38,7 +38,7 @@
     "tailwindcss": "^4.2.x",
     "terser": "^5.46.x",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.58.x",
+    "typescript-eslint": "^8.59.x",
     "vite": "^8.0.x",
     "vitest": "^4.1.4",
     "wrangler": "^4.86.0"
