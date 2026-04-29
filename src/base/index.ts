@@ -1,1 +1,1 @@
-export { AbstractWorker } from './AbstractWorker';
+export { AbstractEntrypointWorker } from './AbstractEntrypointWorker';

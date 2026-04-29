@@ -1,51 +1,51 @@
-import { User, CreateUserRequest } from '@/model';
+import { DatabaseError } from '@/error';
+import type { User, UserInternal } from '@/model';
+import { TimestampUtil } from '@/utils';
 
-export class UserDAO {
-  constructor(private db: D1Database) {}
+class UserDAO {
+  protected readonly database: D1Database;
 
-  async create(userData: CreateUserRequest & { hashed_password: string }): Promise<User> {
-    const result = await this.db
-      .prepare('INSERT INTO users (email, hashed_password) VALUES (?, ?)')
-      .bind(userData.email, userData.hashed_password)
+  constructor(database: D1Database) {
+    this.database = database;
+  }
+
+  public async upsertByEmail(email: string): Promise<User> {
+    const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
+    const result: D1Result = await this.database
+      .prepare(
+        `
+          INSERT INTO users (email, created_at, updated_at)
+          VALUES (?, ?, ?)
+          ON CONFLICT(email) DO UPDATE SET updated_at = excluded.updated_at
+        `,
+      )
+      .bind(email, now, now)
       .run();
-
     if (!result.success) {
-      throw new Error('Failed to create user');
+      throw new DatabaseError(`Failed to upsert user: ${result.error}`);
     }
-
-    return this.findById(result.meta.last_row_id as number) as Promise<User>;
+    const user: User | undefined = await this.getByEmail(email);
+    if (!user) {
+      throw new DatabaseError('Failed to load user after upsert.');
+    }
+    return user;
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    const result = await this.db.prepare('SELECT * FROM users WHERE email = ?').bind(email).first<User>();
-    return result || null;
+  public async getByEmail(email: string): Promise<User | undefined> {
+    const row: UserInternal | null = await this.database
+      .prepare('SELECT email, created_at, updated_at FROM users WHERE email = ? LIMIT 1')
+      .bind(email)
+      .first<UserInternal>();
+    return row ? this.toUser(row) : undefined;
   }
 
-  async findById(id: number): Promise<User | null> {
-    const result = await this.db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first<User>();
-    return result || null;
-  }
-
-  async findByApiKey(apiKey: string): Promise<User | null> {
-    const result = await this.db.prepare('SELECT * FROM users WHERE api_key = ?').bind(apiKey).first<User>();
-    return result || null;
-  }
-
-  async updateApiKey(id: number, apiKey: string): Promise<boolean> {
-    const result = await this.db
-      .prepare('UPDATE users SET api_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .bind(apiKey, id)
-      .run();
-    return result.success && (result.meta.changes || 0) > 0;
-  }
-
-  async clearApiKey(id: number): Promise<boolean> {
-    const result = await this.db.prepare('UPDATE users SET api_key = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(id).run();
-    return result.success && (result.meta.changes || 0) > 0;
-  }
-
-  async delete(id: number): Promise<boolean> {
-    const result = await this.db.prepare('DELETE FROM users WHERE id = ?').bind(id).run();
-    return result.success && (result.meta.changes || 0) > 0;
+  private toUser(row: UserInternal): User {
+    return {
+      email: row.email,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
   }
 }
+
+export { UserDAO };

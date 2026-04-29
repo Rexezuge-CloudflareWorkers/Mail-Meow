@@ -1,18 +1,13 @@
-export interface User {
-  id: number;
+interface User {
   email: string;
-  hashed_password: string;
-  api_key: string | null;
-  created_at: string;
-  updated_at: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
-export interface CreateUserRequest {
+interface UserInternal {
   email: string;
-  password: string;
+  created_at: number;
+  updated_at: number;
 }
 
-export interface UserResponse {
-  email: string;
-  created_at: string;
-}
+export type { User, UserInternal };
