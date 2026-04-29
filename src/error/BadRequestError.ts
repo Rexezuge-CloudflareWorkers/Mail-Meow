@@ -1,11 +1,21 @@
-import { IServiceError } from './IServiceError';
+import { ErrorCode, IServiceError } from './IServiceError';
 
-export class BadRequestError extends Error implements IServiceError {
-  readonly statusCode = 400;
-  readonly name = 'BadRequestError';
+class BadRequestError extends IServiceError {
+  constructor(message?: string | undefined) {
+    super(message ?? 'The request could not be understood or was missing required parameters.');
+  }
 
-  constructor(message: string) {
-    super(message);
-    Object.setPrototypeOf(this, BadRequestError.prototype);
+  public getErrorCode(): ErrorCode {
+    return 400;
+  }
+
+  public getErrorType(): string {
+    return 'BadRequest';
+  }
+
+  public getErrorMessage(): string {
+    return this.message;
   }
 }
+
+export { BadRequestError };

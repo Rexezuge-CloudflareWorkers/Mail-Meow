@@ -1,11 +1,23 @@
-import { IServiceError } from './IServiceError';
+import { ErrorCode, IServiceError } from './IServiceError';
 
-export class InternalServerError extends Error implements IServiceError {
-  readonly statusCode = 500;
-  readonly name = 'InternalServerError';
+class InternalServerError extends IServiceError {
+  constructor(message?: string | undefined) {
+    super(message ?? 'The server encountered an internal error and was unable to complete your request.');
+  }
 
-  constructor(message: string = 'Internal Server Error') {
-    super(message);
-    Object.setPrototypeOf(this, InternalServerError.prototype);
+  public getErrorCode(): ErrorCode {
+    return 500;
+  }
+
+  public getErrorType(): string {
+    return 'InternalServerError';
+  }
+
+  public getErrorMessage(): string {
+    return this.message;
   }
 }
+
+const DefaultInternalServerError = new InternalServerError();
+
+export { InternalServerError, DefaultInternalServerError };

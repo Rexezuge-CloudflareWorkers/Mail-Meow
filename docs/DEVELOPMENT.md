@@ -1,116 +1,68 @@
-# Mail Meow 开发指南 🛠️🐾
+# Mail-Meow Development
 
-欢迎来到 **Mail Meow** 的开发指南！在这里，你将了解到如何开发和部署这个可爱的邮件推送平台。让我们一起开始吧！(๑•̀ㅂ•́)و✧
-
-## 项目结构 📂
-
-```
-.
-├── LICENSE
-├── package-lock.json
-├── package.json
-├── README.md
-├── database
-│   └── schema.sql
-├── docs
-│   └── DEVELOPMENT.md
-├── src
-│   ├── endpoints
-│   │   ├── :api_key
-│   │   │   ├── email
-│   │   │   │   ├── post.ts
-│   │   │   │   └── util.ts
-│   │   │   ├── oauth
-│   │   │   │   ├── delete.ts
-│   │   │   │   ├── post.ts
-│   │   │   │   └── put.ts
-│   │   │   └── param.ts
-│   │   └── user
-│   │       ├── api_key
-│   │       │   ├── delete.ts
-│   │       │   └── post.ts
-│   │       ├── delete.ts
-│   │       └── post.ts
-│   ├── index.ts
-│   └── utils.ts
-├── tsconfig.json
-├── worker-configuration.d.ts
-└── wrangler.jsonc
-```
-
-## 开发环境 🖥️
-
-### 依赖安装
-
-首先，确保你已经安装了 Node.js 和 npm。然后，在项目根目录下运行以下命令来安装依赖：
+## Commands
 
 ```bash
-npm install
+source ~/.customrc
+volta run npm install
+volta run npm run dev
+volta run npm run build
+volta run npm run tsc
+volta run npm run test
 ```
 
-### 登录 Cloudflare
+`npm run dev` starts the Vite SPA. The Worker entrypoint remains `src/index.ts` and is deployed by Wrangler after the SPA build embeds `app/dist/index.html` into `src/generated/spa-shell.ts`.
 
-使用 `wrangler` 登录 Cloudflare ：
+## Project Layout
 
-```bash
-npx wrangler login
-```
+- `app/`: Vite React SPA for `/user`.
+- `components/`: shared frontend components and types.
+- `src/workers/`: Worker assembly and route registration.
+- `src/endpoints/`: file-routed Chanfana endpoint classes.
+- `src/dao/`: D1 data access classes.
+- `src/model/`: external camelCase models and internal snake_case row types.
+- `src/schema/`: Zod request validation.
+- `src/utils/`: API-key, OAuth2, delivery, timestamp, and identity helpers.
+- `migrations/`: D1 migrations. Migration `0007_v3_reset_schema.sql` intentionally resets old v1/v2 tables.
 
-### 数据库设置
+## Route Model
 
-Mail Meow 使用 Cloudflare D1 作为数据库。你需要先创建数据库并导入初始表结构：
+Cloudflare Zero Trust protects `/user/*`. The middleware reads `Cf-Access-Authenticated-User-Email` and upserts the user row.
 
-1. 在 Cloudflare Workers 控制台中创建一个新的 D1 数据库。
-2. 使用 `wrangler` CLI 工具导入 SQL 文件：
+Protected user routes:
 
-```bash
-npx wrangler d1 execute <DATABASE_NAME> --file ./database/schema.sql --remote
-```
+- `GET /user/me`
+- `GET /user/applications`
+- `POST /user/application`
+- `PUT /user/application`
+- `DELETE /user/application`
+- `POST /user/application/oauth2/authorize`
+- `GET /user/application/api-keys`
+- `POST /user/application/api-key`
+- `DELETE /user/application/api-key`
 
-> **注意**：`<DATABASE_NAME>` 是你在 Cloudflare Workers 中创建的 D1 数据库名称。
+Public API routes:
 
-### 本地开发
+- `GET /api/oauth2/callback/:applicationId`
+- `POST /api/:api_key/email`
+- `POST /api/:api_key/sns`
 
-使用 `wrangler` 启动本地开发服务器：
+The OAuth2 callback is public because providers do not send Cloudflare Access headers. It is secured by short-lived one-time state plus PKCE.
 
-```bash
-npm run dev
-```
+## Provider Naming
 
-## 部署 🚀
+- `google-gmail` / `oauth2`
+- `microsoft-outlook` / `oauth2`
+- `amazon-sns` / `access-keys`
 
-### 配置 `wrangler.jsonc`
+## Configuration
 
-在部署之前，确保你已经正确配置了 `wrangler.jsonc` 文件，包括数据库绑定和环境变量。
+`wrangler.jsonc.template` exposes these defaults:
 
-### 部署到 Cloudflare Workers
+- `MAX_APPLICATIONS_PER_USER=99`
+- `MAX_API_KEYS_PER_APPLICATION=5`
+- `DEFAULT_API_KEY_EXPIRY_DAYS=365`
+- `MAX_API_KEY_EXPIRY_DAYS=365`
+- `OAUTH2_STATE_EXPIRY_MINUTES=15`
 
-使用 `wrangler` 部署你的 Worker：
-
-```bash
-npm run deploy
-```
-
-## API 文档 📄
-
-项目的 API 文档基于 OpenAPI 3.1.0 规范。你可以在 `openapi.json` 文件中查看详细的 API 定义。
-
-## 测试 🧪
-
-我们使用 Jest 进行单元测试。运行以下命令来执行测试：
-
-```bash
-npm test
-```
-
-## 贡献指南 🤝
-
-我们欢迎任何形式的贡献！如果你有任何建议或发现 bug，请随时提交 issue 或 pull request。让我们一起让 Mail Meow 变得更棒吧！(๑•̀ㅂ•́)و✧
-
-## 许可证 📜
-
-本项目采用 MIT 许可证。详情请参阅 [LICENSE](LICENSE) 文件。
-
----
-
-**Mail Meow**，让你的邮件推送变得像小猫一样可爱！🐾💖
+Set `DEV_AUTH_EMAIL` only for local development without Cloudflare Access.

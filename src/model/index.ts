@@ -1,3 +1,4 @@
 export * from './User';
-export * from './ApiKey';
-export * from './OAuth';
+export * from './ApplicationApiKey';
+export * from './ConnectedApplication';
+export * from './OAuth2AuthorizationSession';

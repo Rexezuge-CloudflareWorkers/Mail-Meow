@@ -1,6 +1,17 @@
 wrangler.jsonc
 worker-configuration.d.ts
 
+# Local only directory
+local/
+
+# Visual Studio Code
+.vscode/
+
+# Generated src directory
+src/generated-src
+src/generated-src/*
+src/generated/
+
 # Logs
 
 logs
@@ -109,9 +120,9 @@ web_modules/
 .parcel-cache
 
 # Next.js build output
-
 .next
 out
+.open-next
 
 # Nuxt.js build / generate output
 
@@ -172,5 +183,9 @@ dist
 # wrangler project
 
 .dev.vars
+.wrangler/
+tsconfig.tsbuildinfo
 
-.wrangler
+# OpenAI Codex
+
+.codex

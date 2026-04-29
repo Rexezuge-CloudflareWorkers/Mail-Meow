@@ -24,7 +24,10 @@
   },
   "routes": [],
   "placement": {
-    "mode": "off"
+    "mode": "off",
+  },
+  "assets": {
+    "directory": "./app/dist/",
   },
   "d1_databases": [
     {
@@ -40,5 +43,11 @@
       "secret_name": "mail-meow-aes-encryption-key",
     },
   ],
-  "vars": {},
+  "vars": {
+    "MAX_APPLICATIONS_PER_USER": "99",
+    "MAX_API_KEYS_PER_APPLICATION": "5",
+    "DEFAULT_API_KEY_EXPIRY_DAYS": "365",
+    "MAX_API_KEY_EXPIRY_DAYS": "365",
+    "OAUTH2_STATE_EXPIRY_MINUTES": "15",
+  },
 }

@@ -1,52 +1,75 @@
+import { AbstractEntrypointWorker } from '@/base';
 import { fromHono, HonoOpenAPIRouterType } from 'chanfana';
 import { Hono } from 'hono';
-import { AbstractWorker } from '@/base';
-import { SendEmail } from '@/endpoints/send-email';
-import { SendSNS } from '@/endpoints/send-sns';
-import { RegisterUser } from '@/endpoints/register-user';
-import { BindOAuth } from '@/endpoints/bind-oauth';
-import { GenerateApiKey } from '@/endpoints/generate-api-key';
-import { DeleteBoundOAuth } from '@/endpoints/delete-oauth';
-import { RebindOAuth } from '@/endpoints/rebind-oauth';
-import { DeleteApiKey } from '@/endpoints/delete-api-key';
-import { DeleteUser } from '@/endpoints/delete-user';
-import { GenerateMasterKey } from '@/endpoints/generate-master-key';
+import {
+  CreateApplicationApiKeyRoute,
+  CreateApplicationRoute,
+  CreateOAuth2AuthorizationRoute,
+  DeleteApplicationApiKeyRoute,
+  DeleteApplicationRoute,
+  GetCurrentUserRoute,
+  ListApplicationApiKeysRoute,
+  ListApplicationsRoute,
+  OAuth2CallbackRoute,
+  SendEmailRoute,
+  SendSNSRoute,
+  UpdateApplicationRoute,
+} from '@/endpoints';
+import { MiddlewareHandlers } from '@/middleware';
+import { SPA_HTML } from '@/generated/spa-shell';
 
-export class MailMeowWorker extends AbstractWorker {
-  protected readonly app: Hono<{ Bindings: Env }>;
+class MailMeowWorker extends AbstractEntrypointWorker {
+  protected readonly app: HonoOpenAPIRouterType<{
+    Bindings: Env;
+    Variables: { AuthenticatedUserEmailAddress: string };
+  }>;
 
   constructor() {
     super();
 
     const app: Hono<{
       Bindings: Env;
-    }> = new Hono<{ Bindings: Env }>();
+      Variables: { AuthenticatedUserEmailAddress: string };
+    }> = new Hono<{
+      Bindings: Env;
+      Variables: { AuthenticatedUserEmailAddress: string };
+    }>();
+
+    app.use('/user/*', MiddlewareHandlers.userAuthentication());
+
     const openapi: HonoOpenAPIRouterType<{
       Bindings: Env;
+      Variables: { AuthenticatedUserEmailAddress: string };
     }> = fromHono(app, {
-      docs_url: '/docs',
+      docs_url: '/user/docs',
     });
 
-    // Register API endpoints
-    openapi.post('/api/user', RegisterUser); // User registration
-    openapi.delete('/api/user', DeleteUser); // User deletion
-    openapi.post('/api/user/api_key', GenerateApiKey); // Generate API Key
-    openapi.delete('/api/user/api_key', DeleteApiKey); // Delete API Key
+    openapi.get('/user/me', GetCurrentUserRoute);
+    openapi.get('/user/applications', ListApplicationsRoute);
+    openapi.post('/user/application', CreateApplicationRoute);
+    openapi.put('/user/application', UpdateApplicationRoute);
+    openapi.delete('/user/application', DeleteApplicationRoute);
+    openapi.post('/user/application/oauth2/authorize', CreateOAuth2AuthorizationRoute);
+    openapi.get('/user/application/api-keys', ListApplicationApiKeysRoute);
+    openapi.post('/user/application/api-key', CreateApplicationApiKeyRoute);
+    openapi.delete('/user/application/api-key', DeleteApplicationApiKeyRoute);
 
-    openapi.post('/api/:api_key/oauth', BindOAuth); // Bind OAuth or SNS
-    openapi.put('/api/:api_key/oauth', RebindOAuth); // Rebind OAuth
-    openapi.delete('/api/:api_key/oauth', DeleteBoundOAuth); // Delete OAuth
-    openapi.post('/api/:api_key/email', SendEmail); // Send Email or SNS
-    openapi.post('/api/:api_key/sns', SendSNS); // Send SNS message
+    openapi.get('/api/oauth2/callback/:applicationId', OAuth2CallbackRoute);
+    openapi.post('/api/:api_key/email', SendEmailRoute);
+    openapi.post('/api/:api_key/sns', SendSNSRoute);
 
-    openapi.post('/api/crypto/generate-master-key', GenerateMasterKey); // Generate master key
+    app.get('/', (c) => c.redirect('/user'));
+    app.get('/user', (c) => c.html(SPA_HTML));
+    app.get('/user/*', (c) => c.html(SPA_HTML));
 
     this.app = openapi;
   }
 
-  protected async handleFetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  protected async onRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     return this.app.fetch(request, env, ctx);
   }
 
-  protected async handleScheduled(_event: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {}
+  protected async onScheduled(_event: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {}
 }
+
+export { MailMeowWorker };
