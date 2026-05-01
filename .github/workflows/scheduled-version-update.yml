@@ -1,4 +1,4 @@
-# v3-1775588220
+# v4-1777658362
 name: Scheduled Version Update
 
 on:
@@ -20,7 +20,7 @@ jobs:
           persist-credentials: true
 
       - name: Write Current Unix Timestamp
-        run: date +%s > .version
+        run: date +%s > .github/.version
 
       - name: Commit and Push
         run: |
