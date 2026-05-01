@@ -1,0 +1,7 @@
+DROP TRIGGER IF EXISTS set_updated_at;
+
+ALTER TABLE users
+ADD COLUMN updated_at TIMESTAMP NULL DEFAULT NULL;
+
+UPDATE users
+SET updated_at = CURRENT_TIMESTAMP;
