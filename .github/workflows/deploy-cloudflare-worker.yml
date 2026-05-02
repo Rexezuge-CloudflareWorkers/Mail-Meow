@@ -65,10 +65,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Build Web App
-        run: pnpm --filter @aws-access-bridge/web build
+        run: pnpm --filter @mail-meow/web build
 
       - name: Build API Worker
-        run: pnpm --filter @aws-access-bridge/api typecheck && pnpm --filter @aws-access-bridge/api build 2>/dev/null || true
+        run: pnpm --filter @mail-meow/api typecheck && pnpm --filter @mail-meow/api build 2>/dev/null || true
 
       - name: Prepare for Deploy
         run: |
