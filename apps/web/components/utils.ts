@@ -1,0 +1,39 @@
+export async function readJson<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || `HTTP ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+export function formatTimestamp(iso: string | null): string {
+  if (!iso) return 'Never';
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+export const methodLabels: Record<string, string> = {
+  oauth2: 'OAuth2',
+  'access-keys': 'Access keys',
+};
+
+export const providerLabels: Record<string, string> = {
+  'google-gmail': 'Google Gmail',
+  'microsoft-outlook': 'Microsoft Outlook',
+  'amazon-sns': 'Amazon SNS',
+};
+
+export const providerMethod: Record<string, 'oauth2' | 'access-keys'> = {
+  'google-gmail': 'oauth2',
+  'microsoft-outlook': 'oauth2',
+  'amazon-sns': 'access-keys',
+};
