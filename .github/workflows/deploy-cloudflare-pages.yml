@@ -33,7 +33,7 @@ jobs:
         run: pnpm install
 
       - name: Build Frontend
-        run: pnpm --filter @aws-access-bridge/web build
+        run: pnpm --filter @mail-meow/web build
 
       - name: Configure Pages Service Bindings
         if: ${{ github.event_name != 'pull_request' }}
