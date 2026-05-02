@@ -1,4 +1,6 @@
 {
+  // "$version": 1777680298,
+  // "$minimumVersion": 1777680298,
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mail-meow",
   "main": "apps/api/src/index.ts",
