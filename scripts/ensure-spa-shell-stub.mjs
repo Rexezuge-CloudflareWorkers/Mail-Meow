@@ -4,7 +4,7 @@ import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const outPath = resolve(here, '..', 'src/generated/spa-shell.ts');
+const outPath = resolve(here, '..', 'apps/api/src/generated/spa-shell.ts');
 
 if (existsSync(outPath)) process.exit(0);
 
