@@ -35,6 +35,20 @@ class MailMeowWorker extends AbstractEntrypointWorker {
       Variables: { AuthenticatedUserEmailAddress: string };
     }>();
 
+    app.get('/', (c) => c.redirect('/user/'));
+    app.get('/user', (c) => c.redirect('/user/'));
+    app.options('/user/*', (c) => {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, cf-access-jwt-assertion',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    });
+
     app.use('/user/*', MiddlewareHandlers.userAuthentication());
 
     const openapi: HonoOpenAPIRouterType<{
@@ -58,28 +72,8 @@ class MailMeowWorker extends AbstractEntrypointWorker {
     openapi.post('/api/:api_key/email', SendEmailRoute);
     openapi.post('/api/:api_key/sns', SendSNSRoute);
 
-    app.get('/', (c) => c.redirect('/user'));
-    app.options('/user/*', (c) => {
-      return c.text('', 204, {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, cf-access-jwt-assertion',
-        'Access-Control-Max-Age': '86400',
-      });
-    });
-    app.get('/user', (c) => {
-      return c.html(SPA_HTML, 200, {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, cf-access-jwt-assertion',
-      });
-    });
     app.get('/user/*', (c) => {
-      return c.html(SPA_HTML, 200, {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, cf-access-jwt-assertion',
-      });
+      return c.html(SPA_HTML);
     });
 
     this.app = openapi;
