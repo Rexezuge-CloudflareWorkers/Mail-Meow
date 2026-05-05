@@ -153,10 +153,9 @@ class ConnectedApplicationDAO {
       refreshToken,
     };
     const encrypted = await encryptData(JSON.stringify(credentials), this.masterKey);
-    const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
     const result: D1Result = await this.database
-      .prepare('UPDATE connected_applications SET encrypted_credentials = ?, credentials_iv = ?, updated_at = ? WHERE application_id = ?')
-      .bind(encrypted.encrypted, encrypted.iv, now, applicationId)
+      .prepare('UPDATE connected_applications SET encrypted_credentials = ?, credentials_iv = ? WHERE application_id = ?')
+      .bind(encrypted.encrypted, encrypted.iv, applicationId)
       .run();
     if (!result.success) {
       throw new DatabaseError(`Failed to update OAuth2 refresh token: ${result.error}`);
