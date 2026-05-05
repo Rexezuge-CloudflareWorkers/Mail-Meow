@@ -1,4 +1,8 @@
-import { CONNECTED_APPLICATION_STATUS_CONNECTED, CONNECTED_APPLICATION_STATUS_DRAFT, CONNECTION_METHOD_ACCESS_KEYS } from '@mail-meow/shared/constants';
+import {
+  CONNECTED_APPLICATION_STATUS_CONNECTED,
+  CONNECTED_APPLICATION_STATUS_DRAFT,
+  CONNECTION_METHOD_ACCESS_KEYS,
+} from '@mail-meow/shared/constants';
 import { ConnectedApplicationDAO } from '@/dao';
 import { BadRequestError } from '@/error';
 import { IUserRoute } from '@/endpoints/IUserRoute';

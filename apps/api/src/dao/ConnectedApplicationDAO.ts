@@ -1,4 +1,8 @@
-import { CONNECTED_APPLICATION_STATUS_CONNECTED, CONNECTED_APPLICATION_STATUS_DRAFT, CONNECTION_METHOD_OAUTH2 } from '@mail-meow/shared/constants';
+import {
+  CONNECTED_APPLICATION_STATUS_CONNECTED,
+  CONNECTED_APPLICATION_STATUS_DRAFT,
+  CONNECTION_METHOD_OAUTH2,
+} from '@mail-meow/shared/constants';
 import { decryptData, encryptData } from '@/crypto';
 import { DatabaseError } from '@/error';
 import type {
