@@ -55,7 +55,8 @@ class MailMeowWorker extends AbstractEntrypointWorker {
       Bindings: Env;
       Variables: { AuthenticatedUserEmailAddress: string };
     }> = fromHono(app, {
-      docs_url: '/user/docs',
+      docs_url: '/docs',
+      openapi_url: '/openapi.json',
     });
 
     openapi.get('/user/me', GetCurrentUserRoute);
