@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Unauthorized from '../components/Unauthorized';
 import type { ApplicationApiKey, ConnectedApplication, CurrentUser, ProviderId } from '../components/types';
-import { formatTimestamp, methodLabels, providerLabels, providerMethod, readJson } from '../components/utils';
+import { formatTimestamp, formatExpiryTimestamp, methodLabels, providerLabels, providerMethod, readJson } from '../components/utils';
 
 interface ApplicationFormState {
   applicationId?: string;
@@ -426,7 +426,7 @@ export default function SpaApp() {
                           <td className="py-3 pr-4 text-[#aab4c2]">
                             {apiKey.keyPrefix}...{apiKey.keyLastFour}
                           </td>
-                          <td className="py-3 pr-4 text-[#aab4c2]">{formatTimestamp(apiKey.expiresAt)}</td>
+                          <td className="py-3 pr-4 text-[#aab4c2]">{formatExpiryTimestamp(apiKey.expiresAt)}</td>
                           <td className="py-3 pr-4 text-[#aab4c2]">{formatTimestamp(apiKey.lastUsedAt)}</td>
                           <td className="py-3 text-right">
                             <button className="text-[#fca5a5] hover:text-[#fecaca]" onClick={() => deleteApiKey(apiKey.apiKeyId)}>
