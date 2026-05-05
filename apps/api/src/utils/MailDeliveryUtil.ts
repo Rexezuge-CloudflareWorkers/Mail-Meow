@@ -33,6 +33,20 @@ class MailDeliveryUtil {
     if (!response.ok) {
       throw new InternalServerError(`Gmail API error: ${await response.text()}`);
     }
+    const message = (await response.json()) as { id: string };
+    await MailDeliveryUtil.trashGmailMessage(message.id, accessToken);
+  }
+
+  private static async trashGmailMessage(messageId: string, accessToken: string): Promise<void> {
+    const response: Response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/trash`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    if (!response.ok) {
+      console.error(`Failed to trash Gmail message ${messageId}: ${await response.text()}`);
+    }
   }
 
   private static async sendMicrosoftOutlook(to: string, subject: string, body: string, accessToken: string): Promise<void> {
@@ -48,6 +62,7 @@ class MailDeliveryUtil {
           body: { contentType: 'Text', content: body },
           toRecipients: [{ emailAddress: { address: to } }],
         },
+        saveToSentItems: false,
       }),
     });
     if (!response.ok) {
