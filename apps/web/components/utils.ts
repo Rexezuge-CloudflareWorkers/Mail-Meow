@@ -21,6 +21,22 @@ export function formatTimestamp(timestampSeconds: number | null | undefined): st
   return date.toLocaleDateString();
 }
 
+export function formatExpiryTimestamp(timestampSeconds: number | null | undefined): string {
+  if (timestampSeconds === null || timestampSeconds === undefined) return 'Never';
+  const date = new Date(timestampSeconds * 1000);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Expires soon';
+  if (diffMins < 60) return `Expires in ${diffMins}m`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `Expires in ${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `Expires in ${diffDays}d`;
+  if (diffDays < 30) return `Expires in ${diffDays}d`;
+  return `Expires ${date.toLocaleDateString()}`;
+}
+
 export const methodLabels: Record<string, string> = {
   oauth2: 'OAuth2',
   'access-keys': 'Access keys',
