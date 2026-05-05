@@ -57,11 +57,11 @@ volta run pnpm run cf-typegen
 
 Cloudflare command equivalents:
 
-| Command | Purpose |
-|---------|---------|
-| `volta run npx wrangler dev` | Local Worker development |
-| `volta run npx wrangler deploy` | Deploy to Cloudflare |
-| `volta run npx wrangler types` | Generate TypeScript types |
+| Command                         | Purpose                   |
+| ------------------------------- | ------------------------- |
+| `volta run npx wrangler dev`    | Local Worker development  |
+| `volta run npx wrangler deploy` | Deploy to Cloudflare      |
+| `volta run npx wrangler types`  | Generate TypeScript types |
 
 Run `volta run pnpm run cf-typegen` after changing bindings in Wrangler config.
 
