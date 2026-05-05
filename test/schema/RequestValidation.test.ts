@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BadRequestError } from '@/error';
-import { getRequestInputSchema, validateRequestInput } from '@/schema';
+import { getRequestInputSchema, validateRequestInput } from '../../packages/shared/src/schema';
 
 describe('Request input schemas', () => {
   it('finds schemas for path-key API routes', () => {
@@ -22,11 +21,14 @@ describe('Request input schemas', () => {
         ignored: true,
       }),
     ).resolves.toEqual({
-      displayName: 'Gmail sender',
-      providerId: 'google-gmail',
-      connectionMethod: 'oauth2',
-      clientId: 'client-id',
-      clientSecret: 'client-secret',
+      success: true,
+      data: {
+        displayName: 'Gmail sender',
+        providerId: 'google-gmail',
+        connectionMethod: 'oauth2',
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+      },
     });
   });
 
@@ -41,12 +43,15 @@ describe('Request input schemas', () => {
         clientId: 'client-id',
         clientSecret: 'client-secret',
       }),
-    ).rejects.toBeInstanceOf(BadRequestError);
+    ).resolves.toMatchObject({ success: false, scope: 'body' });
   });
 
   it('rejects email sends without a recipient', async () => {
     const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
 
-    await expect(validateRequestInput(request, { subject: 'Hello', text: 'Body' })).rejects.toBeInstanceOf(BadRequestError);
+    await expect(validateRequestInput(request, { subject: 'Hello', text: 'Body' })).resolves.toMatchObject({
+      success: false,
+      scope: 'body',
+    });
   });
 });
