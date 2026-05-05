@@ -16,7 +16,7 @@ export interface ConnectedApplication {
   connectionMethod: 'oauth2' | 'access-keys';
   status: 'draft' | 'connected';
   oauth2RedirectUri?: string;
-  updatedAt: string;
+  updatedAt: number;
 }
 
 export interface ApplicationApiKey {
@@ -24,6 +24,6 @@ export interface ApplicationApiKey {
   name: string;
   keyPrefix: string;
   keyLastFour: string;
-  expiresAt: string;
-  lastUsedAt: string | null;
+  expiresAt: number;
+  lastUsedAt?: number | null;
 }

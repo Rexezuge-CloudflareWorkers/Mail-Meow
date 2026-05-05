@@ -1,4 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
+
+const apiSrcPath = fileURLToPath(new URL('./apps/api/src', import.meta.url));
+const sharedSrcPath = fileURLToPath(new URL('./packages/shared/src', import.meta.url));
 
 export default defineConfig({
   test: {
@@ -7,8 +11,13 @@ export default defineConfig({
     include: ['test/**/*.test.ts'],
   },
   resolve: {
-    alias: {
-      '@': new URL('./src', import.meta.url).pathname,
-    },
+    alias: [
+      { find: '@/constants', replacement: `${sharedSrcPath}/constants` },
+      { find: '@/schema', replacement: `${apiSrcPath}/schema` },
+      { find: '@/error', replacement: `${apiSrcPath}/error` },
+      { find: '@/utils', replacement: `${apiSrcPath}/utils` },
+      { find: '@mail-meow/shared', replacement: sharedSrcPath },
+      { find: /^@\//, replacement: `${apiSrcPath}/` },
+    ],
   },
 });

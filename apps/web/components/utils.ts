@@ -6,9 +6,9 @@ export async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function formatTimestamp(iso: string | null): string {
-  if (!iso) return 'Never';
-  const date = new Date(iso);
+export function formatTimestamp(timestampSeconds: number | null | undefined): string {
+  if (timestampSeconds === null || timestampSeconds === undefined) return 'Never';
+  const date = new Date(timestampSeconds * 1000);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
