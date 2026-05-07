@@ -1,5 +1,5 @@
 {
-  // "$version": 1777680298,
+  // "$version": 1778168635,
   // "$minimumVersion": 1777680298,
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mail-meow",
@@ -45,6 +45,8 @@
   ],
   "vars": {
     "SERVE_SPA_FROM_WORKER": "false",
+    "POLICY_AUD": "you-cloudflare-zero-trust-application-aud",
+    "TEAM_DOMAIN": "https://your-cloudflare-zero-trust-team-domain.cloudflareaccess.com",
     "MAX_APPLICATIONS_PER_USER": "99",
     "MAX_API_KEYS_PER_APPLICATION": "5",
     "DEFAULT_API_KEY_EXPIRY_DAYS": "365",
