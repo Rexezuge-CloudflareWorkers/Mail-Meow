@@ -185,6 +185,16 @@ export default function SpaApp() {
     }
   };
 
+  const copyOAuth2RedirectUri = async (redirectUri?: string) => {
+    if (!redirectUri) return;
+    try {
+      await navigator.clipboard.writeText(redirectUri);
+      showNotice('success', 'OAuth2 redirect URI copied.');
+    } catch {
+      showNotice('error', 'Unable to copy OAuth2 redirect URI.');
+    }
+  };
+
   const createApiKey = async () => {
     if (!selectedApplicationId) return;
     setIsBusy(true);
@@ -350,10 +360,20 @@ export default function SpaApp() {
                     <div className="flex flex-col md:flex-row gap-2">
                       <input
                         readOnly
-                        value={selectedApplication.oauth2RedirectUri}
+                        value={selectedApplication.oauth2RedirectUri ?? ''}
                         className="flex-1 min-w-0 px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-[#d1d5db]"
                       />
                       <button
+                        type="button"
+                        aria-label="Copy OAuth2 redirect URI"
+                        className="px-4 py-2 rounded-md bg-[#2d3745] hover:bg-[#3b4655] disabled:opacity-50"
+                        onClick={() => copyOAuth2RedirectUri(selectedApplication.oauth2RedirectUri)}
+                        disabled={!selectedApplication.oauth2RedirectUri}
+                      >
+                        Copy
+                      </button>
+                      <button
+                        type="button"
                         className="px-4 py-2 rounded-md bg-[#0f766e] hover:bg-[#0d9488] disabled:opacity-50"
                         onClick={() => startOAuth2(selectedApplication.applicationId)}
                         disabled={isBusy}
