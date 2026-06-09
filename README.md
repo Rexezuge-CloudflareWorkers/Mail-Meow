@@ -40,6 +40,20 @@ API keys are scoped to one connected application.
 
 The raw API key is shown only once when created. Mail-Meow stores only a hash plus display metadata.
 
+## Continuous Deployment Variables
+
+GitHub Actions deployments can patch Worker `vars` without replacing the whole Wrangler configuration. Set the repository variable `WRANGLER_VARS_PATCH_JSON` to a JSON object of string values. The deployment merges it into top-level `vars` after loading `WRANGLER_JSONC` or `apps/api/wrangler.template.jsonc`.
+
+```json
+{
+  "POLICY_AUD": "your-cloudflare-zero-trust-application-aud",
+  "TEAM_DOMAIN": "https://your-cloudflare-zero-trust-team-domain.cloudflareaccess.com",
+  "SERVE_SPA_FROM_WORKER": "true"
+}
+```
+
+Do not put secrets in `WRANGLER_VARS_PATCH_JSON`; use GitHub secrets, Wrangler secrets, or Cloudflare Secrets Store for sensitive values.
+
 ## Delivery API
 
 Send email with an API key connected to `google-gmail/oauth2` or `microsoft-outlook/oauth2`:
@@ -71,16 +85,17 @@ Use the local toolchain setup first:
 
 ```bash
 source ~/.customrc
-volta run npm install
-volta run npm run dev
+volta run pnpm install
+volta run pnpm run dev
 ```
 
 Quality checks:
 
 ```bash
-volta run npm run tsc
-volta run npm run test
-volta run npm run build
+source ~/.customrc
+volta run pnpm run typecheck
+volta run pnpm run test
+volta run pnpm run build
 ```
 
 For local Zero Trust development, set `DEV_AUTH_EMAIL` in the Worker environment to bypass Cloudflare Access headers.

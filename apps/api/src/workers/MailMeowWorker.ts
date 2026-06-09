@@ -37,7 +37,7 @@ class MailMeowWorker extends AbstractEntrypointWorker {
 
     app.get('/', (c) => c.redirect('/user/'));
     app.get('/user', (c) => c.redirect('/user/'));
-    app.options('/user/*', (c) => {
+    app.options('/user/*', () => {
       return new Response(null, {
         status: 204,
         headers: {
