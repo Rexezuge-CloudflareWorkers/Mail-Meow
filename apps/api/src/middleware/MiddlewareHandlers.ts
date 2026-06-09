@@ -10,7 +10,7 @@ class MiddlewareHandlers {
     return async (c: UserContext, next: Next): Promise<Response | void> => {
       try {
         const userEmail: string = await EmailValidationUtil.getAuthenticatedUserEmail(c.req.raw, c.env);
-        const userDAO: UserDAO = new UserDAO((c.env as Record<string, unknown>).DB as any);
+        const userDAO: UserDAO = new UserDAO(c.env.DB);
         await userDAO.upsertByEmail(userEmail);
         c.set('AuthenticatedUserEmailAddress', userEmail);
         await next();
