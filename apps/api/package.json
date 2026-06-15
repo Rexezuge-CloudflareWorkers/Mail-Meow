@@ -11,7 +11,7 @@
     "@opennextjs/cloudflare": "^1.19.11",
     "aws4fetch": "^1.0.20",
     "chanfana": "^3.3.0",
-    "hono": "^4.12.23",
+    "hono": "^4.12.25",
     "jose": "^6.2.0",
     "zod": "^4.4.3"
   },
