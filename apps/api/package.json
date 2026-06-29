@@ -8,15 +8,15 @@
   },
   "dependencies": {
     "@mail-meow/shared": "workspace:*",
-    "@opennextjs/cloudflare": "^1.19.11",
-    "aws4fetch": "^1.0.20",
-    "chanfana": "^3.3.0",
-    "hono": "^4.12.26",
-    "jose": "^6.2.0",
-    "zod": "^4.4.3"
+    "@opennextjs/cloudflare": "1.20.1",
+    "aws4fetch": "1.0.20",
+    "chanfana": "3.3.0",
+    "hono": "4.12.27",
+    "jose": "6.2.3",
+    "zod": "4.4.3"
   },
   "devDependencies": {
-    "@types/node": "26.0.x",
-    "typescript": "^6.0.3"
+    "@types/node": "26.0.1",
+    "typescript": "6.0.3"
   }
 }
