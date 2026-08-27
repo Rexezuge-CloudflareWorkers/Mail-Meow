@@ -42,12 +42,19 @@ jobs:
           cache: pnpm
 
       - name: Install Dependencies
-        run: pnpm install
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm install
+          max_attempts: '3'
 
       - name: Prepare Wrangler Configuration
-        run: pnpm exec tsx scripts/prepare-wrangler-config.ts
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm exec tsx scripts/prepare-wrangler-config.ts
+          max_attempts: '3'
         env:
           WRANGLER_JSONC: ${{ vars.WRANGLER_JSONC }}
+          WRANGLER_PATCH_JSON: ${{ vars.WRANGLER_PATCH_JSON }}
           WRANGLER_VARS_PATCH_JSON: ${{ vars.WRANGLER_VARS_PATCH_JSON }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -63,22 +70,25 @@ jobs:
           fi
 
       - name: Initialize Cloudflare Secrets
-        run: pnpm exec tsx scripts/init-secrets.ts
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm exec tsx scripts/init-secrets.ts
+          max_attempts: '3'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Apply Database Migration
-        run: pnpm exec wrangler d1 migrations apply --remote mail-meow-db
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm exec wrangler d1 migrations apply --remote mail-meow-db
+          max_attempts: '3'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Build Web App
         run: pnpm --filter @mail-meow/web build
-
-      - name: Type Check API Worker
-        run: pnpm --filter @mail-meow/api typecheck
 
       - name: Prepare for Deploy
         run: |
@@ -93,13 +103,16 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy with Wrangler
-        run: pnpm exec wrangler deploy
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm exec wrangler deploy
+          max_attempts: '3'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-pages:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch' || github.event.workflow_run.conclusion == 'success') && vars.CLOUDFLARE_PAGES_PROJECT_NAME != '' }}
     name: Deploy Cloudflare Pages
     runs-on: ubuntu-latest
 
@@ -119,28 +132,29 @@ jobs:
           cache: pnpm
 
       - name: Install Dependencies
-        run: pnpm install
+        uses: ./.github/actions/retry-step
+        with:
+          command: pnpm install
+          max_attempts: '3'
 
       - name: Build Frontend
         run: pnpm --filter @mail-meow/web build
 
       - name: Configure Pages Service Bindings
-        run: |
-          if [ -z "${CLOUDFLARE_PAGES_PROJECT_NAME}" ]; then
-            echo "CLOUDFLARE_PAGES_PROJECT_NAME repository variable is required"
-            exit 1
-          fi
-          cp apps/web/wrangler.template.jsonc wrangler.jsonc
+        run: cp apps/web/wrangler.template.jsonc wrangler.jsonc
         env:
           CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
 
       - name: Deploy with Wrangler Pages
-        run: |
-          pnpm exec wrangler pages deploy \
-            --project-name "${CLOUDFLARE_PAGES_PROJECT_NAME}" \
-            --branch "${DEPLOY_BRANCH}" \
-            --commit-hash "${DEPLOY_SHA}" \
+        uses: ./.github/actions/retry-step
+        with:
+          command: >
+            pnpm exec wrangler pages deploy
+            --project-name "${CLOUDFLARE_PAGES_PROJECT_NAME}"
+            --branch "${DEPLOY_BRANCH}"
+            --commit-hash "${DEPLOY_SHA}"
             --commit-message "$(git log -1 --pretty=%s)"
+          max_attempts: '3'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -1,0 +1,32 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "mail-meow-integration-test",
+  "main": "self.ts",
+  "compatibility_date": "2025-11-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mail-meow-test-db",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+    },
+  ],
+  "secrets_store_secrets": [
+    {
+      "binding": "AES_ENCRYPTION_KEY_SECRET",
+      "store_id": "00000000-0000-0000-0000-000000000000",
+      "secret_name": "test-aes-encryption-key",
+    },
+  ],
+  "vars": {
+    "DEV_AUTH_EMAIL": "test@example.com",
+    "SERVE_SPA_FROM_WORKER": "false",
+    "POLICY_AUD": "test-aud",
+    "TEAM_DOMAIN": "https://test.cloudflareaccess.com",
+    "MAX_APPLICATIONS_PER_USER": "99",
+    "MAX_API_KEYS_PER_APPLICATION": "5",
+    "DEFAULT_API_KEY_EXPIRY_DAYS": "365",
+    "MAX_API_KEY_EXPIRY_DAYS": "365",
+    "OAUTH2_STATE_EXPIRY_MINUTES": "15",
+  },
+}
