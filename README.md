@@ -56,7 +56,9 @@ Do not put secrets in `WRANGLER_VARS_PATCH_JSON`; use GitHub secrets, Wrangler s
 
 ## Delivery API
 
-Send email with an API key connected to `google-gmail/oauth2` or `microsoft-outlook/oauth2`:
+Send email with an API key connected to `google-gmail/oauth2` or `microsoft-outlook/oauth2`.
+At least one of `text` or `html` is required (max 20000 characters each).
+When both are present, Gmail sends `multipart/alternative` and Outlook sends the `html` body:
 
 ```bash
 curl -X POST "https://mail.example.com/api/{api_key}/email" \
@@ -64,7 +66,8 @@ curl -X POST "https://mail.example.com/api/{api_key}/email" \
   -d '{
     "to": "recipient@example.com",
     "subject": "Hello",
-    "text": "Message body"
+    "text": "Message body",
+    "html": "<p>Message body</p>"
   }'
 ```
 

@@ -43,7 +43,7 @@ class SendEmailRoute extends IPublicApplicationRoute<SendEmailRequest, SendEmail
       request.application.userEmail,
       request.to,
       request.subject,
-      request.text,
+      { text: request.text, html: request.html },
       tokenResult.accessToken,
     );
     return { message: 'The email was sent successfully.' };
@@ -53,7 +53,8 @@ class SendEmailRoute extends IPublicApplicationRoute<SendEmailRequest, SendEmail
 interface SendEmailRequest extends IPublicApplicationRequest {
   to: string;
   subject: string;
-  text: string;
+  text?: string;
+  html?: string;
 }
 
 interface SendEmailResponse extends IResponse {

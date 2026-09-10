@@ -36,11 +36,17 @@ const DeleteApiKeyBodySchema = z.object({
   apiKeyId: UuidSchema,
 });
 
-const SendEmailBodySchema = z.object({
-  to: z.string().email('to must be a valid email address.').max(320),
-  subject: nonEmptyStringSchema('subject', 512),
-  text: nonEmptyStringSchema('text', 20000),
-});
+const SendEmailBodySchema = z
+  .object({
+    to: z.string().email('to must be a valid email address.').max(320),
+    subject: nonEmptyStringSchema('subject', 512),
+    text: nonEmptyStringSchema('text', 20000).optional(),
+    html: nonEmptyStringSchema('html', 20000).optional(),
+  })
+  .refine(
+    (input): boolean => Boolean(input.text?.trim() || input.html?.trim()),
+    'Either text or html is required.',
+  );
 
 const SendSNSBodySchema = z.object({
   subject: nonEmptyStringSchema('subject', 100).optional(),

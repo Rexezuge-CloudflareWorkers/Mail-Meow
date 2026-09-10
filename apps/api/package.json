@@ -12,10 +12,12 @@
     "aws4fetch": "1.0.20",
     "chanfana": "3.4.0",
     "hono": "4.13.5",
+    "html-to-text": "10.0.1",
     "jose": "6.2.10",
     "zod": "4.5.4"
   },
   "devDependencies": {
+    "@types/html-to-text": "9.0.4",
     "@types/node": "26.4.1",
     "typescript": "6.0.3"
   }

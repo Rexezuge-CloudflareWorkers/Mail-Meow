@@ -54,4 +54,61 @@ describe('Request input schemas', () => {
       scope: 'body',
     });
   });
+
+  it('accepts text-only email sends for backward compatibility', async () => {
+    const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
+
+    await expect(
+      validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello', text: 'Body' }),
+    ).resolves.toMatchObject({ success: true });
+  });
+
+  it('accepts html-only email sends', async () => {
+    const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
+
+    await expect(
+      validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello', html: '<p>Body</p>' }),
+    ).resolves.toMatchObject({ success: true });
+  });
+
+  it('accepts email sends with both text and html', async () => {
+    const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
+
+    await expect(
+      validateRequestInput(request, {
+        to: 'recipient@example.com',
+        subject: 'Hello',
+        text: 'Body',
+        html: '<p>Body</p>',
+      }),
+    ).resolves.toMatchObject({ success: true });
+  });
+
+  it('rejects email sends without text and html', async () => {
+    const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
+
+    await expect(
+      validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello' }),
+    ).resolves.toMatchObject({ success: false, scope: 'body' });
+  });
+
+  it('rejects email sends with blank text and html', async () => {
+    const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
+
+    await expect(
+      validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello', text: '   ', html: '  ' }),
+    ).resolves.toMatchObject({ success: false, scope: 'body' });
+  });
+
+  it('rejects email sends with oversized html', async () => {
+    const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
+
+    await expect(
+      validateRequestInput(request, {
+        to: 'recipient@example.com',
+        subject: 'Hello',
+        html: `<p>${'a'.repeat(20000)}</p>`,
+      }),
+    ).resolves.toMatchObject({ success: false, scope: 'body' });
+  });
 });
