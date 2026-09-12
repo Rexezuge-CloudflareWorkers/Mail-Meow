@@ -57,6 +57,14 @@ class MailMeowWorker extends AbstractEntrypointWorker {
     }> = fromHono(app, {
       docs_url: '/docs',
       openapi_url: '/openapi.json',
+      schema: {
+        info: {
+          title: 'Mail-Meow API',
+          version: '3.0.0',
+          description:
+            'Cloudflare Worker API for managing connected email/SNS applications and delivering messages. Routes under /user/* are protected by Cloudflare Access (authenticated user email). Public delivery endpoints under /api/:api_key/* use a per-application API key embedded in the path. The OAuth2 callback under /api/oauth2/callback/:applicationId is public and secured by short-lived one-time state plus PKCE.',
+        },
+      },
     });
 
     openapi.get('/user/me', GetCurrentUserRoute);
