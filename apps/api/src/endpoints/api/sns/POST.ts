@@ -33,7 +33,7 @@ class SendSNSRoute extends IPublicApplicationRoute<SendSNSRequest, SendSNSRespon
               message: {
                 type: 'string' as const,
                 minLength: 1,
-                maxLength: 20000,
+                maxLength: 20_000,
                 description: 'Message body published to the configured SNS topic',
                 example: 'Order #1234 has shipped.',
               },

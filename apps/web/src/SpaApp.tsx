@@ -17,7 +17,7 @@ import { providerMethod } from './lib/providers';
 import * as appSvc from './services/applicationService';
 
 function getInitialNotice(): { type: 'success' | 'error'; text: string } | null {
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(globalThis.location.search);
   if (params.get('oauth2') === 'connected') return { type: 'success', text: 'OAuth2 connection completed.' };
   if (params.get('oauth2') === 'error') return { type: 'error', text: params.get('message') || 'OAuth2 connection failed.' };
   return null;
@@ -35,7 +35,7 @@ export default function SpaApp() {
     applicationForm, setApplicationForm, loadApplications, resetForm, editApplication,
   } = mailboxes;
   const {
-    apiKeys, setApiKeys, keyName, setKeyName, keyExpiryDays, setKeyExpiryDays,
+    apiKeys, keyName, setKeyName, keyExpiryDays, setKeyExpiryDays,
     createdApiKey, setCreatedApiKey, loadApiKeys,
   } = useApiKeys();
   const { language, languagePending, handleLanguageChange } = useSpaLanguage({ user, showNotice, setUser });
@@ -123,7 +123,7 @@ export default function SpaApp() {
       setIsBusy(true);
       try {
         const data = await appSvc.createOAuth2Authorization(applicationId);
-        window.location.assign(data.authorizationUrl);
+        globalThis.location.assign(data.authorizationUrl);
       } catch (error) {
         showNotice('error', error instanceof Error ? error.message : t('notice.oauthStartFailed', 'Unable To Start OAuth2.'));
         setIsBusy(false);

@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
 
+function authenticateWithZeroTrust(): void {
+  globalThis.location.assign('/user/');
+}
+
 export default function Unauthorized() {
   const { t } = useTranslation();
-  const authenticateWithZeroTrust = () => {
-    window.location.assign('/user/');
-  };
 
   return (
     <div className="min-h-screen bg-[#101319] text-white flex items-center justify-center">

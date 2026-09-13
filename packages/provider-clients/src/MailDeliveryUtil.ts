@@ -17,11 +17,11 @@ class MailDeliveryUtil {
     accessToken: string,
   ): Promise<void> {
     if (providerId === PROVIDER_GOOGLE_GMAIL) {
-      await MailDeliveryUtil.sendGmail(from, to, subject, body, accessToken);
+      await this.sendGmail(from, to, subject, body, accessToken);
       return;
     }
     if (providerId === PROVIDER_MICROSOFT_OUTLOOK) {
-      await MailDeliveryUtil.sendMicrosoftOutlook(to, subject, body, accessToken);
+      await this.sendMicrosoftOutlook(to, subject, body, accessToken);
       return;
     }
     throw new BadRequestError('The connected application does not support email delivery.');
@@ -40,13 +40,13 @@ class MailDeliveryUtil {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ raw: MailDeliveryUtil.createEmail(from, to, subject, body) }),
+      body: JSON.stringify({ raw: this.createEmail(from, to, subject, body) }),
     });
     if (!response.ok) {
       throw new InternalServerError(`Gmail API error: ${await response.text()}`);
     }
-    const message = (await response.json()) as { id: string };
-    await MailDeliveryUtil.trashGmailMessage(message.id, accessToken);
+    const message = JSON.parse(await response.text()) as { id: string };
+    await this.trashGmailMessage(message.id, accessToken);
   }
 
   private static async trashGmailMessage(messageId: string, accessToken: string): Promise<void> {
@@ -101,10 +101,10 @@ class MailDeliveryUtil {
         '',
         body.text ?? '',
       ].join('\r\n');
-      return MailDeliveryUtil.base64UrlEncodeString(email);
+      return this.base64UrlEncodeString(email);
     }
-    const textBody: string = body.text ?? MailDeliveryUtil.stripHtml(body.html);
-    const boundary: string = MailDeliveryUtil.createMimeBoundary();
+    const textBody: string = body.text ?? this.stripHtml(body.html);
+    const boundary: string = this.createMimeBoundary();
     const email: string = [
       `From: ${sender}`,
       `To: ${recipient}`,
@@ -112,13 +112,13 @@ class MailDeliveryUtil {
       'MIME-Version: 1.0',
       `Content-Type: multipart/alternative; boundary="${boundary}"`,
       '',
-      MailDeliveryUtil.buildAlternativeMimeBody(textBody, body.html, boundary),
+      this.buildAlternativeMimeBody(textBody, body.html, boundary),
     ].join('\r\n');
-    return MailDeliveryUtil.base64UrlEncodeString(email);
+    return this.base64UrlEncodeString(email);
   }
 
   private static createMimeBoundary(): string {
-    return `mail-meow-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return `mail-meow-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
   }
 
   private static toCrlf(value: string): string {
@@ -131,12 +131,12 @@ class MailDeliveryUtil {
       'Content-Type: text/plain; charset=utf-8',
       'Content-Transfer-Encoding: 8bit',
       '',
-      MailDeliveryUtil.toCrlf(textBody),
+      this.toCrlf(textBody),
       `--${boundary}`,
       'Content-Type: text/html; charset=utf-8',
       'Content-Transfer-Encoding: 8bit',
       '',
-      MailDeliveryUtil.toCrlf(htmlBody),
+      this.toCrlf(htmlBody),
       `--${boundary}--`,
       '',
     ].join('\r\n');
@@ -160,7 +160,7 @@ class MailDeliveryUtil {
     bytes.forEach((byte: number): void => {
       binary += String.fromCodePoint(byte);
     });
-    return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+    return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/={0,2}$/, '');
   }
 }
 

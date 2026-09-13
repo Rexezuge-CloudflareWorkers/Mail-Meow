@@ -10,7 +10,7 @@ export function useNotice() {
 
   const showNotice = useCallback((type: 'success' | 'error', text: string) => {
     setNotice({ type, text });
-    window.setTimeout(() => setNotice(null), 6000);
+    setTimeout(() => setNotice(null), 6000);
   }, []);
 
   const clearNotice = useCallback(() => setNotice(null), []);

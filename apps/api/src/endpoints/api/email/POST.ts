@@ -50,13 +50,13 @@ class SendEmailRoute extends IPublicApplicationRoute<SendEmailRequest, SendEmail
               },
               text: {
                 type: 'string' as const,
-                maxLength: 20000,
+                maxLength: 20_000,
                 description: 'Plaintext body (required if html is omitted)',
                 example: 'Hi Jane, your order #1234 has shipped.',
               },
               html: {
                 type: 'string' as const,
-                maxLength: 20000,
+                maxLength: 20_000,
                 description: 'HTML body (required if text is omitted)',
                 example: '<p>Hi Jane, your order <strong>#1234</strong> has shipped.</p>',
               },

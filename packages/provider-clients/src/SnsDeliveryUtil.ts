@@ -9,7 +9,7 @@ class SnsDeliveryUtil {
     message: string,
     subject?: string,
   ): Promise<string> {
-    const region: string | undefined = topicArn.split(':')[3];
+    const region: string | undefined = topicArn.split(':', 4)[3];
     if (!region) {
       throw new InternalServerError('SNS topic ARN does not contain a region.');
     }
@@ -41,8 +41,8 @@ class SnsDeliveryUtil {
       throw new InternalServerError(`SNS API error: ${response.status} ${await response.text()}`);
     }
     const responseText: string = await response.text();
-    const messageIdMatch: RegExpMatchArray | null = responseText.match(/<MessageId>([^<]+)<\/MessageId>/);
-    return messageIdMatch ? messageIdMatch[1] : 'unknown';
+    const messageIdMatch: RegExpMatchArray | null = /<MessageId>([^<]+)<\/MessageId>/.exec(responseText);
+    return messageIdMatch?.[1] ?? 'unknown';
   }
 }
 

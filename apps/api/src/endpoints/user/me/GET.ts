@@ -164,10 +164,10 @@ interface GetCurrentUserResponse extends IResponse {
 }
 
 interface GetCurrentUserEnv extends IUserEnv {
-  MAX_APPLICATIONS_PER_USER?: string | undefined;
-  MAX_API_KEYS_PER_APPLICATION?: string | undefined;
-  DEFAULT_API_KEY_EXPIRY_DAYS?: string | undefined;
-  MAX_API_KEY_EXPIRY_DAYS?: string | undefined;
+  MAX_APPLICATIONS_PER_USER?: string;
+  MAX_API_KEYS_PER_APPLICATION?: string;
+  DEFAULT_API_KEY_EXPIRY_DAYS?: string;
+  MAX_API_KEY_EXPIRY_DAYS?: string;
 }
 
 export { GetCurrentUserRoute };

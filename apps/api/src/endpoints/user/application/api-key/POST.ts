@@ -114,12 +114,12 @@ class CreateApplicationApiKeyRoute extends IUserRoute<
                     createdAt: {
                       type: 'number' as const,
                       description: 'Unix timestamp in seconds when the key was created',
-                      example: 1757548800,
+                      example: 1_757_548_800,
                     },
                     expiresAt: {
                       type: 'number' as const,
                       description: 'Unix timestamp in seconds when the key expires',
-                      example: 1789084800,
+                      example: 1_789_084_800,
                     },
                   },
                 },
@@ -136,8 +136,8 @@ class CreateApplicationApiKeyRoute extends IUserRoute<
                     name: 'CI pipeline',
                     keyPrefix: 'mm_K7mP2xQ',
                     keyLastFour: 'N2pQ',
-                    createdAt: 1757548800,
-                    expiresAt: 1789084800,
+                    createdAt: 1_757_548_800,
+                    expiresAt: 1_789_084_800,
                   },
                 },
               },
@@ -237,7 +237,7 @@ class CreateApplicationApiKeyRoute extends IUserRoute<
 interface CreateApplicationApiKeyRequest extends IRequest {
   applicationId: string;
   name: string;
-  expiresInDays?: number | undefined;
+  expiresInDays?: number;
 }
 
 interface CreateApplicationApiKeyResponse extends IResponse {
@@ -246,9 +246,9 @@ interface CreateApplicationApiKeyResponse extends IResponse {
 }
 
 interface CreateApplicationApiKeyEnv extends IUserEnv {
-  MAX_API_KEYS_PER_APPLICATION?: string | undefined;
-  DEFAULT_API_KEY_EXPIRY_DAYS?: string | undefined;
-  MAX_API_KEY_EXPIRY_DAYS?: string | undefined;
+  MAX_API_KEYS_PER_APPLICATION?: string;
+  DEFAULT_API_KEY_EXPIRY_DAYS?: string;
+  MAX_API_KEY_EXPIRY_DAYS?: string;
 }
 
 export { CreateApplicationApiKeyRoute };

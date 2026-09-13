@@ -4,9 +4,9 @@ let latestD1Bookmark: string | undefined;
 
 function getFetchPath(input: Parameters<typeof fetch>[0]): string {
   try {
-    if (typeof input === 'string') return new URL(input, window.location.origin).pathname;
+    if (typeof input === 'string') return new URL(input, globalThis.location.origin).pathname;
     if (input instanceof URL) return input.pathname;
-    return new URL(input.url, window.location.origin).pathname;
+    return new URL(input.url, globalThis.location.origin).pathname;
   } catch {
     return '';
   }
@@ -14,7 +14,9 @@ function getFetchPath(input: Parameters<typeof fetch>[0]): string {
 
 function rememberD1Bookmark(value: string | null): void {
   const next: string | undefined = value?.trim() || undefined;
-  if (next) latestD1Bookmark = next;
+  if (!next) return;
+  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- module-level bookmark cache, Otter pattern
+  latestD1Bookmark = next;
 }
 
 export async function apiFetch(input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]): Promise<Response> {
@@ -33,7 +35,7 @@ export async function readJson<T>(response: Response): Promise<T> {
     const error = await response.text();
     throw new Error(error || `HTTP ${response.status}`);
   }
-  return response.json() as Promise<T>;
+  return response.json();
 }
 
 function buildQuery(params: Record<string, string | string[] | undefined>): string {

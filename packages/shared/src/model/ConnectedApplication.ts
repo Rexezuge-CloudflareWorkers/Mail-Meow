@@ -3,7 +3,7 @@ import type { ConnectedApplicationStatus, ConnectionMethod, ProviderId } from '.
 interface OAuth2Credentials {
   clientId: string;
   clientSecret: string;
-  refreshToken?: string | undefined;
+  refreshToken?: string;
 }
 
 interface AccessKeyCredentials {

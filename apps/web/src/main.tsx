@@ -4,7 +4,7 @@ import './i18n';
 import SpaApp from './SpaApp';
 import './globals.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.querySelector('#root')!).render(
   <React.StrictMode>
     <SpaApp />
   </React.StrictMode>,

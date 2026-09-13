@@ -1,10 +1,8 @@
 import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
 
-
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 import type { ConnectedApplicationMetadata } from '@mail-meow/shared/model';
-
 
 class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, CreateApplicationResponse, CreateApplicationEnv> {
   schema = {
@@ -66,7 +64,7 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
               },
               topicArn: {
                 type: 'string' as const,
-                pattern: '^arn:aws:sns:[a-z0-9-]+:\\d{12}:[A-Za-z0-9_.-]+$',
+                pattern: String.raw`^arn:aws:sns:[a-z0-9-]+:\d{12}:[A-Za-z0-9_.-]+$`,
                 description: 'SNS topic ARN that published messages are sent to (required for access-keys applications)',
                 example: 'arn:aws:sns:us-east-1:123456789012:order-notifications',
               },
@@ -119,7 +117,17 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
               properties: {
                 application: {
                   type: 'object' as const,
-                  required: ['applicationId', 'userEmail', 'displayName', 'providerId', 'connectionMethod', 'status', 'createdAt', 'updatedAt', 'oauth2RedirectUri'],
+                  required: [
+                    'applicationId',
+                    'userEmail',
+                    'displayName',
+                    'providerId',
+                    'connectionMethod',
+                    'status',
+                    'createdAt',
+                    'updatedAt',
+                    'oauth2RedirectUri',
+                  ],
                   properties: {
                     applicationId: {
                       type: 'string' as const,
@@ -159,12 +167,12 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
                     createdAt: {
                       type: 'number' as const,
                       description: 'Unix timestamp in seconds when the application was created',
-                      example: 1757548800,
+                      example: 1_757_548_800,
                     },
                     updatedAt: {
                       type: 'number' as const,
                       description: 'Unix timestamp in seconds when the application was last updated',
-                      example: 1757548800,
+                      example: 1_757_548_800,
                     },
                     oauth2RedirectUri: {
                       type: 'string' as const,
@@ -187,8 +195,8 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
                     providerId: 'google-gmail',
                     connectionMethod: 'oauth2',
                     status: 'draft',
-                    createdAt: 1757548800,
-                    updatedAt: 1757548800,
+                    createdAt: 1_757_548_800,
+                    updatedAt: 1_757_548_800,
                     oauth2RedirectUri: 'https://mail.example.com/api/oauth2/callback/123e4567-e89b-12d3-a456-426614174000',
                   },
                 },
@@ -203,8 +211,8 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
                     providerId: 'amazon-sns',
                     connectionMethod: 'access-keys',
                     status: 'connected',
-                    createdAt: 1757548800,
-                    updatedAt: 1757548800,
+                    createdAt: 1_757_548_800,
+                    updatedAt: 1_757_548_800,
                     oauth2RedirectUri: 'https://mail.example.com/api/oauth2/callback/223e4567-e89b-12d3-a456-426614174001',
                   },
                 },
@@ -344,7 +352,7 @@ interface CreateApplicationResponse extends IResponse {
 }
 
 interface CreateApplicationEnv extends IUserEnv {
-  MAX_APPLICATIONS_PER_USER?: string | undefined;
+  MAX_APPLICATIONS_PER_USER?: string;
 }
 
 export { CreateApplicationRoute };
