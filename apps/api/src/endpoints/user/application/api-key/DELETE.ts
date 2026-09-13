@@ -1,8 +1,8 @@
-import { ApplicationApiKeyDAO, ConnectedApplicationDAO } from '@/dao';
-import { BadRequestError } from '@/error';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import type { ConnectedApplicationMetadata } from '@mail-meow/shared/model';
+
 
 class DeleteApplicationApiKeyRoute extends IUserRoute<
   DeleteApplicationApiKeyRequest,
@@ -152,17 +152,10 @@ class DeleteApplicationApiKeyRoute extends IUserRoute<
     env: DeleteApplicationApiKeyEnv,
     cxt: RouteContext<DeleteApplicationApiKeyEnv>,
   ): Promise<DeleteApplicationApiKeyResponse> {
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const application: ConnectedApplicationMetadata | undefined = await applicationDAO.getMetadataByIdForUser(
-      request.applicationId,
-      this.getAuthenticatedUserEmailAddress(cxt),
-    );
-    if (!application) {
-      throw new BadRequestError('Connected application was not found.');
-    }
-    const apiKeyDAO: ApplicationApiKeyDAO = new ApplicationApiKeyDAO(env.DB);
-    await apiKeyDAO.deleteForApplication(request.apiKeyId, request.applicationId);
+    const scope = createRequestScope(env);
+    await scope
+      .get(Tokens.ApiKeyService)
+      .deleteApiKey(request.apiKeyId, request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
     return { success: true };
   }
 }

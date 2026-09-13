@@ -1,9 +1,6 @@
-import { CONNECTED_APPLICATION_STATUS_CONNECTED, CONNECTION_METHOD_ACCESS_KEYS, PROVIDER_AMAZON_SNS } from '@mail-meow/shared/constants';
-import { BadRequestError } from '@/error';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
 import { IPublicApplicationRoute } from '@/endpoints/IPublicApplicationRoute';
 import type { IPublicApplicationEnv, IPublicApplicationRequest, IResponse, RouteContext } from '@/endpoints/IPublicApplicationRoute';
-import type { AccessKeyCredentials } from '@mail-meow/shared/model';
-import { SnsDeliveryUtil } from '@/utils';
 
 class SendSNSRoute extends IPublicApplicationRoute<SendSNSRequest, SendSNSResponse, SendSNSEnv> {
   schema = {
@@ -181,22 +178,13 @@ class SendSNSRoute extends IPublicApplicationRoute<SendSNSRequest, SendSNSRespon
     },
   };
 
-  protected async handleRequest(request: SendSNSRequest, _env: SendSNSEnv, _cxt: RouteContext<SendSNSEnv>): Promise<SendSNSResponse> {
-    if (
-      request.application.providerId !== PROVIDER_AMAZON_SNS ||
-      request.application.connectionMethod !== CONNECTION_METHOD_ACCESS_KEYS ||
-      request.application.status !== CONNECTED_APPLICATION_STATUS_CONNECTED
-    ) {
-      throw new BadRequestError('The API key is not connected to an Amazon SNS access-key application.');
-    }
-    const credentials: AccessKeyCredentials = request.application.credentials as AccessKeyCredentials;
-    const messageId: string = await SnsDeliveryUtil.publish(
-      credentials.accessKeyId,
-      credentials.secretAccessKey,
-      credentials.topicArn,
-      request.message,
-      request.subject,
-    );
+  protected async handleRequest(
+    request: SendSNSRequest,
+    env: SendSNSEnv,
+    _cxt: RouteContext<SendSNSEnv>,
+  ): Promise<SendSNSResponse> {
+    const scope = createRequestScope(env);
+    const messageId: string = await scope.get(Tokens.SnsDeliveryService).publishForApplication(request.application, request.message, request.subject);
     return {
       message: 'The message was published successfully.',
       messageId,

@@ -1,0 +1,82 @@
+{
+  "app": {
+    "title": "Mail-Meow",
+    "subtitle": "Verbundenes E-Mail- und SNS-Versenden",
+    "loading": "Wird geladen…",
+    "unauthorizedTitle": "Nicht autorisiert",
+    "unauthorizedBody": "Melden Sie sich mit Cloudflare Access an, um Anwendungen zu verwalten."
+  },
+  "header": {
+    "language": "Sprache",
+    "docs": "Doku",
+    "signOut": "Abmelden"
+  },
+  "nav": {
+    "mailboxes": "Postfächer",
+    "processing": "Verarbeitung",
+    "help": "Hilfe"
+  },
+  "mailboxes": {
+    "title": "Verbundene Anwendungen",
+    "empty": "Noch keine verbundenen Anwendungen",
+    "emptyHint": "Erstellen Sie Ihre erste Anwendung, um E-Mails oder SNS-Nachrichten zu senden.",
+    "newApplication": "Neue Anwendung",
+    "editApplication": "Anwendung bearbeiten",
+    "displayName": "Anzeigename",
+    "displayNamePlaceholder": "Gmail-Absender",
+    "provider": "Anbieter",
+    "connectionMethod": "Verbindungsmethode",
+    "oauth2ClientId": "OAuth2-Client-ID",
+    "oauth2ClientSecret": "OAuth2-Client-Secret",
+    "awsAccessKeyId": "AWS-Zugangsschlüssel-ID",
+    "awsSecretAccessKey": "AWS-Geheimschlüssel",
+    "snsTopicArn": "SNS-Themen-ARN",
+    "save": "Anwendung speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "authorize": "Beim Anbieter autorisieren",
+    "copyRedirectUri": "OAuth2-Weiterleitungs-URI kopieren",
+    "statusDraft": "Entwurf",
+    "statusConnected": "Verbunden"
+  },
+  "apiKeys": {
+    "title": "API-Schlüssel",
+    "empty": "Noch keine API-Schlüssel",
+    "keyName": "Schlüsselname",
+    "keyNamePlaceholder": "Produktionsschlüssel",
+    "expiryDays": "Ablauftage",
+    "create": "API-Schlüssel erstellen",
+    "delete": "Widerrufen",
+    "createdHint": "Kopieren Sie diesen Schlüssel jetzt. Er wird nicht erneut angezeigt."
+  },
+  "processing": {
+    "title": "Hintergrundaufgaben",
+    "empty": "Noch keine Aufgabenläufe",
+    "taskType": "Aufgabentyp",
+    "runNow": "Jetzt ausführen",
+    "status": "Status"
+  },
+  "help": {
+    "title": "Hilfe",
+    "oauthTitle": "OAuth2-Einrichtung",
+    "oauthBody": "Registrieren Sie die Weiterleitungs-URI bei Google oder Microsoft und autorisieren Sie dann die Anwendung."
+  },
+  "notice": {
+    "applicationCreated": "Anwendung erstellt.",
+    "applicationUpdated": "Anwendung aktualisiert.",
+    "applicationDeleted": "Anwendung gelöscht.",
+    "apiKeyCreated": "API-Schlüssel erstellt.",
+    "apiKeyDeleted": "API-Schlüssel gelöscht.",
+    "oauthConnected": "OAuth2-Verbindung abgeschlossen.",
+    "oauthFailed": "OAuth2-Verbindung fehlgeschlagen.",
+    "redirectCopied": "OAuth2-Weiterleitungs-URI kopiert.",
+    "loadFailed": "Laden fehlgeschlagen",
+    "saveFailed": "Anwendung konnte nicht gespeichert werden.",
+    "deleteFailed": "Anwendung konnte nicht gelöscht werden.",
+    "oauthStartFailed": "OAuth2 konnte nicht gestartet werden.",
+    "copyFailed": "Weiterleitungs-URI konnte nicht kopiert werden.",
+    "apiKeyCreateFailed": "API-Schlüssel konnte nicht erstellt werden.",
+    "apiKeyDeleteFailed": "API-Schlüssel konnte nicht gelöscht werden."
+  }
+}

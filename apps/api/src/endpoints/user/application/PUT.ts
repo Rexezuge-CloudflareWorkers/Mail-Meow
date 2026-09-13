@@ -3,12 +3,13 @@ import {
   CONNECTED_APPLICATION_STATUS_DRAFT,
   CONNECTION_METHOD_ACCESS_KEYS,
 } from '@mail-meow/shared/constants';
-import { ConnectedApplicationDAO } from '@/dao';
-import { BadRequestError } from '@/error';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+
+
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 import type { ConnectedApplicationCredentials, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
-import { BaseUrlUtil } from '@/utils';
+
 
 class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, UpdateApplicationResponse, UpdateApplicationEnv> {
   schema = {
@@ -291,16 +292,7 @@ class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, Update
     cxt: RouteContext<UpdateApplicationEnv>,
   ): Promise<UpdateApplicationResponse> {
     const userEmail: string = this.getAuthenticatedUserEmailAddress(cxt);
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const dao: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const existing: ConnectedApplicationMetadata | undefined = await dao.getMetadataByIdForUser(request.applicationId, userEmail);
-    if (!existing) {
-      throw new BadRequestError('Connected application was not found.');
-    }
-    if (existing.providerId !== request.providerId || existing.connectionMethod !== request.connectionMethod) {
-      throw new BadRequestError('Provider and connection method cannot be changed after creation.');
-    }
-
+    const scope = createRequestScope(env);
     const credentials: ConnectedApplicationCredentials =
       request.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
         ? {
@@ -316,21 +308,18 @@ class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, Update
       request.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
         ? CONNECTED_APPLICATION_STATUS_CONNECTED
         : CONNECTED_APPLICATION_STATUS_DRAFT;
-    const application: ConnectedApplicationMetadata | undefined = await dao.updateForUser(
+    const application = await scope.get(Tokens.ApplicationService).updateApplication(
       request.applicationId,
       userEmail,
       request.displayName,
+      request.providerId,
+      request.connectionMethod,
       credentials,
       status,
+      request.raw,
     );
-    if (!application) {
-      throw new BadRequestError('Connected application was not found.');
-    }
     return {
-      application: {
-        ...application,
-        oauth2RedirectUri: `${BaseUrlUtil.getBaseUrl(request.raw)}/api/oauth2/callback/${application.applicationId}`,
-      },
+      application,
     };
   }
 }

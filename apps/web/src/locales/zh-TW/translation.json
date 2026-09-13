@@ -1,0 +1,82 @@
+{
+  "app": {
+    "title": "Mail-Meow",
+    "subtitle": "已連接的郵件與 SNS 傳送",
+    "loading": "載入中…",
+    "unauthorizedTitle": "未授權",
+    "unauthorizedBody": "使用 Cloudflare Access 登入以管理應用程式。"
+  },
+  "header": {
+    "language": "語言",
+    "docs": "文件",
+    "signOut": "登出"
+  },
+  "nav": {
+    "mailboxes": "信箱",
+    "processing": "處理",
+    "help": "說明"
+  },
+  "mailboxes": {
+    "title": "已連接應用程式",
+    "empty": "尚無已連接應用程式",
+    "emptyHint": "建立第一個應用程式以開始傳送郵件或 SNS 訊息。",
+    "newApplication": "新增應用程式",
+    "editApplication": "編輯應用程式",
+    "displayName": "顯示名稱",
+    "displayNamePlaceholder": "Gmail 寄件者",
+    "provider": "提供者",
+    "connectionMethod": "連接方式",
+    "oauth2ClientId": "OAuth2 用戶端 ID",
+    "oauth2ClientSecret": "OAuth2 用戶端密鑰",
+    "awsAccessKeyId": "AWS 存取金鑰 ID",
+    "awsSecretAccessKey": "AWS 秘密金鑰",
+    "snsTopicArn": "SNS 主題 ARN",
+    "save": "儲存應用程式",
+    "cancel": "取消",
+    "delete": "刪除",
+    "edit": "編輯",
+    "authorize": "使用提供者授權",
+    "copyRedirectUri": "複製 OAuth2 回調 URI",
+    "statusDraft": "草稿",
+    "statusConnected": "已連接"
+  },
+  "apiKeys": {
+    "title": "API 金鑰",
+    "empty": "尚無 API 金鑰",
+    "keyName": "金鑰名稱",
+    "keyNamePlaceholder": "正式金鑰",
+    "expiryDays": "有效天數",
+    "create": "建立 API 金鑰",
+    "delete": "撤銷",
+    "createdHint": "請立即複製此金鑰。它不會再次顯示。"
+  },
+  "processing": {
+    "title": "背景任務執行",
+    "empty": "尚無任務執行",
+    "taskType": "任務類型",
+    "runNow": "立即執行",
+    "status": "狀態"
+  },
+  "help": {
+    "title": "說明",
+    "oauthTitle": "OAuth2 設定",
+    "oauthBody": "在 Google 或 Microsoft 註冊回調 URI，然後授權應用程式。"
+  },
+  "notice": {
+    "applicationCreated": "已建立應用程式。",
+    "applicationUpdated": "已更新應用程式。",
+    "applicationDeleted": "已刪除應用程式。",
+    "apiKeyCreated": "已建立 API 金鑰。",
+    "apiKeyDeleted": "已刪除 API 金鑰。",
+    "oauthConnected": "OAuth2 連接已完成。",
+    "oauthFailed": "OAuth2 連接失敗。",
+    "redirectCopied": "已複製回調 URI。",
+    "loadFailed": "載入失敗",
+    "saveFailed": "無法儲存應用程式。",
+    "deleteFailed": "無法刪除應用程式。",
+    "oauthStartFailed": "無法啟動 OAuth2。",
+    "copyFailed": "無法複製 URI。",
+    "apiKeyCreateFailed": "無法建立 API 金鑰。",
+    "apiKeyDeleteFailed": "無法刪除 API 金鑰。"
+  }
+}

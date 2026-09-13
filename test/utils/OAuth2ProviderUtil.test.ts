@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PROVIDER_GOOGLE_GMAIL, PROVIDER_MICROSOFT_OUTLOOK } from '@/constants';
-import { OAuth2ProviderUtil } from '@/utils';
+import { PROVIDER_GOOGLE_GMAIL, PROVIDER_MICROSOFT_OUTLOOK } from '@mail-meow/shared/constants';
+import { OAuth2ProviderUtil } from '@mail-meow/provider-clients';
 
 describe('OAuth2ProviderUtil', () => {
   it('builds a Google authorization URL with offline access and PKCE', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { TimestampUtil } from '../../packages/shared/src/utils/TimestampUtil';
+import { TimestampUtil } from '@mail-meow/shared/utils';
 
 describe('TimestampUtil', () => {
   beforeEach(() => {

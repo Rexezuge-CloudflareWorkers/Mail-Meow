@@ -1,8 +1,9 @@
-import { ConnectedApplicationDAO } from '@/dao';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { ApplicationResponseUtil } from '@mail-meow/backend-services/application';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 import type { ConnectedApplicationMetadata } from '@mail-meow/shared/model';
-import { BaseUrlUtil } from '@/utils';
+
 
 class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListApplicationsResponse, ListApplicationsEnv> {
   schema = {
@@ -185,15 +186,14 @@ class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListAppl
     env: ListApplicationsEnv,
     cxt: RouteContext<ListApplicationsEnv>,
   ): Promise<ListApplicationsResponse> {
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const dao: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const applications: ConnectedApplicationMetadata[] = await dao.listMetadataByUserEmail(this.getAuthenticatedUserEmailAddress(cxt));
-    const baseUrl: string = BaseUrlUtil.getBaseUrl(request.raw);
+    const scope = createRequestScope(env);
+    const applications: ConnectedApplicationMetadata[] = await scope
+      .get(Tokens.ApplicationService)
+      .listApplications(this.getAuthenticatedUserEmailAddress(cxt));
     return {
-      applications: applications.map((application: ConnectedApplicationMetadata) => ({
-        ...application,
-        oauth2RedirectUri: `${baseUrl}/api/oauth2/callback/${application.applicationId}`,
-      })),
+      applications: applications.map((application: ConnectedApplicationMetadata) =>
+        ApplicationResponseUtil.withRedirectUri(application, request.raw),
+      ),
     };
   }
 }

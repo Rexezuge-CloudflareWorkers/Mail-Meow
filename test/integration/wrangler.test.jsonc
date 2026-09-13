@@ -8,19 +8,37 @@
     {
       "binding": "DB",
       "database_name": "mail-meow-test-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-    },
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
   ],
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH2_TOKEN_CACHE",
+      "id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CRON_TASKS",
+        "class_name": "CronTasksWorker"
+      },
+      {
+        "name": "OAUTH2_TOKEN_REFRESHERS",
+        "class_name": "OAuth2TokenRefreshWorker"
+      }
+    ]
+  },
   "secrets_store_secrets": [
     {
       "binding": "AES_ENCRYPTION_KEY_SECRET",
       "store_id": "00000000-0000-0000-0000-000000000000",
-      "secret_name": "test-aes-encryption-key",
-    },
+      "secret_name": "test-aes-encryption-key"
+    }
   ],
   "vars": {
     "DEV_AUTH_EMAIL": "test@example.com",
-    "SERVE_SPA_FROM_WORKER": "false",
+    "DEBUG_MODE": "false",
     "POLICY_AUD": "test-aud",
     "TEAM_DOMAIN": "https://test.cloudflareaccess.com",
     "MAX_APPLICATIONS_PER_USER": "99",
@@ -28,5 +46,10 @@
     "DEFAULT_API_KEY_EXPIRY_DAYS": "365",
     "MAX_API_KEY_EXPIRY_DAYS": "365",
     "OAUTH2_STATE_EXPIRY_MINUTES": "15",
-  },
+    "OAUTH2_ACCESS_TOKEN_REFRESH_WINDOW_SECONDS": "900",
+    "OAUTH2_ACCESS_TOKEN_MIN_VALID_SECONDS": "60",
+    "OAUTH2_ACCESS_TOKEN_FALLBACK_TTL_SECONDS": "3600",
+    "OAUTH2_TOKEN_REFRESH_BATCH_SIZE": "25",
+    "BACKGROUND_TASK_RUN_RETENTION_DAYS": "30"
+  }
 }

@@ -1,0 +1,82 @@
+{
+  "app": {
+    "title": "Mail-Meow",
+    "subtitle": "接続済みメール・SNS配信",
+    "loading": "読み込み中…",
+    "unauthorizedTitle": "未認証",
+    "unauthorizedBody": "Cloudflare Accessでサインインしてアプリケーションを管理します。"
+  },
+  "header": {
+    "language": "言語",
+    "docs": "ドキュメント",
+    "signOut": "サインアウト"
+  },
+  "nav": {
+    "mailboxes": "メールボックス",
+    "processing": "処理",
+    "help": "ヘルプ"
+  },
+  "mailboxes": {
+    "title": "接続済みアプリケーション",
+    "empty": "接続済みアプリケーションはまだありません",
+    "emptyHint": "最初のアプリケーションを作成してメールやSNSメッセージの送信を開始します。",
+    "newApplication": "新規アプリケーション",
+    "editApplication": "アプリケーションを編集",
+    "displayName": "表示名",
+    "displayNamePlaceholder": "Gmail送信者",
+    "provider": "プロバイダー",
+    "connectionMethod": "接続方法",
+    "oauth2ClientId": "OAuth2クライアントID",
+    "oauth2ClientSecret": "OAuth2クライアントシークレット",
+    "awsAccessKeyId": "AWSアクセスキーID",
+    "awsSecretAccessKey": "AWSシークレットキー",
+    "snsTopicArn": "SNSトピックARN",
+    "save": "アプリケーションを保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "authorize": "プロバイダーで認証",
+    "copyRedirectUri": "OAuth2リダイレクトURIをコピー",
+    "statusDraft": "下書き",
+    "statusConnected": "接続済み"
+  },
+  "apiKeys": {
+    "title": "APIキー",
+    "empty": "APIキーはまだありません",
+    "keyName": "キー名",
+    "keyNamePlaceholder": "本番キー",
+    "expiryDays": "有効日数",
+    "create": "APIキーを作成",
+    "delete": "無効化",
+    "createdHint": "このキーを今コピーしてください。再表示されません。"
+  },
+  "processing": {
+    "title": "バックグラウンドタスク実行",
+    "empty": "実行履歴はまだありません",
+    "taskType": "タスク種別",
+    "runNow": "今すぐ実行",
+    "status": "状態"
+  },
+  "help": {
+    "title": "ヘルプ",
+    "oauthTitle": "OAuth2設定",
+    "oauthBody": "リダイレクトURIをGoogleまたはMicrosoftに登録し、アプリケーションを認証します。"
+  },
+  "notice": {
+    "applicationCreated": "アプリケーションを作成しました。",
+    "applicationUpdated": "アプリケーションを更新しました。",
+    "applicationDeleted": "アプリケーションを削除しました。",
+    "apiKeyCreated": "APIキーを作成しました。",
+    "apiKeyDeleted": "APIキーを削除しました。",
+    "oauthConnected": "OAuth2接続が完了しました。",
+    "oauthFailed": "OAuth2接続に失敗しました。",
+    "redirectCopied": "リダイレクトURIをコピーしました。",
+    "loadFailed": "読み込みに失敗しました",
+    "saveFailed": "アプリケーションを保存できませんでした。",
+    "deleteFailed": "アプリケーションを削除できませんでした。",
+    "oauthStartFailed": "OAuth2を開始できませんでした。",
+    "copyFailed": "URIをコピーできませんでした。",
+    "apiKeyCreateFailed": "APIキーを作成できませんでした。",
+    "apiKeyDeleteFailed": "APIキーを削除できませんでした。"
+  }
+}

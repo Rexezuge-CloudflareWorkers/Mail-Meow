@@ -1,0 +1,82 @@
+{
+  "app": {
+    "title": "Mail-Meow",
+    "subtitle": "Verbonden e-mail- en SNS-verzending",
+    "loading": "Laden…",
+    "unauthorizedTitle": "Niet geautoriseerd",
+    "unauthorizedBody": "Log in met Cloudflare Access om applicaties te beheren."
+  },
+  "header": {
+    "language": "Taal",
+    "docs": "Docs",
+    "signOut": "Afmelden"
+  },
+  "nav": {
+    "mailboxes": "Mailboxen",
+    "processing": "Verwerking",
+    "help": "Help"
+  },
+  "mailboxes": {
+    "title": "Verbonden applicaties",
+    "empty": "Nog geen verbonden applicaties",
+    "emptyHint": "Maak uw eerste applicatie om e-mail of SNS-berichten te verzenden.",
+    "newApplication": "Nieuwe applicatie",
+    "editApplication": "Applicatie bewerken",
+    "displayName": "Weergavenaam",
+    "displayNamePlaceholder": "Gmail-afzender",
+    "provider": "Provider",
+    "connectionMethod": "Verbindingsmethode",
+    "oauth2ClientId": "OAuth2-client-ID",
+    "oauth2ClientSecret": "OAuth2-clientgeheim",
+    "awsAccessKeyId": "AWS-toegangssleutel-ID",
+    "awsSecretAccessKey": "AWS-geheime sleutel",
+    "snsTopicArn": "SNS-onderwerp-ARN",
+    "save": "Applicatie opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "edit": "Bewerken",
+    "authorize": "Autoriseren bij provider",
+    "copyRedirectUri": "OAuth2-redirect-URI kopiëren",
+    "statusDraft": "Concept",
+    "statusConnected": "Verbonden"
+  },
+  "apiKeys": {
+    "title": "API-sleutels",
+    "empty": "Nog geen API-sleutels",
+    "keyName": "Sleutelnaam",
+    "keyNamePlaceholder": "Productiesleutel",
+    "expiryDays": "Vervaldagen",
+    "create": "API-sleutel maken",
+    "delete": "Intrekken",
+    "createdHint": "Kopieer deze sleutel nu. Hij wordt niet opnieuw getoond."
+  },
+  "processing": {
+    "title": "Achtergrondtaken",
+    "empty": "Nog geen taken",
+    "taskType": "Taaktype",
+    "runNow": "Nu uitvoeren",
+    "status": "Status"
+  },
+  "help": {
+    "title": "Help",
+    "oauthTitle": "OAuth2-instelling",
+    "oauthBody": "Registreer de redirect-URI bij Google of Microsoft en autoriseer daarna de applicatie."
+  },
+  "notice": {
+    "applicationCreated": "Applicatie gemaakt.",
+    "applicationUpdated": "Applicatie bijgewerkt.",
+    "applicationDeleted": "Applicatie verwijderd.",
+    "apiKeyCreated": "API-sleutel gemaakt.",
+    "apiKeyDeleted": "API-sleutel verwijderd.",
+    "oauthConnected": "OAuth2-verbinding voltooid.",
+    "oauthFailed": "OAuth2-verbinding mislukt.",
+    "redirectCopied": "Redirect-URI gekopieerd.",
+    "loadFailed": "Laden mislukt",
+    "saveFailed": "Applicatie kon niet worden opgeslagen.",
+    "deleteFailed": "Applicatie kon niet worden verwijderd.",
+    "oauthStartFailed": "OAuth2 kon niet worden gestart.",
+    "copyFailed": "URI kon niet worden gekopieerd.",
+    "apiKeyCreateFailed": "API-sleutel kon niet worden gemaakt.",
+    "apiKeyDeleteFailed": "API-sleutel kon niet worden verwijderd."
+  }
+}

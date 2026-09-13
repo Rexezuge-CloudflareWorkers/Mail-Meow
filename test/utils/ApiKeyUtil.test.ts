@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ApiKeyUtil } from '@/utils';
+import { ApiKeyUtil } from '@mail-meow/shared/utils';
 
 describe('ApiKeyUtil', () => {
   it('generates keyed Mail-Meow API keys with metadata', async () => {

@@ -1,7 +1,6 @@
-import { ApplicationApiKeyDAO, ConnectedApplicationDAO } from '@/dao';
-import { BadRequestError, UnauthorizedError } from '@/error';
-import type { ApplicationApiKeyMetadata, ConnectedApplication } from '@mail-meow/shared/model';
-import { ApiKeyUtil } from '@/utils';
+import { BadRequestError } from '@mail-meow/backend-errors';
+import type { ConnectedApplication } from '@mail-meow/shared/model';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
 import { IBaseRoute } from './IBaseRoute';
 import type { IEnv, IRequest, IResponse, RouteContext, ExtendedResponse } from './IBaseRoute';
 
@@ -25,33 +24,14 @@ abstract class IPublicApplicationRoute<
       }
       const validatedBody: unknown = validationResult.data;
       const apiKey: string | undefined = c.req.param('api_key');
-      const application: ConnectedApplication = await this.resolveConnectedApplication(apiKey, c.env as TEnv);
+      const scope = createRequestScope(c.env);
+      const application: ConnectedApplication = await scope.get(Tokens.ApiKeyService).resolveApplication(apiKey);
       const request: TRequest = { ...(validatedBody as TRequest), raw: c.req.raw, application };
       const response: TResponse | ExtendedResponse<TResponse> = await this.handleRequest(request, c.env as TEnv, c);
       return this.toResponse(response, c);
     } catch (error: unknown) {
       return this.toErrorResponse(error, c);
     }
-  }
-
-  private async resolveConnectedApplication(apiKey: string | undefined, env: TEnv): Promise<ConnectedApplication> {
-    if (!apiKey) {
-      throw new UnauthorizedError('API key is required.');
-    }
-    const keyHash: string = await ApiKeyUtil.hashApiKey(apiKey);
-    const apiKeyDAO: ApplicationApiKeyDAO = new ApplicationApiKeyDAO(env.DB);
-    const keyMetadata: ApplicationApiKeyMetadata | undefined = await apiKeyDAO.getByHash(keyHash, true);
-    if (!keyMetadata) {
-      throw new UnauthorizedError('The API key is invalid or expired.');
-    }
-    await apiKeyDAO.updateLastUsed(keyMetadata.apiKeyId);
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const connectedApplicationDAO: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const application: ConnectedApplication | undefined = await connectedApplicationDAO.getById(keyMetadata.applicationId);
-    if (!application) {
-      throw new UnauthorizedError('The API key is not connected to an application.');
-    }
-    return application;
   }
 }
 

@@ -1,8 +1,8 @@
-import { ApplicationApiKeyDAO, ConnectedApplicationDAO } from '@/dao';
-import { BadRequestError } from '@/error';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { BadRequestError } from '@mail-meow/backend-errors';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import type { ApplicationApiKeyMetadata, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
+import type { ApplicationApiKeyMetadata } from '@mail-meow/shared/model';
 
 class ListApplicationApiKeysRoute extends IUserRoute<
   ListApplicationApiKeysRequest,
@@ -198,18 +198,9 @@ class ListApplicationApiKeysRoute extends IUserRoute<
     if (!applicationId) {
       throw new BadRequestError('applicationId is required.');
     }
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const application: ConnectedApplicationMetadata | undefined = await applicationDAO.getMetadataByIdForUser(
-      applicationId,
-      this.getAuthenticatedUserEmailAddress(cxt),
-    );
-    if (!application) {
-      throw new BadRequestError('Connected application was not found.');
-    }
-    const apiKeyDAO: ApplicationApiKeyDAO = new ApplicationApiKeyDAO(env.DB);
+    const scope = createRequestScope(env);
     return {
-      apiKeys: await apiKeyDAO.listByApplication(applicationId),
+      apiKeys: await scope.get(Tokens.ApiKeyService).listApiKeys(applicationId, this.getAuthenticatedUserEmailAddress(cxt)),
     };
   }
 }

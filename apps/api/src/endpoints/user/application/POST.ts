@@ -1,15 +1,10 @@
-import {
-  CONNECTED_APPLICATION_STATUS_CONNECTED,
-  CONNECTED_APPLICATION_STATUS_DRAFT,
-  CONNECTION_METHOD_ACCESS_KEYS,
-  DEFAULT_MAX_APPLICATIONS_PER_USER,
-} from '@mail-meow/shared/constants';
-import { ConnectedApplicationDAO } from '@/dao';
-import { BadRequestError } from '@/error';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+
+
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import type { ConnectedApplicationCredentials, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
-import { ConfigurationUtil, BaseUrlUtil } from '@/utils';
+import type { ConnectedApplicationMetadata } from '@mail-meow/shared/model';
+
 
 class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, CreateApplicationResponse, CreateApplicationEnv> {
   schema = {
@@ -310,41 +305,21 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
     cxt: RouteContext<CreateApplicationEnv>,
   ): Promise<CreateApplicationResponse> {
     const userEmail: string = this.getAuthenticatedUserEmailAddress(cxt);
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const dao: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const maxApplications: number = ConfigurationUtil.getPositiveInteger(env.MAX_APPLICATIONS_PER_USER, DEFAULT_MAX_APPLICATIONS_PER_USER);
-    if ((await dao.countByUserEmail(userEmail)) >= maxApplications) {
-      throw new BadRequestError(`Maximum ${maxApplications} connected applications allowed per user.`);
-    }
-
-    const credentials: ConnectedApplicationCredentials =
-      request.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
-        ? {
-            accessKeyId: request.accessKeyId!,
-            secretAccessKey: request.secretAccessKey!,
-            topicArn: request.topicArn!,
-          }
-        : {
-            clientId: request.clientId!,
-            clientSecret: request.clientSecret!,
-          };
-    const status: string =
-      request.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
-        ? CONNECTED_APPLICATION_STATUS_CONNECTED
-        : CONNECTED_APPLICATION_STATUS_DRAFT;
-    const application: ConnectedApplicationMetadata = await dao.create(
+    const scope = createRequestScope(env);
+    const application = await scope.get(Tokens.ApplicationService).createApplication({
       userEmail,
-      request.displayName,
-      request.providerId,
-      request.connectionMethod,
-      credentials,
-      status,
-    );
+      displayName: request.displayName,
+      providerId: request.providerId,
+      connectionMethod: request.connectionMethod,
+      clientId: request.clientId,
+      clientSecret: request.clientSecret,
+      accessKeyId: request.accessKeyId,
+      secretAccessKey: request.secretAccessKey,
+      topicArn: request.topicArn,
+      raw: request.raw,
+    });
     return {
-      application: {
-        ...application,
-        oauth2RedirectUri: `${BaseUrlUtil.getBaseUrl(request.raw)}/api/oauth2/callback/${application.applicationId}`,
-      },
+      application,
     };
   }
 }

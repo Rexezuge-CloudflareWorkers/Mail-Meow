@@ -1,1 +1,1 @@
-export { default } from '../../apps/api/src/index';
+export { default, CronTasksWorker, OAuth2TokenRefreshWorker } from '../../apps/api/src/index';
