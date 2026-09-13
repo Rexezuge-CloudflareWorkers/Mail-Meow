@@ -1,0 +1,82 @@
+{
+  "app": {
+    "title": "Mail-Meow",
+    "subtitle": "Invio connesso di email e SNS",
+    "loading": "Caricamento…",
+    "unauthorizedTitle": "Non autorizzato",
+    "unauthorizedBody": "Accedi con Cloudflare Access per gestire le applicazioni."
+  },
+  "header": {
+    "language": "Lingua",
+    "docs": "Docs",
+    "signOut": "Esci"
+  },
+  "nav": {
+    "mailboxes": "Caselle",
+    "processing": "Elaborazione",
+    "help": "Aiuto"
+  },
+  "mailboxes": {
+    "title": "Applicazioni connesse",
+    "empty": "Nessuna applicazione connessa",
+    "emptyHint": "Crea la prima applicazione per inviare email o messaggi SNS.",
+    "newApplication": "Nuova applicazione",
+    "editApplication": "Modifica applicazione",
+    "displayName": "Nome visualizzato",
+    "displayNamePlaceholder": "Mittente Gmail",
+    "provider": "Provider",
+    "connectionMethod": "Metodo di connessione",
+    "oauth2ClientId": "ID client OAuth2",
+    "oauth2ClientSecret": "Segreto client OAuth2",
+    "awsAccessKeyId": "ID chiave di accesso AWS",
+    "awsSecretAccessKey": "Chiave segreta AWS",
+    "snsTopicArn": "ARN argomento SNS",
+    "save": "Salva applicazione",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "authorize": "Autorizza con il provider",
+    "copyRedirectUri": "Copia URI di reindirizzamento OAuth2",
+    "statusDraft": "Bozza",
+    "statusConnected": "Connesso"
+  },
+  "apiKeys": {
+    "title": "Chiavi API",
+    "empty": "Nessuna chiave API",
+    "keyName": "Nome chiave",
+    "keyNamePlaceholder": "Chiave di produzione",
+    "expiryDays": "Giorni di scadenza",
+    "create": "Crea chiave API",
+    "delete": "Revoca",
+    "createdHint": "Copia ora questa chiave. Non verrà più mostrata."
+  },
+  "processing": {
+    "title": "Esecuzioni attività",
+    "empty": "Nessuna esecuzione",
+    "taskType": "Tipo di attività",
+    "runNow": "Esegui ora",
+    "status": "Stato"
+  },
+  "help": {
+    "title": "Aiuto",
+    "oauthTitle": "Configurazione OAuth2",
+    "oauthBody": "Registra l’URI di reindirizzamento con Google o Microsoft, quindi autorizza l’applicazione."
+  },
+  "notice": {
+    "applicationCreated": "Applicazione creata.",
+    "applicationUpdated": "Applicazione aggiornata.",
+    "applicationDeleted": "Applicazione eliminata.",
+    "apiKeyCreated": "Chiave API creata.",
+    "apiKeyDeleted": "Chiave API eliminata.",
+    "oauthConnected": "Connessione OAuth2 completata.",
+    "oauthFailed": "Connessione OAuth2 non riuscita.",
+    "redirectCopied": "URI di reindirizzamento copiato.",
+    "loadFailed": "Caricamento non riuscito",
+    "saveFailed": "Impossibile salvare l’applicazione.",
+    "deleteFailed": "Impossibile eliminare l’applicazione.",
+    "oauthStartFailed": "Impossibile avviare OAuth2.",
+    "copyFailed": "Impossibile copiare l’URI.",
+    "apiKeyCreateFailed": "Impossibile creare la chiave API.",
+    "apiKeyDeleteFailed": "Impossibile eliminare la chiave API."
+  }
+}

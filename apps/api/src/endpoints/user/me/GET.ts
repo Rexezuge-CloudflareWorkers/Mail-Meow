@@ -1,12 +1,6 @@
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import {
-  DEFAULT_DEFAULT_API_KEY_EXPIRY_DAYS,
-  DEFAULT_MAX_API_KEY_EXPIRY_DAYS,
-  DEFAULT_MAX_API_KEYS_PER_APPLICATION,
-  DEFAULT_MAX_APPLICATIONS_PER_USER,
-} from '@mail-meow/shared/constants';
-import { ConfigurationUtil } from '@/utils';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
 
 class GetCurrentUserRoute extends IUserRoute<GetCurrentUserRequest, GetCurrentUserResponse, GetCurrentUserEnv> {
   schema = {
@@ -139,16 +133,18 @@ class GetCurrentUserRoute extends IUserRoute<GetCurrentUserRequest, GetCurrentUs
     env: GetCurrentUserEnv,
     cxt: RouteContext<GetCurrentUserEnv>,
   ): Promise<GetCurrentUserResponse> {
+    const scope = createRequestScope(env);
+    const config = scope.get(Tokens.AppConfig);
+    const userEmail = this.getAuthenticatedUserEmailAddress(cxt);
+    const preferredLanguage = await scope.get(Tokens.UserService).getPreferredLanguage(userEmail);
     return {
-      email: this.getAuthenticatedUserEmailAddress(cxt),
+      email: userEmail,
+      preferredLanguage,
       limits: {
-        maxApplicationsPerUser: ConfigurationUtil.getPositiveInteger(env.MAX_APPLICATIONS_PER_USER, DEFAULT_MAX_APPLICATIONS_PER_USER),
-        maxApiKeysPerApplication: ConfigurationUtil.getPositiveInteger(
-          env.MAX_API_KEYS_PER_APPLICATION,
-          DEFAULT_MAX_API_KEYS_PER_APPLICATION,
-        ),
-        defaultApiKeyExpiryDays: ConfigurationUtil.getPositiveInteger(env.DEFAULT_API_KEY_EXPIRY_DAYS, DEFAULT_DEFAULT_API_KEY_EXPIRY_DAYS),
-        maxApiKeyExpiryDays: ConfigurationUtil.getPositiveInteger(env.MAX_API_KEY_EXPIRY_DAYS, DEFAULT_MAX_API_KEY_EXPIRY_DAYS),
+        maxApplicationsPerUser: config.getMaxApplicationsPerUser(),
+        maxApiKeysPerApplication: config.getMaxApiKeysPerApplication(),
+        defaultApiKeyExpiryDays: config.getDefaultApiKeyExpiryDays(),
+        maxApiKeyExpiryDays: config.getMaxApiKeyExpiryDays(),
       },
     };
   }
@@ -158,6 +154,7 @@ type GetCurrentUserRequest = IRequest;
 
 interface GetCurrentUserResponse extends IResponse {
   email: string;
+  preferredLanguage: string | null;
   limits: {
     maxApplicationsPerUser: number;
     maxApiKeysPerApplication: number;
@@ -167,10 +164,10 @@ interface GetCurrentUserResponse extends IResponse {
 }
 
 interface GetCurrentUserEnv extends IUserEnv {
-  MAX_APPLICATIONS_PER_USER?: string | undefined;
-  MAX_API_KEYS_PER_APPLICATION?: string | undefined;
-  DEFAULT_API_KEY_EXPIRY_DAYS?: string | undefined;
-  MAX_API_KEY_EXPIRY_DAYS?: string | undefined;
+  MAX_APPLICATIONS_PER_USER?: string;
+  MAX_API_KEYS_PER_APPLICATION?: string;
+  DEFAULT_API_KEY_EXPIRY_DAYS?: string;
+  MAX_API_KEY_EXPIRY_DAYS?: string;
 }
 
 export { GetCurrentUserRoute };

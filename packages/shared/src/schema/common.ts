@@ -8,8 +8,8 @@ import {
   SUPPORTED_PROVIDER_CONNECTIONS,
 } from '../constants';
 
-const UUID_PATTERN: RegExp = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-const ARN_SNS_PATTERN: RegExp = /^arn:aws:sns:[a-z0-9-]+:\d{12}:[A-Za-z0-9_.-]+$/;
+const UUID_PATTERN: RegExp = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ARN_SNS_PATTERN: RegExp = /^arn:aws:sns:[a-z0-9-]+:\d{12}:[\w.-]+$/;
 
 const UuidSchema = z.string().regex(UUID_PATTERN, 'Value must be a valid UUID.');
 const EmailSchema = z.string().email('Value must be a valid email address.').max(320);

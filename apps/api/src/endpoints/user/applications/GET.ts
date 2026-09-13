@@ -1,8 +1,9 @@
-import { ConnectedApplicationDAO } from '@/dao';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { ApplicationResponseUtil } from '@mail-meow/backend-services/application';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 import type { ConnectedApplicationMetadata } from '@mail-meow/shared/model';
-import { BaseUrlUtil } from '@/utils';
+
 
 class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListApplicationsResponse, ListApplicationsEnv> {
   schema = {
@@ -64,12 +65,12 @@ class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListAppl
                       createdAt: {
                         type: 'number' as const,
                         description: 'Unix timestamp in seconds when the application was created',
-                        example: 1757548800,
+                        example: 1_757_548_800,
                       },
                       updatedAt: {
                         type: 'number' as const,
                         description: 'Unix timestamp in seconds when the application was last updated',
-                        example: 1757635200,
+                        example: 1_757_635_200,
                       },
                       oauth2RedirectUri: {
                         type: 'string' as const,
@@ -94,8 +95,8 @@ class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListAppl
                       providerId: 'google-gmail',
                       connectionMethod: 'oauth2',
                       status: 'connected',
-                      createdAt: 1757548800,
-                      updatedAt: 1757635200,
+                      createdAt: 1_757_548_800,
+                      updatedAt: 1_757_635_200,
                       oauth2RedirectUri: 'https://mail.example.com/api/oauth2/callback/123e4567-e89b-12d3-a456-426614174000',
                     },
                     {
@@ -105,8 +106,8 @@ class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListAppl
                       providerId: 'amazon-sns',
                       connectionMethod: 'access-keys',
                       status: 'connected',
-                      createdAt: 1757548800,
-                      updatedAt: 1757548800,
+                      createdAt: 1_757_548_800,
+                      updatedAt: 1_757_548_800,
                       oauth2RedirectUri: 'https://mail.example.com/api/oauth2/callback/223e4567-e89b-12d3-a456-426614174001',
                     },
                   ],
@@ -185,15 +186,14 @@ class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListAppl
     env: ListApplicationsEnv,
     cxt: RouteContext<ListApplicationsEnv>,
   ): Promise<ListApplicationsResponse> {
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const dao: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const applications: ConnectedApplicationMetadata[] = await dao.listMetadataByUserEmail(this.getAuthenticatedUserEmailAddress(cxt));
-    const baseUrl: string = BaseUrlUtil.getBaseUrl(request.raw);
+    const scope = createRequestScope(env);
+    const applications: ConnectedApplicationMetadata[] = await scope
+      .get(Tokens.ApplicationService)
+      .listApplications(this.getAuthenticatedUserEmailAddress(cxt));
     return {
-      applications: applications.map((application: ConnectedApplicationMetadata) => ({
-        ...application,
-        oauth2RedirectUri: `${baseUrl}/api/oauth2/callback/${application.applicationId}`,
-      })),
+      applications: applications.map((application: ConnectedApplicationMetadata) =>
+        ApplicationResponseUtil.withRedirectUri(application, request.raw),
+      ),
     };
   }
 }

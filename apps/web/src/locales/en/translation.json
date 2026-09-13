@@ -1,0 +1,82 @@
+{
+  "app": {
+    "title": "Mail-Meow",
+    "subtitle": "Connected Email And SNS Delivery",
+    "loading": "Loading…",
+    "unauthorizedTitle": "Unauthorized",
+    "unauthorizedBody": "Sign in with Cloudflare Access to manage applications."
+  },
+  "header": {
+    "language": "Language",
+    "docs": "Docs",
+    "signOut": "Sign Out"
+  },
+  "nav": {
+    "mailboxes": "Mailboxes",
+    "processing": "Processing",
+    "help": "Help"
+  },
+  "mailboxes": {
+    "title": "Connected Applications",
+    "empty": "No Connected Applications Yet",
+    "emptyHint": "Create your first application to start sending email or SNS messages.",
+    "newApplication": "New Application",
+    "editApplication": "Edit Application",
+    "displayName": "Display Name",
+    "displayNamePlaceholder": "Gmail Sender",
+    "provider": "Provider",
+    "connectionMethod": "Connection Method",
+    "oauth2ClientId": "OAuth2 Client ID",
+    "oauth2ClientSecret": "OAuth2 Client Secret",
+    "awsAccessKeyId": "AWS Access Key ID",
+    "awsSecretAccessKey": "AWS Secret Access Key",
+    "snsTopicArn": "SNS Topic ARN",
+    "save": "Save Application",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "authorize": "Authorize With Provider",
+    "copyRedirectUri": "Copy OAuth2 Redirect URI",
+    "statusDraft": "Draft",
+    "statusConnected": "Connected"
+  },
+  "apiKeys": {
+    "title": "API Keys",
+    "empty": "No API Keys Yet",
+    "keyName": "Key Name",
+    "keyNamePlaceholder": "Production Key",
+    "expiryDays": "Expiry Days",
+    "create": "Create API Key",
+    "delete": "Revoke",
+    "createdHint": "Copy this key now. It will not be shown again."
+  },
+  "processing": {
+    "title": "Background Task Runs",
+    "empty": "No Task Runs Yet",
+    "taskType": "Task Type",
+    "runNow": "Run Now",
+    "status": "Status"
+  },
+  "help": {
+    "title": "Help",
+    "oauthTitle": "OAuth2 Setup",
+    "oauthBody": "Register the redirect URI with Google or Microsoft, then authorize the application."
+  },
+  "notice": {
+    "applicationCreated": "Application Created.",
+    "applicationUpdated": "Application Updated.",
+    "applicationDeleted": "Application Deleted.",
+    "apiKeyCreated": "API Key Created.",
+    "apiKeyDeleted": "API Key Deleted.",
+    "oauthConnected": "OAuth2 Connection Completed.",
+    "oauthFailed": "OAuth2 Connection Failed.",
+    "redirectCopied": "OAuth2 Redirect URI Copied.",
+    "loadFailed": "Load Failed",
+    "saveFailed": "Unable To Save Application.",
+    "deleteFailed": "Unable To Delete Application.",
+    "oauthStartFailed": "Unable To Start OAuth2.",
+    "copyFailed": "Unable To Copy OAuth2 Redirect URI.",
+    "apiKeyCreateFailed": "Unable To Create API Key.",
+    "apiKeyDeleteFailed": "Unable To Delete API Key."
+  }
+}

@@ -3,8 +3,8 @@ import type { ZodTypeAny } from 'zod';
 import { ConnectedApplicationBaseSchema, UuidSchema, nonEmptyStringSchema, positiveIntegerBodySchema } from './common';
 
 interface RequestInputSchema {
-  body?: ZodTypeAny | undefined;
-  query?: ZodTypeAny | undefined;
+  body?: ZodTypeAny;
+  query?: ZodTypeAny;
 }
 
 const CreateApplicationBodySchema = ConnectedApplicationBaseSchema;
@@ -40,8 +40,8 @@ const SendEmailBodySchema = z
   .object({
     to: z.string().email('to must be a valid email address.').max(320),
     subject: nonEmptyStringSchema('subject', 512),
-    text: nonEmptyStringSchema('text', 20000).optional(),
-    html: nonEmptyStringSchema('html', 20000).optional(),
+    text: nonEmptyStringSchema('text', 20_000).optional(),
+    html: nonEmptyStringSchema('html', 20_000).optional(),
   })
   .refine(
     (input): boolean => Boolean(input.text?.trim() || input.html?.trim()),
@@ -50,7 +50,7 @@ const SendEmailBodySchema = z
 
 const SendSNSBodySchema = z.object({
   subject: nonEmptyStringSchema('subject', 100).optional(),
-  message: nonEmptyStringSchema('message', 20000),
+  message: nonEmptyStringSchema('message', 20_000),
 });
 
 const OAuth2CallbackQuerySchema = z
@@ -61,6 +61,15 @@ const OAuth2CallbackQuerySchema = z
   })
   .refine((input): boolean => Boolean(input.error || (input.code && input.state)), 'OAuth2 callback requires code and state.');
 
+const UpdateCurrentUserBodySchema = z.object({
+  preferredLanguage: nonEmptyStringSchema('preferredLanguage', 16),
+});
+
+const RunTaskBodySchema = z.object({
+  taskType: nonEmptyStringSchema('taskType', 64),
+  applicationId: UuidSchema,
+});
+
 const RequestInputSchemas: Record<string, RequestInputSchema> = {
   'POST /user/application': { body: CreateApplicationBodySchema },
   'PUT /user/application': { body: UpdateApplicationBodySchema },
@@ -69,6 +78,8 @@ const RequestInputSchemas: Record<string, RequestInputSchema> = {
   'GET /user/application/api-keys': { query: ApplicationIdQuerySchema },
   'POST /user/application/api-key': { body: CreateApiKeyBodySchema },
   'DELETE /user/application/api-key': { body: DeleteApiKeyBodySchema },
+  'PUT /user/me': { body: UpdateCurrentUserBodySchema },
+  'POST /user/processing/run-task': { body: RunTaskBodySchema },
   'POST /api/:api_key/email': { body: SendEmailBodySchema },
   'POST /api/:api_key/sns': { body: SendSNSBodySchema },
   'GET /api/oauth2/callback/:applicationId': { query: OAuth2CallbackQuerySchema },

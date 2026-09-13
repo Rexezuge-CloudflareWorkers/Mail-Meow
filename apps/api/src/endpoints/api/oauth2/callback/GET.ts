@@ -1,9 +1,9 @@
-import { ConnectedApplicationDAO, OAuth2AuthorizationSessionDAO } from '@/dao';
-import { BadRequestError } from '@/error';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { BadRequestError } from '@mail-meow/backend-errors';
 import { IBaseRoute } from '@/endpoints/IBaseRoute';
 import type { ExtendedResponse, IEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IBaseRoute';
-import type { ConnectedApplication, OAuth2AuthorizationSession, OAuth2Credentials } from '@mail-meow/shared/model';
-import { OAuth2ProviderUtil, OAuth2StateUtil } from '@/utils';
+
+
 
 class OAuth2CallbackRoute extends IBaseRoute<OAuth2CallbackRequest, OAuth2CallbackResponse, OAuth2CallbackEnv> {
   schema = {
@@ -146,28 +146,12 @@ class OAuth2CallbackRoute extends IBaseRoute<OAuth2CallbackRequest, OAuth2Callba
       throw new BadRequestError('OAuth2 callback is missing code or state.');
     }
 
-    const stateHash: string = await OAuth2StateUtil.getStateHash(state);
-    const sessionDAO: OAuth2AuthorizationSessionDAO = new OAuth2AuthorizationSessionDAO(env.DB);
-    const session: OAuth2AuthorizationSession | undefined = await sessionDAO.getActive(applicationId, stateHash);
-    if (!session) {
-      throw new BadRequestError('OAuth2 authorization session is invalid or expired.');
-    }
-
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const application: ConnectedApplication | undefined = await applicationDAO.getById(applicationId);
-    if (!application) {
-      throw new BadRequestError('Connected application was not found.');
-    }
-    const tokenResult = await OAuth2ProviderUtil.exchangeCode({
-      providerId: application.providerId,
-      credentials: application.credentials as OAuth2Credentials,
-      redirectUri: session.redirectUri,
+    const scope = createRequestScope(env);
+    await scope.get(Tokens.OAuth2AuthorizationService).completeCallback({
+      applicationId,
       code,
-      codeVerifier: session.codeVerifier,
+      state,
     });
-    await applicationDAO.markOAuth2Connected(applicationId, tokenResult.refreshToken!);
-    await sessionDAO.consume(session.sessionId);
     return this.redirect(`/user?oauth2=connected&applicationId=${encodeURIComponent(applicationId)}`);
   }
 

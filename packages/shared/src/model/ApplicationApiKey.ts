@@ -6,7 +6,7 @@ interface ApplicationApiKeyMetadata {
   keyLastFour: string;
   createdAt: number;
   expiresAt: number;
-  lastUsedAt?: number | undefined;
+  lastUsedAt?: number;
 }
 
 interface ApplicationApiKey extends ApplicationApiKeyMetadata {
@@ -22,7 +22,7 @@ interface ApplicationApiKeyInternal {
   key_last_four: string;
   created_at: number;
   expires_at: number;
-  last_used_at?: number | undefined;
+  last_used_at?: number;
 }
 
 export type { ApplicationApiKey, ApplicationApiKeyInternal, ApplicationApiKeyMetadata };

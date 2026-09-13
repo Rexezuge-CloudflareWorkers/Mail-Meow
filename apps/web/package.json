@@ -9,16 +9,19 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "clsx": "2.1.1",
+    "i18next": "^26.4.2",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-i18next": "^17.0.13"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "4.3.3",
     "@tailwindcss/vite": "4.3.3",
+    "@types/node": "26.4.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vitejs/plugin-react": "6.1.1",
-    "@types/node": "26.4.1",
+    "tailwindcss": "4.3.3",
     "terser": "5.51.2",
     "typescript": "6.0.3",
     "vite": "8.2.2"

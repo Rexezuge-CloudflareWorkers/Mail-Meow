@@ -1,114 +1,70 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Unauthorized from '../components/Unauthorized';
-import type { ApplicationApiKey, ConnectedApplication, CurrentUser, ProviderId } from '../components/types';
-import { formatTimestamp, formatExpiryTimestamp, methodLabels, providerLabels, providerMethod, readJson } from '../components/utils';
-
-interface ApplicationFormState {
-  applicationId?: string;
-  displayName: string;
-  providerId: ProviderId;
-  clientId: string;
-  clientSecret: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  topicArn: string;
-}
-
-const emptyForm: ApplicationFormState = {
-  displayName: '',
-  providerId: 'google-gmail',
-  clientId: '',
-  clientSecret: '',
-  accessKeyId: '',
-  secretAccessKey: '',
-  topicArn: '',
-};
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import Unauthorized from './components/shared/Unauthorized';
+import Header from './components/shared/Header';
+import Notice from './components/shared/Notice';
+import SpaViewRouter from './components/layout/SpaViewRouter';
+import MailboxesView from './components/views/MailboxesView';
+import ProcessingView from './components/views/ProcessingView';
+import HelpView from './components/views/HelpView';
+import { useNotice } from './hooks/useNotice';
+import { useCurrentUser } from './hooks/useCurrentUser';
+import { useMailboxes } from './hooks/useMailboxes';
+import { useApiKeys } from './hooks/useApiKeys';
+import { useSpaLanguage } from './hooks/useSpaLanguage';
+import type { SpaView } from './types';
+import { providerMethod } from './lib/providers';
+import * as appSvc from './services/applicationService';
 
 function getInitialNotice(): { type: 'success' | 'error'; text: string } | null {
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(globalThis.location.search);
   if (params.get('oauth2') === 'connected') return { type: 'success', text: 'OAuth2 connection completed.' };
   if (params.get('oauth2') === 'error') return { type: 'error', text: params.get('message') || 'OAuth2 connection failed.' };
   return null;
 }
 
 export default function SpaApp() {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [authorized, setAuthorized] = useState<boolean | null>(null);
-  const [applications, setApplications] = useState<ConnectedApplication[]>([]);
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string>('');
-  const [apiKeys, setApiKeys] = useState<ApplicationApiKey[]>([]);
-  const [applicationForm, setApplicationForm] = useState<ApplicationFormState>(emptyForm);
-  const [keyName, setKeyName] = useState('');
-  const [keyExpiryDays, setKeyExpiryDays] = useState('');
-  const [createdApiKey, setCreatedApiKey] = useState<string>('');
-  const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(() => getInitialNotice());
+  const { t, i18n } = useTranslation();
+  const [view, setView] = useState<SpaView>('mailboxes');
   const [isBusy, setIsBusy] = useState(false);
-
-  const selectedApplication = useMemo(
-    () => applications.find((application) => application.applicationId === selectedApplicationId),
-    [applications, selectedApplicationId],
-  );
-
-  const showNotice = useCallback((type: 'success' | 'error', text: string) => {
-    setNotice({ type, text });
-    window.setTimeout(() => setNotice(null), 6000);
-  }, []);
-
-  const loadApplications = useCallback(async () => {
-    const data = await readJson<{ applications: ConnectedApplication[] }>(await fetch('/user/applications'));
-    setApplications(data.applications);
-    setSelectedApplicationId((current) => current || data.applications[0]?.applicationId || '');
-  }, []);
-
-  const loadApiKeys = useCallback(async (applicationId: string) => {
-    if (!applicationId) {
-      setApiKeys([]);
-      return;
-    }
-    const data = await readJson<{ apiKeys: ApplicationApiKey[] }>(
-      await fetch(`/user/application/api-keys?applicationId=${encodeURIComponent(applicationId)}`),
-    );
-    setApiKeys(data.apiKeys);
-  }, []);
+  const { notice, setNotice, showNotice } = useNotice();
+  const { user, setUser, authorized, setAuthorized, loadCurrentUser } = useCurrentUser();
+  const mailboxes = useMailboxes({ setIsBusy, showNotice });
+  const {
+    applications, selectedApplicationId, setSelectedApplicationId, selectedApplication,
+    applicationForm, setApplicationForm, loadApplications, resetForm, editApplication,
+  } = mailboxes;
+  const {
+    apiKeys, keyName, setKeyName, keyExpiryDays, setKeyExpiryDays,
+    createdApiKey, setCreatedApiKey, loadApiKeys,
+  } = useApiKeys();
+  const { language, languagePending, handleLanguageChange } = useSpaLanguage({ user, showNotice, setUser });
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const me = await readJson<CurrentUser>(await fetch('/user/me'));
-        setUser(me);
-        setAuthorized(true);
-        await loadApplications();
-      } catch {
-        setAuthorized(false);
-      }
-    };
-    load();
-  }, [loadApplications]);
+    const initial = getInitialNotice();
+    if (initial) setNotice(initial);
+  }, [setNotice]);
+
+  useEffect(() => {
+    loadCurrentUser()
+      .then(async (me) => {
+        if (!me) return;
+        try {
+          await loadApplications();
+        } catch {
+          setAuthorized(false);
+        }
+      })
+      .catch(() => undefined);
+  }, [loadCurrentUser, loadApplications, setAuthorized]);
 
   useEffect(() => {
     loadApiKeys(selectedApplicationId).catch((error: unknown) =>
-      showNotice('error', error instanceof Error ? error.message : 'Load failed'),
+      showNotice('error', error instanceof Error ? error.message : t('notice.loadFailed', 'Load Failed')),
     );
-  }, [loadApiKeys, selectedApplicationId, showNotice]);
+  }, [loadApiKeys, selectedApplicationId, showNotice, t]);
 
-  const resetForm = () => {
-    setApplicationForm(emptyForm);
-  };
-
-  const editApplication = (application: ConnectedApplication) => {
-    setApplicationForm({
-      applicationId: application.applicationId,
-      displayName: application.displayName,
-      providerId: application.providerId,
-      clientId: '',
-      clientSecret: '',
-      accessKeyId: '',
-      secretAccessKey: '',
-      topicArn: '',
-    });
-  };
-
-  const saveApplication = async () => {
+  const saveApplication = useCallback(async () => {
     setIsBusy(true);
     try {
       const connectionMethod = providerMethod[applicationForm.providerId];
@@ -131,116 +87,103 @@ export default function SpaApp() {
               secretAccessKey: applicationForm.secretAccessKey,
               topicArn: applicationForm.topicArn,
             };
-      const response = await fetch('/user/application', {
-        method: applicationForm.applicationId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await readJson<{ application: ConnectedApplication }>(response);
-      showNotice('success', applicationForm.applicationId ? 'Application updated.' : 'Application created.');
+      const data = applicationForm.applicationId
+        ? await appSvc.updateApplication(payload)
+        : await appSvc.createApplication(payload);
+      showNotice('success', applicationForm.applicationId ? t('notice.applicationUpdated', 'Application Updated.') : t('notice.applicationCreated', 'Application Created.'));
       resetForm();
       await loadApplications();
       setSelectedApplicationId(data.application.applicationId);
     } catch (error) {
-      showNotice('error', error instanceof Error ? error.message : 'Unable to save application.');
+      showNotice('error', error instanceof Error ? error.message : t('notice.saveFailed', 'Unable To Save Application.'));
     } finally {
       setIsBusy(false);
     }
-  };
+  }, [applicationForm, loadApplications, resetForm, setSelectedApplicationId, showNotice, t]);
 
-  const deleteApplication = async (applicationId: string) => {
-    setIsBusy(true);
-    try {
-      await readJson<{ success: boolean }>(
-        await fetch('/user/application', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ applicationId }),
-        }),
-      );
-      showNotice('success', 'Application deleted.');
-      setSelectedApplicationId('');
-      await loadApplications();
-    } catch (error) {
-      showNotice('error', error instanceof Error ? error.message : 'Unable to delete application.');
-    } finally {
-      setIsBusy(false);
-    }
-  };
+  const deleteApplication = useCallback(
+    async (applicationId: string) => {
+      setIsBusy(true);
+      try {
+        await appSvc.deleteApplication(applicationId);
+        showNotice('success', t('notice.applicationDeleted', 'Application Deleted.'));
+        setSelectedApplicationId('');
+        await loadApplications();
+      } catch (error) {
+        showNotice('error', error instanceof Error ? error.message : t('notice.deleteFailed', 'Unable To Delete Application.'));
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [loadApplications, setSelectedApplicationId, showNotice, t],
+  );
 
-  const startOAuth2 = async (applicationId: string) => {
-    setIsBusy(true);
-    try {
-      const data = await readJson<{ authorizationUrl: string }>(
-        await fetch('/user/application/oauth2/authorize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ applicationId }),
-        }),
-      );
-      window.location.assign(data.authorizationUrl);
-    } catch (error) {
-      showNotice('error', error instanceof Error ? error.message : 'Unable to start OAuth2.');
-      setIsBusy(false);
-    }
-  };
+  const startOAuth2 = useCallback(
+    async (applicationId: string) => {
+      setIsBusy(true);
+      try {
+        const data = await appSvc.createOAuth2Authorization(applicationId);
+        globalThis.location.assign(data.authorizationUrl);
+      } catch (error) {
+        showNotice('error', error instanceof Error ? error.message : t('notice.oauthStartFailed', 'Unable To Start OAuth2.'));
+        setIsBusy(false);
+      }
+    },
+    [showNotice, t],
+  );
 
-  const copyOAuth2RedirectUri = async (redirectUri?: string) => {
-    if (!redirectUri) return;
-    try {
-      await navigator.clipboard.writeText(redirectUri);
-      showNotice('success', 'OAuth2 redirect URI copied.');
-    } catch {
-      showNotice('error', 'Unable to copy OAuth2 redirect URI.');
-    }
-  };
+  const copyOAuth2RedirectUri = useCallback(
+    async (redirectUri?: string) => {
+      if (!redirectUri) return;
+      try {
+        await navigator.clipboard.writeText(redirectUri);
+        showNotice('success', t('notice.redirectCopied', 'OAuth2 Redirect URI Copied.'));
+      } catch {
+        showNotice('error', t('notice.copyFailed', 'Unable To Copy OAuth2 Redirect URI.'));
+      }
+    },
+    [showNotice, t],
+  );
 
-  const createApiKey = async () => {
+  const createApiKey = useCallback(async () => {
     if (!selectedApplicationId) return;
     setIsBusy(true);
     try {
-      const data = await readJson<{ apiKey: string; metadata: ApplicationApiKey }>(
-        await fetch('/user/application/api-key', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            applicationId: selectedApplicationId,
-            name: keyName,
-            ...(keyExpiryDays ? { expiresInDays: Number(keyExpiryDays) } : {}),
-          }),
-        }),
+      const data = await appSvc.createApiKey(
+        selectedApplicationId,
+        keyName,
+        keyExpiryDays ? Number(keyExpiryDays) : undefined,
       );
       setCreatedApiKey(data.apiKey);
       setKeyName('');
       setKeyExpiryDays('');
       await loadApiKeys(selectedApplicationId);
-      showNotice('success', 'API key created.');
+      showNotice('success', t('notice.apiKeyCreated', 'API Key Created.'));
     } catch (error) {
-      showNotice('error', error instanceof Error ? error.message : 'Unable to create API key.');
+      showNotice('error', error instanceof Error ? error.message : t('notice.apiKeyCreateFailed', 'Unable To Create API Key.'));
     } finally {
       setIsBusy(false);
     }
-  };
+  }, [selectedApplicationId, keyName, keyExpiryDays, loadApiKeys, setCreatedApiKey, setKeyExpiryDays, setKeyName, showNotice, t]);
 
-  const deleteApiKey = async (apiKeyId: string) => {
-    if (!selectedApplicationId) return;
-    setIsBusy(true);
-    try {
-      await readJson<{ success: boolean }>(
-        await fetch('/user/application/api-key', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ applicationId: selectedApplicationId, apiKeyId }),
-        }),
-      );
-      await loadApiKeys(selectedApplicationId);
-      showNotice('success', 'API key deleted.');
-    } catch (error) {
-      showNotice('error', error instanceof Error ? error.message : 'Unable to delete API key.');
-    } finally {
-      setIsBusy(false);
-    }
-  };
+  const deleteApiKey = useCallback(
+    async (apiKeyId: string) => {
+      if (!selectedApplicationId) return;
+      setIsBusy(true);
+      try {
+        await appSvc.deleteApiKey(selectedApplicationId, apiKeyId);
+        await loadApiKeys(selectedApplicationId);
+        showNotice('success', t('notice.apiKeyDeleted', 'API Key Deleted.'));
+      } catch (error) {
+        showNotice('error', error instanceof Error ? error.message : t('notice.apiKeyDeleteFailed', 'Unable To Delete API Key.'));
+      } finally {
+        setIsBusy(false);
+      }
+    },
+    [selectedApplicationId, loadApiKeys, showNotice, t],
+  );
+
+
 
   if (authorized === null) {
     return (
@@ -256,329 +199,42 @@ export default function SpaApp() {
 
   return (
     <div className="min-h-screen bg-[#101319] text-[#f3f4f6]">
-      <header className="sticky top-0 z-40 border-b border-[#252b36] bg-[#101319]/95 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="text-xl font-semibold">
-              <span className="text-[#6ee7b7]">Mail</span>-Meow
-            </div>
-            <div className="hidden md:flex items-center rounded-md bg-[#1a1f29] p-1 text-sm text-[#aab4c2]">
-              <span className="px-3 py-1 rounded bg-[#2d3745] text-white">Applications</span>
-              <span className="px-3 py-1">API keys</span>
-            </div>
-          </div>
-          <div className="text-sm text-[#aab4c2] truncate">{user.email}</div>
-        </div>
-      </header>
-
-      {notice && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-slide-down px-5 py-3 rounded-md shadow-xl bg-[#1a1f29] border border-[#374151]">
-          <span className={notice.type === 'success' ? 'text-[#6ee7b7]' : 'text-[#fca5a5]'}>{notice.text}</span>
-        </div>
-      )}
-
-      <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] gap-6">
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">Connected Applications</h1>
-            <span className="text-sm text-[#aab4c2]">
-              {applications.length}/{user.limits.maxApplicationsPerUser}
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {applications.map((application) => (
-              <button
-                key={application.applicationId}
-                onClick={() => setSelectedApplicationId(application.applicationId)}
-                className={`w-full text-left p-4 rounded-md border transition ${
-                  selectedApplicationId === application.applicationId
-                    ? 'border-[#6ee7b7] bg-[#17221f]'
-                    : 'border-[#2d3745] bg-[#171c25] hover:border-[#526073]'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-medium text-white">{application.displayName}</div>
-                    <div className="text-sm text-[#aab4c2]">
-                      {providerLabels[application.providerId]} / {methodLabels[application.connectionMethod]}
-                    </div>
-                  </div>
-                  <StatusBadge status={application.status} />
-                </div>
-              </button>
-            ))}
-            {applications.length === 0 && (
-              <div className="p-5 rounded-md border border-[#2d3745] bg-[#171c25] text-[#aab4c2]">No applications connected.</div>
-            )}
-          </div>
-
-          <ApplicationForm
-            form={applicationForm}
-            setForm={setApplicationForm}
-            onSave={saveApplication}
-            onCancel={resetForm}
-            busy={isBusy}
-          />
-        </section>
-
-        <section className="space-y-6">
-          {selectedApplication ? (
-            <>
-              <div className="rounded-md border border-[#2d3745] bg-[#171c25] p-5">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-xl font-semibold">{selectedApplication.displayName}</h2>
-                      <StatusBadge status={selectedApplication.status} />
-                    </div>
-                    <div className="text-sm text-[#aab4c2]">
-                      {providerLabels[selectedApplication.providerId]} / {methodLabels[selectedApplication.connectionMethod]}
-                    </div>
-                    <div className="text-xs text-[#7d8896] mt-2">Updated {formatTimestamp(selectedApplication.updatedAt)}</div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      className="px-3 py-2 rounded-md bg-[#2d3745] hover:bg-[#3b4655]"
-                      onClick={() => editApplication(selectedApplication)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="px-3 py-2 rounded-md bg-[#3a1f23] text-[#fecaca] hover:bg-[#4d272d]"
-                      onClick={() => deleteApplication(selectedApplication.applicationId)}
-                      disabled={isBusy}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                {selectedApplication.connectionMethod === 'oauth2' && (
-                  <div className="mt-5 rounded-md border border-[#334155] bg-[#11161f] p-4">
-                    <div className="text-sm text-[#aab4c2] mb-2">OAuth2 redirect URI</div>
-                    <div className="flex flex-col md:flex-row gap-2">
-                      <input
-                        readOnly
-                        value={selectedApplication.oauth2RedirectUri ?? ''}
-                        className="flex-1 min-w-0 px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-[#d1d5db]"
-                      />
-                      <button
-                        type="button"
-                        aria-label="Copy OAuth2 redirect URI"
-                        className="px-4 py-2 rounded-md bg-[#2d3745] hover:bg-[#3b4655] disabled:opacity-50"
-                        onClick={() => copyOAuth2RedirectUri(selectedApplication.oauth2RedirectUri)}
-                        disabled={!selectedApplication.oauth2RedirectUri}
-                      >
-                        Copy
-                      </button>
-                      <button
-                        type="button"
-                        className="px-4 py-2 rounded-md bg-[#0f766e] hover:bg-[#0d9488] disabled:opacity-50"
-                        onClick={() => startOAuth2(selectedApplication.applicationId)}
-                        disabled={isBusy}
-                      >
-                        Start OAuth2
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-md border border-[#2d3745] bg-[#171c25] p-5">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-5">
-                  <div>
-                    <h2 className="text-xl font-semibold">API Keys</h2>
-                    <p className="text-sm text-[#aab4c2] mt-1">
-                      {apiKeys.length}/{user.limits.maxApiKeysPerApplication} for this application
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-[180px_130px_auto] gap-2">
-                    <input
-                      value={keyName}
-                      onChange={(event) => setKeyName(event.target.value)}
-                      placeholder="Key name"
-                      className="px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
-                    />
-                    <input
-                      value={keyExpiryDays}
-                      onChange={(event) => setKeyExpiryDays(event.target.value)}
-                      placeholder={`${user.limits.defaultApiKeyExpiryDays} days`}
-                      inputMode="numeric"
-                      className="px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
-                    />
-                    <button
-                      className="px-4 py-2 rounded-md bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50"
-                      onClick={createApiKey}
-                      disabled={isBusy || !keyName || selectedApplication.status !== 'connected'}
-                    >
-                      Create
-                    </button>
-                  </div>
-                </div>
-
-                {createdApiKey && (
-                  <div className="mb-4 rounded-md border border-[#6ee7b7] bg-[#10231f] p-4">
-                    <div className="text-sm text-[#6ee7b7] mb-2">New API key</div>
-                    <input
-                      readOnly
-                      value={createdApiKey}
-                      className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
-                    />
-                  </div>
-                )}
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="text-[#aab4c2]">
-                      <tr className="border-b border-[#2d3745]">
-                        <th className="text-left font-medium py-3 pr-4">Name</th>
-                        <th className="text-left font-medium py-3 pr-4">Key</th>
-                        <th className="text-left font-medium py-3 pr-4">Expires</th>
-                        <th className="text-left font-medium py-3 pr-4">Last used</th>
-                        <th className="text-right font-medium py-3">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {apiKeys.map((apiKey) => (
-                        <tr key={apiKey.apiKeyId} className="border-b border-[#242b36]">
-                          <td className="py-3 pr-4">{apiKey.name}</td>
-                          <td className="py-3 pr-4 text-[#aab4c2]">
-                            {apiKey.keyPrefix}...{apiKey.keyLastFour}
-                          </td>
-                          <td className="py-3 pr-4 text-[#aab4c2]">{formatExpiryTimestamp(apiKey.expiresAt)}</td>
-                          <td className="py-3 pr-4 text-[#aab4c2]">{formatTimestamp(apiKey.lastUsedAt)}</td>
-                          <td className="py-3 text-right">
-                            <button className="text-[#fca5a5] hover:text-[#fecaca]" onClick={() => deleteApiKey(apiKey.apiKeyId)}>
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {apiKeys.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="py-8 text-center text-[#aab4c2]">
-                            No API keys for this application.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="rounded-md border border-[#2d3745] bg-[#171c25] p-8 text-center text-[#aab4c2]">
-              Select or create an application.
-            </div>
-          )}
-        </section>
-      </main>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: 'draft' | 'connected' }) {
-  return (
-    <span
-      className={`px-2 py-1 rounded text-xs font-medium ${
-        status === 'connected' ? 'bg-[#12362f] text-[#6ee7b7]' : 'bg-[#3b2f16] text-[#fbbf24]'
-      }`}
-    >
-      {status}
-    </span>
-  );
-}
-
-function ApplicationForm({
-  form,
-  setForm,
-  onSave,
-  onCancel,
-  busy,
-}: {
-  form: ApplicationFormState;
-  setForm: (form: ApplicationFormState) => void;
-  onSave: () => void;
-  onCancel: () => void;
-  busy: boolean;
-}) {
-  const method = providerMethod[form.providerId];
-  const update = (changes: Partial<ApplicationFormState>) => setForm({ ...form, ...changes });
-
-  return (
-    <div className="rounded-md border border-[#2d3745] bg-[#171c25] p-5">
-      <h2 className="text-lg font-semibold mb-4">{form.applicationId ? 'Edit Application' : 'New Application'}</h2>
-      <div className="space-y-3">
-        <input
-          value={form.displayName}
-          onChange={(event) => update({ displayName: event.target.value })}
-          placeholder="Display name"
-          className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
-        />
-        <select
-          value={form.providerId}
-          onChange={(event) => update({ providerId: event.target.value as ProviderId })}
-          disabled={Boolean(form.applicationId)}
-          className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white disabled:opacity-60"
-        >
-          <option value="google-gmail">Google Gmail / OAuth2</option>
-          <option value="microsoft-outlook">Microsoft Outlook / OAuth2</option>
-          <option value="amazon-sns">Amazon SNS / Access keys</option>
-        </select>
-
-        {method === 'oauth2' ? (
-          <>
-            <input
-              value={form.clientId}
-              onChange={(event) => update({ clientId: event.target.value })}
-              placeholder="OAuth2 client ID"
-              className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
+      <Header user={user} view={view} onViewChange={setView} language={language} onLanguageChange={handleLanguageChange} />
+      <Notice notice={notice} />
+      <SpaViewRouter
+        view={view}
+        views={{
+          mailboxes: (
+            <MailboxesView
+              user={user}
+              applications={applications}
+              selectedApplicationId={selectedApplicationId}
+              onSelectApplication={setSelectedApplicationId}
+              selectedApplication={selectedApplication}
+              applicationForm={applicationForm}
+              setApplicationForm={setApplicationForm}
+              onSaveApplication={saveApplication}
+              onResetForm={resetForm}
+              onEditApplication={editApplication}
+              onDeleteApplication={deleteApplication}
+              onStartOAuth2={startOAuth2}
+              onCopyRedirectUri={copyOAuth2RedirectUri}
+              apiKeys={apiKeys}
+              keyName={keyName}
+              setKeyName={setKeyName}
+              keyExpiryDays={keyExpiryDays}
+              setKeyExpiryDays={setKeyExpiryDays}
+              createdApiKey={createdApiKey}
+              onCreateApiKey={createApiKey}
+              onDeleteApiKey={deleteApiKey}
+              isBusy={isBusy || languagePending}
+              lng={i18n.resolvedLanguage ?? language}
             />
-            <input
-              value={form.clientSecret}
-              onChange={(event) => update({ clientSecret: event.target.value })}
-              placeholder="OAuth2 client secret"
-              type="password"
-              className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
-            />
-          </>
-        ) : (
-          <>
-            <input
-              value={form.accessKeyId}
-              onChange={(event) => update({ accessKeyId: event.target.value })}
-              placeholder="AWS access key ID"
-              className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
-            />
-            <input
-              value={form.secretAccessKey}
-              onChange={(event) => update({ secretAccessKey: event.target.value })}
-              placeholder="AWS secret access key"
-              type="password"
-              className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
-            />
-            <input
-              value={form.topicArn}
-              onChange={(event) => update({ topicArn: event.target.value })}
-              placeholder="SNS topic ARN"
-              className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
-            />
-          </>
-        )}
-        <div className="flex gap-2">
-          <button
-            className="flex-1 px-4 py-2 rounded-md bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50"
-            onClick={onSave}
-            disabled={busy}
-          >
-            Save
-          </button>
-          <button className="px-4 py-2 rounded-md bg-[#2d3745] hover:bg-[#3b4655]" onClick={onCancel} disabled={busy}>
-            Clear
-          </button>
-        </div>
-      </div>
+          ),
+          processing: <ProcessingView lng={i18n.resolvedLanguage ?? language} />,
+          help: <HelpView />,
+        }}
+      />
     </div>
   );
 }

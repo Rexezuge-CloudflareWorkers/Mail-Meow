@@ -1,0 +1,82 @@
+{
+  "app": {
+    "title": "Mail-Meow",
+    "subtitle": "Połączone wysyłanie e-maili i SNS",
+    "loading": "Ładowanie…",
+    "unauthorizedTitle": "Brak autoryzacji",
+    "unauthorizedBody": "Zaloguj się przez Cloudflare Access, aby zarządzać aplikacjami."
+  },
+  "header": {
+    "language": "Język",
+    "docs": "Docs",
+    "signOut": "Wyloguj"
+  },
+  "nav": {
+    "mailboxes": "Skrzynki",
+    "processing": "Przetwarzanie",
+    "help": "Pomoc"
+  },
+  "mailboxes": {
+    "title": "Połączone aplikacje",
+    "empty": "Brak połączonych aplikacji",
+    "emptyHint": "Utwórz pierwszą aplikację, aby wysyłać e-maile lub wiadomości SNS.",
+    "newApplication": "Nowa aplikacja",
+    "editApplication": "Edytuj aplikację",
+    "displayName": "Nazwa wyświetlana",
+    "displayNamePlaceholder": "Nadawca Gmail",
+    "provider": "Dostawca",
+    "connectionMethod": "Metoda połączenia",
+    "oauth2ClientId": "ID klienta OAuth2",
+    "oauth2ClientSecret": "Sekret klienta OAuth2",
+    "awsAccessKeyId": "ID klucza dostępu AWS",
+    "awsSecretAccessKey": "Tajny klucz AWS",
+    "snsTopicArn": "ARN tematu SNS",
+    "save": "Zapisz aplikację",
+    "cancel": "Anuluj",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "authorize": "Autoryzuj u dostawcy",
+    "copyRedirectUri": "Kopiuj URI przekierowania OAuth2",
+    "statusDraft": "Szkic",
+    "statusConnected": "Połączono"
+  },
+  "apiKeys": {
+    "title": "Klucze API",
+    "empty": "Brak kluczy API",
+    "keyName": "Nazwa klucza",
+    "keyNamePlaceholder": "Klucz produkcyjny",
+    "expiryDays": "Dni ważności",
+    "create": "Utwórz klucz API",
+    "delete": "Unieważnij",
+    "createdHint": "Skopiuj ten klucz teraz. Nie zostanie pokazany ponownie."
+  },
+  "processing": {
+    "title": "Uruchomienia zadań",
+    "empty": "Brak uruchomień",
+    "taskType": "Typ zadania",
+    "runNow": "Uruchom teraz",
+    "status": "Status"
+  },
+  "help": {
+    "title": "Pomoc",
+    "oauthTitle": "Konfiguracja OAuth2",
+    "oauthBody": "Zarejestruj URI przekierowania w Google lub Microsoft, a następnie autoryzuj aplikację."
+  },
+  "notice": {
+    "applicationCreated": "Utworzono aplikację.",
+    "applicationUpdated": "Zaktualizowano aplikację.",
+    "applicationDeleted": "Usunięto aplikację.",
+    "apiKeyCreated": "Utworzono klucz API.",
+    "apiKeyDeleted": "Usunięto klucz API.",
+    "oauthConnected": "Połączono OAuth2.",
+    "oauthFailed": "Nie udało się połączyć OAuth2.",
+    "redirectCopied": "Skopiowano URI przekierowania.",
+    "loadFailed": "Ładowanie nie powiodło się",
+    "saveFailed": "Nie można zapisać aplikacji.",
+    "deleteFailed": "Nie można usunąć aplikacji.",
+    "oauthStartFailed": "Nie można uruchomić OAuth2.",
+    "copyFailed": "Nie można skopiować URI.",
+    "apiKeyCreateFailed": "Nie można utworzyć klucza API.",
+    "apiKeyDeleteFailed": "Nie można usunąć klucza API."
+  }
+}

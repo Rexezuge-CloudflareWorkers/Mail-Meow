@@ -1,0 +1,43 @@
+{
+  "name": "@mail-meow/backend-services",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./application": "./src/application/index.ts",
+    "./application/*": "./src/application/*.ts",
+    "./auth": "./src/auth/index.ts",
+    "./auth/*": "./src/auth/*.ts",
+    "./email": "./src/email/index.ts",
+    "./email/*": "./src/email/*.ts",
+    "./sns": "./src/sns/index.ts",
+    "./sns/*": "./src/sns/*.ts",
+    "./apikey": "./src/apikey/index.ts",
+    "./apikey/*": "./src/apikey/*.ts",
+    "./oauth2": "./src/oauth2/index.ts",
+    "./oauth2/*": "./src/oauth2/*.ts",
+    "./user": "./src/user/index.ts",
+    "./user/*": "./src/user/*.ts",
+    "./processing": "./src/processing/index.ts",
+    "./processing/*": "./src/processing/*.ts",
+    "./composition": "./src/composition/index.ts",
+    "./composition/*": "./src/composition/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mail-meow/backend-data": "workspace:*",
+    "@mail-meow/backend-errors": "workspace:*",
+    "@mail-meow/backend-runtime": "workspace:*",
+    "@mail-meow/provider-clients": "workspace:*",
+    "@mail-meow/shared": "workspace:*",
+    "jose": "6.2.10"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "typescript": "6.0.3"
+  }
+}

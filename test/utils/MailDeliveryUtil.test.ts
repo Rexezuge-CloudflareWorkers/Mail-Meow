@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MailDeliveryUtil } from '@/utils/MailDeliveryUtil';
+import { MailDeliveryUtil } from '@mail-meow/provider-clients';
 
 function decodeBase64Url(value: string): string {
   const normalized: string = value.replaceAll('-', '+').replaceAll('_', '/');

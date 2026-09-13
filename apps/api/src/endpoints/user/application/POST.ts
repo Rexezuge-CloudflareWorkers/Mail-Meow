@@ -1,15 +1,8 @@
-import {
-  CONNECTED_APPLICATION_STATUS_CONNECTED,
-  CONNECTED_APPLICATION_STATUS_DRAFT,
-  CONNECTION_METHOD_ACCESS_KEYS,
-  DEFAULT_MAX_APPLICATIONS_PER_USER,
-} from '@mail-meow/shared/constants';
-import { ConnectedApplicationDAO } from '@/dao';
-import { BadRequestError } from '@/error';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import type { ConnectedApplicationCredentials, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
-import { ConfigurationUtil, BaseUrlUtil } from '@/utils';
+import type { ConnectedApplicationMetadata } from '@mail-meow/shared/model';
 
 class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, CreateApplicationResponse, CreateApplicationEnv> {
   schema = {
@@ -71,7 +64,7 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
               },
               topicArn: {
                 type: 'string' as const,
-                pattern: '^arn:aws:sns:[a-z0-9-]+:\\d{12}:[A-Za-z0-9_.-]+$',
+                pattern: String.raw`^arn:aws:sns:[a-z0-9-]+:\d{12}:[A-Za-z0-9_.-]+$`,
                 description: 'SNS topic ARN that published messages are sent to (required for access-keys applications)',
                 example: 'arn:aws:sns:us-east-1:123456789012:order-notifications',
               },
@@ -124,7 +117,17 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
               properties: {
                 application: {
                   type: 'object' as const,
-                  required: ['applicationId', 'userEmail', 'displayName', 'providerId', 'connectionMethod', 'status', 'createdAt', 'updatedAt', 'oauth2RedirectUri'],
+                  required: [
+                    'applicationId',
+                    'userEmail',
+                    'displayName',
+                    'providerId',
+                    'connectionMethod',
+                    'status',
+                    'createdAt',
+                    'updatedAt',
+                    'oauth2RedirectUri',
+                  ],
                   properties: {
                     applicationId: {
                       type: 'string' as const,
@@ -164,12 +167,12 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
                     createdAt: {
                       type: 'number' as const,
                       description: 'Unix timestamp in seconds when the application was created',
-                      example: 1757548800,
+                      example: 1_757_548_800,
                     },
                     updatedAt: {
                       type: 'number' as const,
                       description: 'Unix timestamp in seconds when the application was last updated',
-                      example: 1757548800,
+                      example: 1_757_548_800,
                     },
                     oauth2RedirectUri: {
                       type: 'string' as const,
@@ -192,8 +195,8 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
                     providerId: 'google-gmail',
                     connectionMethod: 'oauth2',
                     status: 'draft',
-                    createdAt: 1757548800,
-                    updatedAt: 1757548800,
+                    createdAt: 1_757_548_800,
+                    updatedAt: 1_757_548_800,
                     oauth2RedirectUri: 'https://mail.example.com/api/oauth2/callback/123e4567-e89b-12d3-a456-426614174000',
                   },
                 },
@@ -208,8 +211,8 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
                     providerId: 'amazon-sns',
                     connectionMethod: 'access-keys',
                     status: 'connected',
-                    createdAt: 1757548800,
-                    updatedAt: 1757548800,
+                    createdAt: 1_757_548_800,
+                    updatedAt: 1_757_548_800,
                     oauth2RedirectUri: 'https://mail.example.com/api/oauth2/callback/223e4567-e89b-12d3-a456-426614174001',
                   },
                 },
@@ -310,41 +313,21 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
     cxt: RouteContext<CreateApplicationEnv>,
   ): Promise<CreateApplicationResponse> {
     const userEmail: string = this.getAuthenticatedUserEmailAddress(cxt);
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const dao: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const maxApplications: number = ConfigurationUtil.getPositiveInteger(env.MAX_APPLICATIONS_PER_USER, DEFAULT_MAX_APPLICATIONS_PER_USER);
-    if ((await dao.countByUserEmail(userEmail)) >= maxApplications) {
-      throw new BadRequestError(`Maximum ${maxApplications} connected applications allowed per user.`);
-    }
-
-    const credentials: ConnectedApplicationCredentials =
-      request.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
-        ? {
-            accessKeyId: request.accessKeyId!,
-            secretAccessKey: request.secretAccessKey!,
-            topicArn: request.topicArn!,
-          }
-        : {
-            clientId: request.clientId!,
-            clientSecret: request.clientSecret!,
-          };
-    const status: string =
-      request.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
-        ? CONNECTED_APPLICATION_STATUS_CONNECTED
-        : CONNECTED_APPLICATION_STATUS_DRAFT;
-    const application: ConnectedApplicationMetadata = await dao.create(
+    const scope = createRequestScope(env);
+    const application = await scope.get(Tokens.ApplicationService).createApplication({
       userEmail,
-      request.displayName,
-      request.providerId,
-      request.connectionMethod,
-      credentials,
-      status,
-    );
+      displayName: request.displayName,
+      providerId: request.providerId,
+      connectionMethod: request.connectionMethod,
+      clientId: request.clientId,
+      clientSecret: request.clientSecret,
+      accessKeyId: request.accessKeyId,
+      secretAccessKey: request.secretAccessKey,
+      topicArn: request.topicArn,
+      raw: request.raw,
+    });
     return {
-      application: {
-        ...application,
-        oauth2RedirectUri: `${BaseUrlUtil.getBaseUrl(request.raw)}/api/oauth2/callback/${application.applicationId}`,
-      },
+      application,
     };
   }
 }
@@ -369,7 +352,7 @@ interface CreateApplicationResponse extends IResponse {
 }
 
 interface CreateApplicationEnv extends IUserEnv {
-  MAX_APPLICATIONS_PER_USER?: string | undefined;
+  MAX_APPLICATIONS_PER_USER?: string;
 }
 
 export { CreateApplicationRoute };

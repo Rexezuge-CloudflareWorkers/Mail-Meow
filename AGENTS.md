@@ -1,120 +1,107 @@
 # AGENTS.md
 
-Guidance for agents working in Mail-Meow.
+Guidance for agents working in Mail-Meow. `CLAUDE.md` is a symbolic link to this file. This is the global index — follow the links to scoped sub-guides before working in an area.
 
 ## Overview
 
-Mail-Meow is a Cloudflare Worker API with a Vite React management UI in a pnpm workspace. Cloudflare Zero Trust protects `/user/*`; public delivery endpoints under `/api/*` use API keys embedded in the path.
+Mail-Meow is a Cloudflare Worker API + Vite React SPA in a pnpm workspace (`@mail-meow/monorepo`, `packageManager: pnpm@11.2.2`).
+
+- **Core**: Cloudflare Zero Trust on `/user/*` (JWT `cf-access-jwt-assertion`); public delivery endpoints under `/api/*` use API keys embedded in the path.
+- **Background**: `apps/background` auto-refreshes OAuth2 tokens via `CronTasksWorker` DO (2-phase `TaskRegistry`) + `OAuth2TokenRefreshWorker` DO (per-application serialization, KV cache).
+- **Providers**: `google-gmail`, `microsoft-outlook` (`oauth2`), `amazon-sns` (`access-keys`). See `packages/provider-clients/AGENTS.md`.
+- **Features**: 12-locale i18n (frontend `apps/web/src/locales` + backend `packages/shared/src/i18n`), task-run visibility, API-key management. See Index below.
 
 ## Cloudflare Documentation
 
-STOP. Cloudflare Workers APIs, limits, and product behavior change frequently. Before any Workers, KV, R2, D1, Durable Objects, Queues, Vectorize, Workers AI, or Agents SDK task, retrieve current official documentation.
+**STOP.** APIs, limits, and behavior change frequently. Before any Workers, KV, R2, D1, Durable Objects, Queues, Vectorize, Workers AI, or Agents SDK task, retrieve current official docs.
 
-- Workers docs: https://developers.cloudflare.com/workers/
-- Cloudflare MCP docs: https://docs.mcp.cloudflare.com/mcp
-- Node.js compatibility: https://developers.cloudflare.com/workers/runtime-apis/nodejs/
+- Workers: https://developers.cloudflare.com/workers/
+- Cloudflare MCP: https://docs.mcp.cloudflare.com/mcp
+- Node.js compat: https://developers.cloudflare.com/workers/runtime-apis/nodejs/
 - Worker errors: https://developers.cloudflare.com/workers/observability/errors/
-
-For limits and quotas, retrieve the product's current `/platform/limits/` page, for example `/workers/platform/limits/`.
-
-Retrieve API references and limits from the relevant product docs:
-
-- `/workers/`
-- `/kv/`
-- `/r2/`
-- `/d1/`
-- `/durable-objects/`
-- `/queues/`
-- `/vectorize/`
-- `/workers-ai/`
-- `/agents/`
-
-Error-specific guidance:
-
-- Error 1102 means CPU or memory was exceeded; retrieve current limits from `/workers/platform/limits/`.
-- For any other Worker error, use the current Worker errors docs.
-
-If this application starts using Durable Objects or Workflows, also consult:
-
-- Durable Objects best practices: https://developers.cloudflare.com/durable-objects/best-practices/rules-of-durable-objects/
-- Workflows best practices: https://developers.cloudflare.com/workflows/build/rules-of-workflows/
+- Limits: retrieve each product's `/platform/limits/` page (e.g. `/workers/platform/limits/`)
+- Product refs: `/workers/`, `/kv/`, `/r2/`, `/d1/`, `/durable-objects/`, `/queues/`, `/vectorize/`, `/workers-ai/`, `/agents/`
+- Error 1102 = CPU/memory exceeded; see `/workers/platform/limits/`.
+- Durable Objects: https://developers.cloudflare.com/durable-objects/best-practices/rules-of-durable-objects/
+- Workflows: https://developers.cloudflare.com/workflows/build/rules-of-workflows/
 
 ## Commands
 
-Always source the user's toolchain setup before Node, pnpm, npm, npx, or Wrangler commands:
+Plain `pnpm` is canonical (CI uses `pnpm/action-setup@v4` + `setup-node node 24`). No `source ~/.customrc`, no `volta run` prefix.
 
 ```bash
-source ~/.customrc
-volta run pnpm install
-volta run pnpm run dev
-volta run pnpm run typecheck
-volta run pnpm run test
-volta run pnpm run build
-volta run pnpm run lint
-volta run pnpm run deploy
-volta run pnpm run cf-typegen
+pnpm install
+pnpm -r typecheck && pnpm run lint && pnpm run test:coverage && pnpm run test:integration
+pnpm --filter @mail-meow/web build   # only web has a build script
+pnpm --filter @mail-meow/web dev     # vite dev server
+pnpm run typegen   # after changing wrangler bindings
+pnpm exec wrangler dev
+pnpm exec wrangler deploy
 ```
 
-Cloudflare command equivalents:
+## Import Direction
 
-| Command                         | Purpose                   |
-| ------------------------------- | ------------------------- |
-| `volta run npx wrangler dev`    | Local Worker development  |
-| `volta run npx wrangler deploy` | Deploy to Cloudflare      |
-| `volta run npx wrangler types`  | Generate TypeScript types |
+```
+Layer 0: shared, backend-errors          — zero @mail-meow/* deps
+Layer 1: backend-runtime                 → layer 0 only
+Layer 2: backend-data, provider-clients  → layer 0 only
+Layer 3: backend-services                → layers 0–2 (not apps)
+(no Layer 4 by design)
+Layer 5: apps/background                 → layers 0–3 (provider-clients OK)
+         apps/api                        → layers 0–3 + background (NOT provider-clients directly)
+```
 
-Run `volta run pnpm run cf-typegen` after changing bindings in Wrangler config.
+Enforced by ESLint `no-restricted-imports` in `eslint.config.mjs` (Layer 5 currently only blocks `apps/api → provider-clients`).
 
-## Architecture
+## Index
 
-- `apps/api/src/index.ts` exports `MailMeowWorker`.
-- `apps/api/src/workers/MailMeowWorker.ts` registers Hono + Chanfana routes and serves the embedded SPA shell for `/user/*`.
-- `apps/api/src/endpoints/` contains file-routed endpoint classes.
-- `apps/api/src/dao/` owns D1 access.
-- `apps/api/src/middleware/` owns request middleware, including Cloudflare Access user authentication.
-- `apps/api/src/utils/` owns OAuth2, email, SNS, API-key, and validation helpers.
-- `apps/api/src/generated/spa-shell.ts` is generated by the web build; do not edit it manually.
-- `apps/web/` contains the Vite React SPA for `/user`.
-- `apps/web/components/` contains shared frontend UI helpers and types used by the SPA.
-- `packages/shared/src/` contains cross-package constants, models, schemas, and utilities.
-- `migrations/` contains D1 migrations.
-- `functions/[[path]].ts` proxies Cloudflare Pages requests to the API Worker through a service binding.
-- `test/` contains Vitest suites for workers, schemas, and utilities.
+| Area | Guide |
+|---|---|
+| API worker, auth, routes | `apps/api/AGENTS.md` |
+| Background worker, cron phases, task visibility | `apps/background/AGENTS.md` |
+| Web SPA, frontend i18n, UI text conventions | `apps/web/AGENTS.md` |
+| Provider clients, naming | `packages/provider-clients/AGENTS.md` |
+| D1/DAO layer | `packages/backend-data/AGENTS.md` |
+| Business logic, service domain map | `packages/backend-services/AGENTS.md` |
+| Bindings, wrangler, env vars | `docs/agents/runtime/AGENTS.md` |
+| Tests, thresholds, mock patterns | `docs/agents/testing/AGENTS.md` |
+| Email delivery | `docs/agents/features/email-delivery/AGENTS.md` |
 
-## Build And Runtime Notes
+## Keeping AGENTS.md Current
 
-- The root package is `@mail-meow/monorepo` and uses pnpm workspaces.
-- Root `pnpm run dev` starts the Vite SPA through `@mail-meow/web`.
-- `apps/web/vite.config.ts` proxies `/api` to `http://localhost:8787` during SPA development.
-- `apps/web/vite.config.ts` embeds `apps/web/dist/index.html` into `apps/api/src/generated/spa-shell.ts` during web builds.
-- `apps/api/wrangler.template.jsonc` is the Worker config template. Keep bindings and generated types in sync.
-- Current Worker bindings include D1 binding `DB` and secret binding `AES_ENCRYPTION_KEY_SECRET`.
+Update the scoped sub-guide (not this index) as part of any change that adds, removes, or renames:
+- Routes → `apps/api/AGENTS.md`
+- Cron tasks/phases → `apps/background/AGENTS.md`
+- Web UI, locales, text conventions → `apps/web/AGENTS.md`
+- Providers → `packages/provider-clients/AGENTS.md`
+- DAOs → `packages/backend-data/AGENTS.md`
+- Services → `packages/backend-services/AGENTS.md` (+ feature file if cross-cutting)
+- Env vars, bindings → `docs/agents/runtime/AGENTS.md`
+- Tests, thresholds, mocks → `docs/agents/testing/AGENTS.md`
+- Top-level features → `docs/agents/features/*/AGENTS.md` + one-line Overview touch-up here
 
-## Auth And Routing
+## Commit Policy
 
-- `/user/*` is protected by Cloudflare Access and reads `Cf-Access-Authenticated-User-Email`.
-- `DEV_AUTH_EMAIL` may be set locally to bypass Access headers.
-- `/docs` and `/openapi.json` are generated by Chanfana.
-- `/api/oauth2/callback/:applicationId` is public because OAuth providers do not send Cloudflare Access headers. It is secured by short-lived one-time state plus PKCE.
-- `/api/:api_key/email` and `/api/:api_key/sns` are public and resolve the path API key through `application_api_keys`.
+Always commit changes after completing work unless explicitly told not to.
 
-Protected user routes:
+## Git Commit Messages
 
-- `GET /user/me`
-- `GET /user/applications`
-- `POST /user/application`
-- `PUT /user/application`
-- `DELETE /user/application`
-- `POST /user/application/oauth2/authorize`
-- `GET /user/application/api-keys`
-- `POST /user/application/api-key`
-- `DELETE /user/application/api-key`
+Format: `<TYPE>[optional scope]: <description>`
 
-Public API routes:
+- Type in UPPERCASE: `FIX`, `FEAT`, `DOCS`, `STYLE`, `REFACTOR`, `TEST`, `BUILD`, `CHORE`, `CI`, `PERF`.
+- Scope in lowercase: `FEAT(runtime): Add Scheduled Job State`.
+- Description: Title Case words — `DOCS: Latest Agents Context Reflection`.
+- When committing from `main`, first create a branch: `type/description` or `type/scope/description` in kebab-case (e.g. `feat/bootstrap/bootstrap-jqanywhere-v0.1-framework`).
+- Always include a Markdown body separated from the subject by a blank line.
+- Breaking changes: `!` after type/scope, or `BREAKING CHANGE: <description>` footer.
 
-- `GET /api/oauth2/callback/:applicationId`
-- `POST /api/:api_key/email`
-- `POST /api/:api_key/sns`
+```text
+<TYPE>[optional scope]: <description>
+
+[Markdown body]
+
+[optional footers]
+```
 
 ## Provider Naming
 
@@ -123,25 +110,3 @@ Public API routes:
 - `amazon-sns` / `access-keys`
 
 Do not reintroduce password signup or user-managed refresh-token paste flows.
-
-## Git Commit Messages
-
-- Use Conventional Commits with this subject format: `<TYPE>[optional scope]: <description>`.
-- Write the type in uppercase, for example `FIX`, `FEAT`, `DOCS`, `STYLE`, `REFACTOR`, `TEST`, `BUILD`, `CHORE`, `CI`, or `PERF`.
-- Write the optional scope in lowercase inside parentheses, for example `FEAT(runtime): Add Scheduled Job State`.
-- Write the description as concise human-readable words with spaces, capitalizing the first letter of each word, for example `DOCS: Latest Agents Context Reflection`, `STYLE: Standardize Python Formatting`, or `FEAT: Bootstrap JQAnywhere v0.1 Framework`.
-- When creating a commit from `main`, first switch to a new branch generated from the planned commit subject.
-- Use lowercase slash-separated branch names: `type/description` when there is no scope, or `type/scope/description` when there is a scope.
-- Convert the description to kebab-case for the branch, for example `docs/latest-agents-context-reflection`, `docs/agents/document-commit-standard`, or `feat/bootstrap/bootstrap-jqanywhere-v0.1-framework`.
-- Use Markdown for optional commit bodies, separated from the subject by a blank line.
-- Use optional footers after the body, separated by a blank line, following git trailer-style formatting.
-- Use `FIX` for bug patches and `FEAT` for new features; other conventional types are allowed when they better communicate intent.
-- Mark breaking API changes with `!` after the type or scope, or with a `BREAKING CHANGE: <description>` footer.
-
-```text
-<TYPE>[optional scope]: <description>
-
-[optional body in Markdown]
-
-[optional footer(s)]
-```

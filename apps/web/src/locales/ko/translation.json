@@ -1,0 +1,82 @@
+{
+  "app": {
+    "title": "Mail-Meow",
+    "subtitle": "연결된 이메일 및 SNS 발송",
+    "loading": "불러오는 중…",
+    "unauthorizedTitle": "권한 없음",
+    "unauthorizedBody": "Cloudflare Access로 로그인하여 애플리케이션을 관리하세요."
+  },
+  "header": {
+    "language": "언어",
+    "docs": "문서",
+    "signOut": "로그아웃"
+  },
+  "nav": {
+    "mailboxes": "메일박스",
+    "processing": "처리",
+    "help": "도움말"
+  },
+  "mailboxes": {
+    "title": "연결된 애플리케이션",
+    "empty": "연결된 애플리케이션이 아직 없습니다",
+    "emptyHint": "첫 애플리케이션을 만들어 이메일 또는 SNS 메시지 전송을 시작하세요.",
+    "newApplication": "새 애플리케이션",
+    "editApplication": "애플리케이션 편집",
+    "displayName": "표시 이름",
+    "displayNamePlaceholder": "Gmail 발신자",
+    "provider": "제공자",
+    "connectionMethod": "연결 방법",
+    "oauth2ClientId": "OAuth2 클라이언트 ID",
+    "oauth2ClientSecret": "OAuth2 클라이언트 시크릿",
+    "awsAccessKeyId": "AWS 액세스 키 ID",
+    "awsSecretAccessKey": "AWS 시크릿 키",
+    "snsTopicArn": "SNS 주제 ARN",
+    "save": "애플리케이션 저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "authorize": "제공자로 인증",
+    "copyRedirectUri": "OAuth2 리디렉션 URI 복사",
+    "statusDraft": "초안",
+    "statusConnected": "연결됨"
+  },
+  "apiKeys": {
+    "title": "API 키",
+    "empty": "API 키가 아직 없습니다",
+    "keyName": "키 이름",
+    "keyNamePlaceholder": "프로덕션 키",
+    "expiryDays": "만료 일수",
+    "create": "API 키 만들기",
+    "delete": "해지",
+    "createdHint": "이 키를 지금 복사하세요. 다시 표시되지 않습니다."
+  },
+  "processing": {
+    "title": "백그라운드 작업 실행",
+    "empty": "작업 실행이 아직 없습니다",
+    "taskType": "작업 유형",
+    "runNow": "지금 실행",
+    "status": "상태"
+  },
+  "help": {
+    "title": "도움말",
+    "oauthTitle": "OAuth2 설정",
+    "oauthBody": "Google 또는 Microsoft에 리디렉션 URI를 등록한 뒤 애플리케이션을 인증하세요."
+  },
+  "notice": {
+    "applicationCreated": "애플리케이션을 만들었습니다.",
+    "applicationUpdated": "애플리케이션을 업데이트했습니다.",
+    "applicationDeleted": "애플리케이션을 삭제했습니다.",
+    "apiKeyCreated": "API 키를 만들었습니다.",
+    "apiKeyDeleted": "API 키를 삭제했습니다.",
+    "oauthConnected": "OAuth2 연결이 완료되었습니다.",
+    "oauthFailed": "OAuth2 연결에 실패했습니다.",
+    "redirectCopied": "리디렉션 URI를 복사했습니다.",
+    "loadFailed": "불러오기 실패",
+    "saveFailed": "애플리케이션을 저장할 수 없습니다.",
+    "deleteFailed": "애플리케이션을 삭제할 수 없습니다.",
+    "oauthStartFailed": "OAuth2를 시작할 수 없습니다.",
+    "copyFailed": "URI를 복사할 수 없습니다.",
+    "apiKeyCreateFailed": "API 키를 만들 수 없습니다.",
+    "apiKeyDeleteFailed": "API 키를 삭제할 수 없습니다."
+  }
+}

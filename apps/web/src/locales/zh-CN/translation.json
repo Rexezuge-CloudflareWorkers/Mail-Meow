@@ -1,0 +1,82 @@
+{
+  "app": {
+    "title": "Mail-Meow",
+    "subtitle": "已连接的邮件与 SNS 发送",
+    "loading": "加载中…",
+    "unauthorizedTitle": "未授权",
+    "unauthorizedBody": "使用 Cloudflare Access 登录以管理应用。"
+  },
+  "header": {
+    "language": "语言",
+    "docs": "文档",
+    "signOut": "退出登录"
+  },
+  "nav": {
+    "mailboxes": "邮箱",
+    "processing": "处理",
+    "help": "帮助"
+  },
+  "mailboxes": {
+    "title": "已连接应用",
+    "empty": "暂无已连接应用",
+    "emptyHint": "创建第一个应用以开始发送邮件或 SNS 消息。",
+    "newApplication": "新建应用",
+    "editApplication": "编辑应用",
+    "displayName": "显示名称",
+    "displayNamePlaceholder": "Gmail 发件人",
+    "provider": "提供商",
+    "connectionMethod": "连接方式",
+    "oauth2ClientId": "OAuth2 客户端 ID",
+    "oauth2ClientSecret": "OAuth2 客户端密钥",
+    "awsAccessKeyId": "AWS 访问密钥 ID",
+    "awsSecretAccessKey": "AWS 秘密密钥",
+    "snsTopicArn": "SNS 主题 ARN",
+    "save": "保存应用",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "authorize": "使用提供商授权",
+    "copyRedirectUri": "复制 OAuth2 回调 URI",
+    "statusDraft": "草稿",
+    "statusConnected": "已连接"
+  },
+  "apiKeys": {
+    "title": "API 密钥",
+    "empty": "暂无 API 密钥",
+    "keyName": "密钥名称",
+    "keyNamePlaceholder": "生产密钥",
+    "expiryDays": "有效天数",
+    "create": "创建 API 密钥",
+    "delete": "吊销",
+    "createdHint": "请立即复制此密钥。它不会再次显示。"
+  },
+  "processing": {
+    "title": "后台任务运行",
+    "empty": "暂无任务运行",
+    "taskType": "任务类型",
+    "runNow": "立即运行",
+    "status": "状态"
+  },
+  "help": {
+    "title": "帮助",
+    "oauthTitle": "OAuth2 设置",
+    "oauthBody": "在 Google 或 Microsoft 注册回调 URI，然后授权应用。"
+  },
+  "notice": {
+    "applicationCreated": "应用已创建。",
+    "applicationUpdated": "应用已更新。",
+    "applicationDeleted": "应用已删除。",
+    "apiKeyCreated": "API 密钥已创建。",
+    "apiKeyDeleted": "API 密钥已删除。",
+    "oauthConnected": "OAuth2 连接已完成。",
+    "oauthFailed": "OAuth2 连接失败。",
+    "redirectCopied": "已复制回调 URI。",
+    "loadFailed": "加载失败",
+    "saveFailed": "无法保存应用。",
+    "deleteFailed": "无法删除应用。",
+    "oauthStartFailed": "无法启动 OAuth2。",
+    "copyFailed": "无法复制 URI。",
+    "apiKeyCreateFailed": "无法创建 API 密钥。",
+    "apiKeyDeleteFailed": "无法删除 API 密钥。"
+  }
+}

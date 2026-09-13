@@ -1,0 +1,19 @@
+interface ServiceEnv {
+  DB: unknown;
+  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret | { get(): Promise<string> };
+  OAUTH2_TOKEN_CACHE?: KVNamespace;
+  OAUTH2_TOKEN_REFRESHERS?: DurableObjectNamespace;
+  MAX_APPLICATIONS_PER_USER?: string;
+  MAX_API_KEYS_PER_APPLICATION?: string;
+  DEFAULT_API_KEY_EXPIRY_DAYS?: string;
+  MAX_API_KEY_EXPIRY_DAYS?: string;
+  OAUTH2_STATE_EXPIRY_MINUTES?: string;
+  OAUTH2_ACCESS_TOKEN_REFRESH_WINDOW_SECONDS?: string;
+  OAUTH2_ACCESS_TOKEN_MIN_VALID_SECONDS?: string;
+  OAUTH2_ACCESS_TOKEN_FALLBACK_TTL_SECONDS?: string;
+  OAUTH2_TOKEN_REFRESH_BATCH_SIZE?: string;
+  BACKGROUND_TASK_RUN_RETENTION_DAYS?: string;
+  DEBUG_MODE?: string;
+}
+
+export type { ServiceEnv };

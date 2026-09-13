@@ -1,4 +1,4 @@
-import { ConnectedApplicationDAO } from '@/dao';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 
@@ -152,9 +152,8 @@ class DeleteApplicationRoute extends IUserRoute<DeleteApplicationRequest, Delete
     env: DeleteApplicationEnv,
     cxt: RouteContext<DeleteApplicationEnv>,
   ): Promise<DeleteApplicationResponse> {
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const dao: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    await dao.deleteForUser(request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
+    const scope = createRequestScope(env);
+    await scope.get(Tokens.ApplicationService).deleteApplication(request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
     return { success: true };
   }
 }

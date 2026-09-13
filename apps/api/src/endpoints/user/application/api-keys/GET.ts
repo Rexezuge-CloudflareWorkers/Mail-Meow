@@ -1,8 +1,8 @@
-import { ApplicationApiKeyDAO, ConnectedApplicationDAO } from '@/dao';
-import { BadRequestError } from '@/error';
+import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { BadRequestError } from '@mail-meow/backend-errors';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import type { ApplicationApiKeyMetadata, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
+import type { ApplicationApiKeyMetadata } from '@mail-meow/shared/model';
 
 class ListApplicationApiKeysRoute extends IUserRoute<
   ListApplicationApiKeysRequest,
@@ -73,17 +73,17 @@ class ListApplicationApiKeysRoute extends IUserRoute<
                       createdAt: {
                         type: 'number' as const,
                         description: 'Unix timestamp in seconds when the key was created',
-                        example: 1757548800,
+                        example: 1_757_548_800,
                       },
                       expiresAt: {
                         type: 'number' as const,
                         description: 'Unix timestamp in seconds when the key expires',
-                        example: 1789084800,
+                        example: 1_789_084_800,
                       },
                       lastUsedAt: {
                         type: 'number' as const,
                         description: 'Unix timestamp in seconds when the key was last used to call a delivery endpoint',
-                        example: 1757635200,
+                        example: 1_757_635_200,
                       },
                     },
                   },
@@ -101,9 +101,9 @@ class ListApplicationApiKeysRoute extends IUserRoute<
                       name: 'CI pipeline',
                       keyPrefix: 'mm_K7mP2xQ',
                       keyLastFour: 'N2pQ',
-                      createdAt: 1757548800,
-                      expiresAt: 1789084800,
-                      lastUsedAt: 1757635200,
+                      createdAt: 1_757_548_800,
+                      expiresAt: 1_789_084_800,
+                      lastUsedAt: 1_757_635_200,
                     },
                   ],
                 },
@@ -198,18 +198,9 @@ class ListApplicationApiKeysRoute extends IUserRoute<
     if (!applicationId) {
       throw new BadRequestError('applicationId is required.');
     }
-    const masterKey: string = await env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO: ConnectedApplicationDAO = new ConnectedApplicationDAO(env.DB, masterKey);
-    const application: ConnectedApplicationMetadata | undefined = await applicationDAO.getMetadataByIdForUser(
-      applicationId,
-      this.getAuthenticatedUserEmailAddress(cxt),
-    );
-    if (!application) {
-      throw new BadRequestError('Connected application was not found.');
-    }
-    const apiKeyDAO: ApplicationApiKeyDAO = new ApplicationApiKeyDAO(env.DB);
+    const scope = createRequestScope(env);
     return {
-      apiKeys: await apiKeyDAO.listByApplication(applicationId),
+      apiKeys: await scope.get(Tokens.ApiKeyService).listApiKeys(applicationId, this.getAuthenticatedUserEmailAddress(cxt)),
     };
   }
 }
