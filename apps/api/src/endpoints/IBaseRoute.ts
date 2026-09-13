@@ -62,13 +62,13 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
     // cause preserved. Only untyped errors are masked as internal errors.
     if (error instanceof ServiceError) {
       if (error.getErrorCode() < 500) {
-        console.warn(`Responding with ${error.getErrorType()}:`, error.stack);
+        console.warn(`Responding with ${error.getErrorType()}`);
       } else {
-        console.error(`Responding with ${error.getErrorType()}:`, error);
+        console.error(`Responding with ${error.getErrorType()}`);
       }
       return c.json({ Exception: { Type: error.getErrorType(), Message: error.getErrorMessage() } }, error.getErrorCode());
     }
-    console.error('Caught service error during execution:', error);
+    console.error('Caught service error during execution');
     return c.json(
       {
         Exception: {

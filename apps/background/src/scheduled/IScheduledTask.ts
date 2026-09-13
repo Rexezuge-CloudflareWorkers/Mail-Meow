@@ -52,7 +52,7 @@ abstract class IScheduledTask<TEnv extends IEnv> {
         });
       }
     } catch (error: unknown) {
-      console.error(`[${this.constructor.name}] Uncaught error:`, error);
+      console.error(`[${this.constructor.name}] Uncaught error`);
       if (runId && db) {
         const dao = this.createTaskRunDAO(db);
         await dao.failRun(runId, String(error)).catch((recordError: unknown) => {
