@@ -8,6 +8,8 @@
   },
   "header": {
     "language": "Idioma",
+    "selectLanguage": "Selecionar idioma",
+    "unknownLanguage": "Desconhecido",
     "docs": "Docs",
     "signOut": "Sair"
   },

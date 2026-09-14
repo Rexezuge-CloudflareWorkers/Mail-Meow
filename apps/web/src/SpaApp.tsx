@@ -38,7 +38,7 @@ export default function SpaApp() {
     apiKeys, keyName, setKeyName, keyExpiryDays, setKeyExpiryDays,
     createdApiKey, setCreatedApiKey, loadApiKeys,
   } = useApiKeys();
-  const { language, languagePending, handleLanguageChange } = useSpaLanguage({ user, showNotice, setUser });
+  const { language, languageStatus, languagePending, handleLanguageChange } = useSpaLanguage({ user, showNotice, setUser });
 
   useEffect(() => {
     const initial = getInitialNotice();
@@ -199,7 +199,14 @@ export default function SpaApp() {
 
   return (
     <div className="min-h-screen bg-[#101319] text-[#f3f4f6]">
-      <Header user={user} view={view} onViewChange={setView} language={language} onLanguageChange={handleLanguageChange} />
+      <Header
+        user={user}
+        view={view}
+        onViewChange={setView}
+        language={languageStatus === 'error' ? 'unknown' : language}
+        onLanguageChange={handleLanguageChange}
+        languageDisabled={languagePending || languageStatus !== 'ready'}
+      />
       <Notice notice={notice} />
       <SpaViewRouter
         view={view}
