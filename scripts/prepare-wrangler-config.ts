@@ -10,15 +10,23 @@ const TEMPLATE_PATH = join(process.cwd(), 'apps/api/wrangler.template.jsonc');
 const DEFAULT_UUID = '00000000-0000-0000-0000-000000000000';
 const DEFAULT_HEX_ID = '00000000000000000000000000000000';
 const DEFAULT_SECRET_STORE_NAME = 'default';
+const DEFAULT_KV_NAMESPACE_NAMES: Record<string, string> = {
+  OAUTH2_TOKEN_CACHE: 'mail-meow-oauth2-token-cache',
+};
 const TABLE_COLUMN_SEPARATOR = String.fromCharCode(0x2502);
 const TABLE_RULE_CHARACTER = String.fromCharCode(0x2500);
 
 interface WranglerConfig {
+  name?: string;
   vars?: Record<string, unknown>;
   d1_databases?: Array<{
     binding?: string;
     database_id?: string;
     database_name?: string;
+  }>;
+  kv_namespaces?: Array<{
+    binding?: string;
+    id?: string;
   }>;
   secrets_store_secrets?: Array<{
     binding?: string;
@@ -32,6 +40,12 @@ interface D1Database {
   uuid?: string;
   id?: string;
   database_id?: string;
+}
+
+interface KVNamespace {
+  title?: string;
+  name?: string;
+  id?: string;
 }
 
 interface SecretStore {
@@ -164,6 +178,33 @@ function ensureD1Database(databaseName: string): string {
   return databaseId;
 }
 
+function listKVNamespaces(): KVNamespace[] {
+  return parseJsonArray<KVNamespace>(runWrangler(['kv', 'namespace', 'list']), 'wrangler kv namespace list');
+}
+
+function getKVNamespaceName(config: WranglerConfig, binding: string): string {
+  return DEFAULT_KV_NAMESPACE_NAMES[binding] ?? `${config.name ?? 'mail-meow'}-${binding.toLowerCase()}`;
+}
+
+function ensureKVNamespace(config: WranglerConfig, binding: string): string {
+  const namespaceName = getKVNamespaceName(config, binding);
+  const candidateNames = new Set([namespaceName, `${config.name ?? 'mail-meow'}-${binding}`, binding]);
+  let namespace = listKVNamespaces().find((candidate) => {
+    const candidateName = candidate.title ?? candidate.name;
+    return candidate.id && candidateName && candidateNames.has(candidateName);
+  });
+  if (!namespace) {
+    console.log(`Creating KV namespace: ${namespaceName}`);
+    runWrangler(['kv', 'namespace', 'create', namespaceName]);
+    namespace = listKVNamespaces().find((candidate) => candidate.id && (candidate.title ?? candidate.name) === namespaceName);
+  }
+
+  if (!namespace?.id) {
+    throw new Error(`Unable to discover KV namespace ID for ${namespaceName}.`);
+  }
+  return namespace.id;
+}
+
 function parseSecretStoresTable(output: string): SecretStore[] {
   const stores: SecretStore[] = [];
   for (const line of output.split('\n')) {
@@ -232,6 +273,20 @@ function provisionWranglerResources(): void {
     const databaseId = ensureD1Database(database.database_name);
     console.log(`Using D1 database ${database.database_name}: ${databaseId}`);
     content = writeConfigValue(content, ['d1_databases', index, 'database_id'], databaseId);
+  }
+
+  config = parse(content) as WranglerConfig;
+  for (const [index, namespace] of config.kv_namespaces?.entries() ?? []) {
+    if (namespace.id !== DEFAULT_HEX_ID) {
+      continue;
+    }
+    if (!namespace.binding) {
+      throw new Error(`KV namespace at index ${index} has a placeholder id but no binding.`);
+    }
+
+    const namespaceId = ensureKVNamespace(config, namespace.binding);
+    console.log(`Using KV namespace ${getKVNamespaceName(config, namespace.binding)}: ${namespaceId}`);
+    content = writeConfigValue(content, ['kv_namespaces', index, 'id'], namespaceId);
   }
 
   config = parse(content) as WranglerConfig;
