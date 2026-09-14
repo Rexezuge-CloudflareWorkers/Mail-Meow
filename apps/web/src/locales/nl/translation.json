@@ -8,6 +8,8 @@
   },
   "header": {
     "language": "Taal",
+    "selectLanguage": "Selecteer taal",
+    "unknownLanguage": "Onbekend",
     "docs": "Docs",
     "signOut": "Afmelden"
   },

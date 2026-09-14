@@ -8,6 +8,8 @@
   },
   "header": {
     "language": "語言",
+    "selectLanguage": "選擇語言",
+    "unknownLanguage": "未知",
     "docs": "文件",
     "signOut": "登出"
   },

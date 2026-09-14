@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { SUPPORTED_LANGUAGES } from '../../i18n';
 import type { CurrentUser, SpaView } from '../../types';
+import { LanguageSelector } from './LanguageSelector';
 
 interface HeaderProps {
   user: CurrentUser;
@@ -8,9 +8,10 @@ interface HeaderProps {
   onViewChange: (view: SpaView) => void;
   language: string;
   onLanguageChange: (lng: string) => void;
+  languageDisabled?: boolean;
 }
 
-export default function Header({ user, view, onViewChange, language, onLanguageChange }: HeaderProps) {
+export default function Header({ user, view, onViewChange, language, onLanguageChange, languageDisabled }: HeaderProps) {
   const { t } = useTranslation();
   return (
     <header className="sticky top-0 z-40 border-b border-[#252b36] bg-[#101319]/95 backdrop-blur">
@@ -34,13 +35,7 @@ export default function Header({ user, view, onViewChange, language, onLanguageC
         <div className="flex items-center gap-3">
           <label className="text-sm text-[#aab4c2]">
             {t('header.language', 'Language')}{' '}
-            <select value={language} onChange={(e) => onLanguageChange(e.target.value)} className="bg-[#1a1f29] border border-[#2d3745] rounded px-2 py-1">
-              {SUPPORTED_LANGUAGES.map((lng) => (
-                <option key={lng} value={lng}>
-                  {lng}
-                </option>
-              ))}
-            </select>
+            <LanguageSelector value={language} onChange={onLanguageChange} disabled={languageDisabled} />
           </label>
           <div className="text-sm text-[#aab4c2] truncate">{user.email}</div>
         </div>
