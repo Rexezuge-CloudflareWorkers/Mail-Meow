@@ -80,6 +80,10 @@ export default tseslint.config(
       'unicorn/prefer-number-properties': ['error', { checkInfinity: false }],
       // Allow nested ternaries in JSX (React render patterns)
       'unicorn/no-nested-ternary': 'off',
+      // Early-return guard clauses (`if (x) return y;`) are the established style across the
+      // backend and web layers; the rule only rewrites the final guard of a ladder, which yields
+      // asymmetric mixed style and long inline ternaries (e.g. a 3-clause negated validation guard)
+      'unicorn/prefer-ternary': 'off',
       // Allow Array.from — codebase uses it for iterables
       'unicorn/prefer-spread': 'off',
       // Entire codebase uses PascalCase for TS files; kebab-case would require mass renames
