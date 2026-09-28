@@ -8,6 +8,21 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
 - The Worker serves the SPA only from its `/user/*` catch-all (`MailMeowWorker`: non-`/user/` paths return 404) so API routes aren't intercepted by the assets handler.
 - Worker bindings: D1 `DB`, KV `OAUTH2_TOKEN_CACHE`, Secrets Store `AES_ENCRYPTION_KEY_SECRET`, DOs `CRON_TASKS` / `OAUTH2_TOKEN_REFRESHERS`, cron `*/10 * * * *`.
 
+## D1 migrations
+
+- `migrations/*.sql` applies in filename order via `wrangler d1 migrations apply`; the integration harness reads the same files (`test/integration/vitest.config.mts` → `__INTEGRATION_MIGRATION_FILES__`) and applies **one statement at a time**, supporting `applyMigrations(db, {from, to})` for a range.
+- **D1 enforces foreign keys in queries and migrations, and honours neither `PRAGMA foreign_keys = off` nor `PRAGMA legacy_alter_table = on` through the Worker binding.** `PRAGMA defer_foreign_keys = on` _is_ honoured, but per D1's own documentation it does **not** suppress `ON DELETE CASCADE`. Consequences for schema changes:
+  - Never plan a migration around `DROP TABLE` + `RENAME` of a table other tables reference — the implicit `DELETE FROM` cascades. Use additive `ALTER TABLE … ADD COLUMN` and backfill.
+  - `connected_applications.user_email REFERENCES users(email) ON DELETE CASCADE` cannot be repointed, which is why `0011_user_identity.sql` freezes `users.email` as an anchor instead of rebuilding that table. Rebuilding it would cascade away every application, API key, and OAuth2 session the user owns.
+- **Do not wrap a whole migration file in one `db.batch()` when it both adds a column and creates a table referencing it.** A batch is prepared in full before the first statement executes, so the new table's FK is validated against a schema the `ADD COLUMN` has not reached yet, and the file fails with `foreign key mismatch`.
+- SQLite cannot `ADD COLUMN` a PRIMARY KEY. For a stable account key on an existing table, add a plain column and put a UNIQUE index on it — a unique index is a valid foreign-key parent, which is all a `REFERENCES` clause needs.
+- `0007_v3_reset_schema.sql` is the v3 reset and drops every table before recreating `users`. **Any table with a foreign key to `users` must be added to that drop list**, or re-running the reset (which the integration harness does on every `applyMigrations` call) leaves the child pointing at a `users` recreated without the new columns.
+- `UserIdentityUpgrade.int.test.ts` is the template for "do not break an existing database": seed every cascade edge, apply the migration, then assert zero row loss across all of them plus `PRAGMA foreign_key_check` empty.
+
+## Ops
+
+- `scripts/change-email.ts` — change a user's sign-in address. Wraps `UserIdentityService.setPrimaryEmail`'s three statements in the same order, takes a `wrangler d1 export` backup first, and refuses (rather than half-applying) when the target address is already a live login for another account. Supports `--dry-run` and `--remote`; interpolates nothing outside a pattern allow-list.
+
 ## Required vars (no defaults)
 
 `POLICY_AUD`, `TEAM_DOMAIN` — Cloudflare Access JWT verification (`EmailValidationUtil`). No default; requests fail without them.

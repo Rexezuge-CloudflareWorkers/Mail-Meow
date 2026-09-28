@@ -47,7 +47,7 @@ interface RouterWithRegistry {
 
 type AppRouter = HonoOpenAPIRouterType<{
   Bindings: Env;
-  Variables: { AuthenticatedUserEmailAddress: string };
+  Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId: string };
 }>;
 
 class MailMeowWorker extends AbstractEntrypointWorker {
@@ -58,10 +58,10 @@ class MailMeowWorker extends AbstractEntrypointWorker {
 
     const app: Hono<{
       Bindings: Env;
-      Variables: { AuthenticatedUserEmailAddress: string };
+      Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId: string };
     }> = new Hono<{
       Bindings: Env;
-      Variables: { AuthenticatedUserEmailAddress: string };
+      Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId: string };
     }>();
 
     app.get('/', (c) => c.redirect('/user/'));

@@ -37,6 +37,12 @@ const APPLICATION = {
   credentials: { clientId: 'a', clientSecret: 'b', refreshToken: 'r' },
 };
 
+/**
+ * The authenticated caller, as the services now receive it: a stable id plus the
+ * address. `anchorEmail` is what the DAOs fall back to on a pre-0011 database.
+ */
+const OWNER: AccountIdentity = { id: 'usr_0123456789abcdef0123456789abcdef', email: 'me@example.com', anchorEmail: 'me@example.com' };
+
 const KEY_METADATA = {
   apiKeyId: 'key-1',
   applicationId: 'app-1',
@@ -100,29 +106,29 @@ describe('ApiKeyService', () => {
 
   it('refuses to issue a key for a draft application', async () => {
     const { service } = build({ application: { ...APPLICATION, status: 'draft' } });
-    await expect(service.createApiKey('app-1', 'me@example.com', 'CI')).rejects.toThrow(/must be connected/);
+    await expect(service.createApiKey('app-1', OWNER, 'CI')).rejects.toThrow(/must be connected/);
   });
 
   it('enforces the per-application key limit', async () => {
     const { service, apiKeyDAO } = build({ cfg: config({ maxApiKeysPerApplication: 1 }) });
     apiKeyDAO.countByApplication.mockResolvedValue(1);
-    await expect(service.createApiKey('app-1', 'me@example.com', 'CI')).rejects.toThrow(/Maximum 1 API keys/);
+    await expect(service.createApiKey('app-1', OWNER, 'CI')).rejects.toThrow(/Maximum 1 API keys/);
   });
 
   it('rejects an expiry beyond the configured maximum', async () => {
     const { service } = build({ cfg: config({ maxApiKeyExpiryDays: 30 }) });
-    await expect(service.createApiKey('app-1', 'me@example.com', 'CI', 90)).rejects.toThrow(/cannot exceed 30 days/);
+    await expect(service.createApiKey('app-1', OWNER, 'CI', 90)).rejects.toThrow(/cannot exceed 30 days/);
   });
 
   it('falls back to the configured default expiry', async () => {
     const { service, apiKeyDAO } = build({ cfg: config({ defaultApiKeyExpiryDays: 7 }) });
-    await service.createApiKey('app-1', 'me@example.com', 'CI');
+    await service.createApiKey('app-1', OWNER, 'CI');
     expect(apiKeyDAO.create).toHaveBeenCalled();
   });
 
   it('returns the plaintext key exactly once', async () => {
     const { service } = build();
-    const result = await service.createApiKey('app-1', 'me@example.com', 'CI');
+    const result = await service.createApiKey('app-1', OWNER, 'CI');
     expect(result.apiKey).toMatch(/^mm_/);
     expect(result.metadata.apiKeyId).toBe('key-1');
   });
@@ -130,13 +136,13 @@ describe('ApiKeyService', () => {
   it('checks ownership before listing keys', async () => {
     const { service, applicationDAO } = build({ application: undefined });
     applicationDAO.getByIdForUser.mockResolvedValue(undefined);
-    await expect(service.listApiKeys('app-1', 'me@example.com')).rejects.toBeInstanceOf(BadRequestError);
+    await expect(service.listApiKeys('app-1', OWNER)).rejects.toBeInstanceOf(BadRequestError);
   });
 
   it('checks ownership before revoking a key', async () => {
     const { service, applicationDAO, apiKeyDAO } = build({ application: undefined });
     applicationDAO.getByIdForUser.mockResolvedValue(undefined);
-    await expect(service.deleteApiKey('key-1', 'app-1', 'me@example.com')).rejects.toBeInstanceOf(BadRequestError);
+    await expect(service.deleteApiKey('key-1', 'app-1', OWNER)).rejects.toBeInstanceOf(BadRequestError);
     expect(apiKeyDAO.deleteForApplication).not.toHaveBeenCalled();
   });
 });
@@ -144,9 +150,9 @@ describe('ApiKeyService', () => {
 describe('ApplicationService', () => {
   function build(overrides: { existing?: unknown; count?: number; cfg?: AppConfigReader } = {}) {
     const dao = {
-      countByUserEmail: vi.fn().mockResolvedValue(overrides.count ?? 0),
+      countByUser: vi.fn().mockResolvedValue(overrides.count ?? 0),
       create: vi.fn().mockResolvedValue({ ...APPLICATION, credentials: undefined }),
-      listMetadataByUserEmail: vi.fn().mockResolvedValue([{ ...APPLICATION, credentials: undefined }]),
+      listMetadataByUser: vi.fn().mockResolvedValue([{ ...APPLICATION, credentials: undefined }]),
       getMetadataByIdForUser: vi
         .fn()
         .mockResolvedValue(overrides.existing === undefined ? { ...APPLICATION, credentials: undefined } : overrides.existing),
@@ -166,7 +172,7 @@ describe('ApplicationService', () => {
     const { service } = build({ count: 99 });
     await expect(
       service.createApplication({
-        userEmail: 'me@example.com',
+        user: OWNER,
         displayName: 'x',
         providerId: 'google-gmail',
         connectionMethod: 'oauth2',
@@ -180,7 +186,7 @@ describe('ApplicationService', () => {
   it('creates an OAuth2 application as a draft', async () => {
     const { service, dao } = build();
     await service.createApplication({
-      userEmail: 'me@example.com',
+      user: OWNER,
       displayName: 'x',
       providerId: 'google-gmail',
       connectionMethod: 'oauth2',
@@ -188,7 +194,7 @@ describe('ApplicationService', () => {
       clientSecret: 'b',
       raw: RAW,
     });
-    expect(dao.create).toHaveBeenCalledWith('me@example.com', 'x', 'google-gmail', 'oauth2', { clientId: 'a', clientSecret: 'b' }, 'draft');
+    expect(dao.create).toHaveBeenCalledWith(OWNER, 'x', 'google-gmail', 'oauth2', { clientId: 'a', clientSecret: 'b' }, 'draft');
   });
 
   it('creates an access-keys application as connected', async () => {
@@ -196,7 +202,7 @@ describe('ApplicationService', () => {
     // wrong and would block key issuance.
     const { service, dao } = build();
     await service.createApplication({
-      userEmail: 'me@example.com',
+      user: OWNER,
       displayName: 'x',
       providerId: 'amazon-sns',
       connectionMethod: 'access-keys',
@@ -218,7 +224,7 @@ describe('ApplicationService', () => {
   it('returns the OAuth2 redirect URI alongside the created application', async () => {
     const { service } = build();
     const created = await service.createApplication({
-      userEmail: 'me@example.com',
+      user: OWNER,
       displayName: 'x',
       providerId: 'google-gmail',
       connectionMethod: 'oauth2',
@@ -231,16 +237,16 @@ describe('ApplicationService', () => {
 
   it('lists a user applications', async () => {
     const { service, dao } = build();
-    await expect(service.listApplications('me@example.com')).resolves.toHaveLength(1);
-    expect(dao.listMetadataByUserEmail).toHaveBeenCalledWith('me@example.com');
+    await expect(service.listApplications(OWNER)).resolves.toHaveLength(1);
+    expect(dao.listMetadataByUser).toHaveBeenCalledWith(OWNER);
   });
 
   it('rejects an update to a missing application', async () => {
     const { service, dao } = build({ existing: undefined });
     dao.getMetadataByIdForUser.mockResolvedValue(undefined);
-    await expect(
-      service.updateApplication('app-1', 'me@example.com', 'x', 'google-gmail', 'oauth2', { clientId: 'a' }, 'draft', RAW),
-    ).rejects.toThrow(/was not found/);
+    await expect(service.updateApplication('app-1', OWNER, 'x', 'google-gmail', 'oauth2', { clientId: 'a' }, 'draft', RAW)).rejects.toThrow(
+      /was not found/,
+    );
   });
 
   it('refuses to change the provider or connection method', async () => {
@@ -248,63 +254,139 @@ describe('ApplicationService', () => {
       existing: { ...APPLICATION, providerId: 'google-gmail', connectionMethod: 'oauth2', credentials: undefined },
     });
     await expect(
-      service.updateApplication('app-1', 'me@example.com', 'x', 'microsoft-outlook', 'oauth2', { clientId: 'a' }, 'draft', RAW),
+      service.updateApplication('app-1', OWNER, 'x', 'microsoft-outlook', 'oauth2', { clientId: 'a' }, 'draft', RAW),
     ).rejects.toThrow(/cannot be changed after creation/);
   });
 
   it('deletes an application', async () => {
     const { service, dao } = build();
-    await service.deleteApplication('app-1', 'me@example.com');
-    expect(dao.deleteForUser).toHaveBeenCalledWith('app-1', 'me@example.com');
+    await service.deleteApplication('app-1', OWNER);
+    expect(dao.deleteForUser).toHaveBeenCalledWith('app-1', OWNER);
   });
 });
 
 describe('UserService', () => {
-  function build(user: unknown) {
-    const dao = {
-      upsertByEmail: vi.fn().mockResolvedValue(undefined),
-      getByEmail: vi.fn().mockResolvedValue(user),
+  const USER_ROW = {
+    id: 'usr_0123456789abcdef0123456789abcdef',
+    email: 'me@example.com',
+    current_email: 'me@example.com',
+    preferred_language: null,
+    created_at: 100,
+    updated_at: 200,
+  };
+
+  function build(options: { user?: unknown; registry?: unknown } = {}) {
+    const userDAO = {
+      createUser: vi.fn().mockResolvedValue(undefined),
+      getById: vi.fn().mockResolvedValue(options.user ?? null),
+      getByEmail: vi.fn().mockResolvedValue(options.user ?? null),
+      getByCurrentEmail: vi.fn().mockResolvedValue(options.user ?? null),
       updatePreferredLanguage: vi.fn().mockResolvedValue(undefined),
     };
-    const service = new UserService({ userDAO: () => Promise.resolve(dao as never), config: () => config() });
-    return { service, dao };
+    const userEmailDAO = {
+      get: vi.fn().mockResolvedValue(options.registry ?? null),
+      register: vi.fn().mockResolvedValue('claimed'),
+    };
+    const service = new UserService({
+      userDAO: () => Promise.resolve(userDAO as never),
+      userEmailDAO: () => Promise.resolve(userEmailDAO as never),
+      config: () => config(),
+    });
+    return { service, userDAO, userEmailDAO };
   }
 
-  it('upserts a user', async () => {
-    const { service, dao } = build(null);
+  it('returns the existing account without creating a second one', async () => {
+    const { service, userDAO } = build({
+      registry: { email: 'me@example.com', user_id: USER_ROW.id, is_verified: 1, created_at: 100 },
+      user: USER_ROW,
+    });
+
+    await expect(service.upsertUser('me@example.com')).resolves.toEqual(OWNER);
+    // Resolve-then-create: creating first would fork a duplicate for any address
+    // that had been reassigned.
+    expect(userDAO.createUser).not.toHaveBeenCalled();
+  });
+
+  it('registers a new account and claims its address', async () => {
+    const { service, userDAO, userEmailDAO } = build();
+
+    await service.upsertUser('new@example.com');
+
+    expect(userDAO.createUser).toHaveBeenCalledWith(expect.objectContaining({ anchor: 'new@example.com', loginEmail: 'new@example.com' }));
+    // Claimed before resolving, or the fresh account is invisible to the registry.
+    expect(userEmailDAO.register).toHaveBeenCalledWith(expect.objectContaining({ email: 'new@example.com', isVerified: true }));
+  });
+
+  it('lowercases the address, since Access may deliver mixed case', async () => {
+    const { service, userDAO } = build();
+    await service.upsertUser('  ME@Example.com  ');
+    expect(userDAO.createUser).toHaveBeenCalledWith(expect.objectContaining({ loginEmail: 'me@example.com' }));
+  });
+
+  it("gives a revoked address a fresh account rather than the previous holder's", async () => {
+    // The address moved to another account, so it no longer resolves — but Access
+    // just authenticated whoever holds it *now*, so the correct outcome is a new
+    // account, not a null and certainly not the previous holder's rows.
+    const { service, userDAO, userEmailDAO } = build({
+      registry: { email: 'me@example.com', user_id: 'usr_other', is_verified: 0, created_at: 100 },
+    });
+
     await service.upsertUser('me@example.com');
-    expect(dao.upsertByEmail).toHaveBeenCalledWith('me@example.com');
+
+    // Re-claimed for the new holder: the revoked row is re-pointed, not deleted.
+    expect(userEmailDAO.register).toHaveBeenCalledWith(expect.objectContaining({ email: 'me@example.com', isVerified: true }));
+    // And the address is still the *previous* account's anchor, so the new
+    // account takes an opaque one — otherwise the address could never be
+    // released again.
+    const anchors = userDAO.createUser.mock.calls.map((call) => (call[0] as { anchor: string }).anchor);
+    expect(anchors).toContain('me@example.com');
+    expect(anchors.some((anchor) => anchor.startsWith('anchor-'))).toBe(true);
+  });
+
+  it('resolves to null when neither the address nor an opaque retry can claim it', async () => {
+    // A defensive floor: the caller must be able to distinguish "no account"
+    // from "account created", so it can fail closed rather than proceed id-less.
+    const { service } = build();
+    await expect(service.upsertUser('new@example.com')).resolves.toBeNull();
   });
 
   it('returns null when no language is set', async () => {
-    const { service } = build({ email: 'me@example.com', preferredLanguage: null });
-    await expect(service.getPreferredLanguage('me@example.com')).resolves.toBeNull();
+    const { service } = build({ user: USER_ROW });
+    await expect(service.getPreferredLanguage(OWNER)).resolves.toBeNull();
   });
 
-  it('normalizes the stored language', async () => {
-    const { service } = build({ email: 'me@example.com', preferredLanguage: 'de-DE' });
-    await expect(service.getPreferredLanguage('me@example.com')).resolves.toBe('de');
+  it('normalizes the stored language, reading by id', async () => {
+    const { service, userDAO } = build({ user: { ...USER_ROW, preferred_language: 'de-DE' } });
+    await expect(service.getPreferredLanguage(OWNER)).resolves.toBe('de');
+    expect(userDAO.getById).toHaveBeenCalledWith(USER_ROW.id);
+  });
+
+  it('falls back to the anchor on a pre-0011 database', async () => {
+    const { service, userDAO } = build({ user: { ...USER_ROW, preferred_language: 'fr' } });
+    const preMigration: AccountIdentity = { id: '', email: 'me@example.com', anchorEmail: 'me@example.com' };
+    await expect(service.getPreferredLanguage(preMigration)).resolves.toBe('fr');
+    expect(userDAO.getByEmail).toHaveBeenCalledWith('me@example.com');
   });
 
   it('propagates a DAO failure rather than reporting "no language"', async () => {
     // This previously caught everything and returned null, so a D1 outage was
     // indistinguishable from a user who never chose a language.
-    const { service, dao } = build(null);
-    dao.getByEmail.mockRejectedValue(new Error('D1 down'));
+    const { service, userDAO } = build();
+    userDAO.getById.mockRejectedValue(new Error('D1 down'));
 
-    await expect(service.getPreferredLanguage('me@example.com')).rejects.toThrow('D1 down');
+    await expect(service.getPreferredLanguage(OWNER)).rejects.toThrow('D1 down');
   });
 
   it('summarises the current user with the configured limit', async () => {
-    const { service } = build({ email: 'me@example.com', preferredLanguage: 'fr' });
-    const summary = await service.getCurrentUserSummary('me@example.com');
-    expect(summary).toMatchObject({ email: 'me@example.com', preferredLanguage: 'fr', maxApplicationsPerUser: 99 });
+    const { service } = build({ user: { ...USER_ROW, preferred_language: 'fr' } });
+    const summary = await service.getCurrentUserSummary(OWNER);
+    expect(summary).toMatchObject({ id: USER_ROW.id, email: 'me@example.com', preferredLanguage: 'fr', maxApplicationsPerUser: 99 });
   });
 
-  it('normalizes and stores an updated language', async () => {
-    const { service, dao } = build(null);
-    await expect(service.updatePreferredLanguage('me@example.com', 'zh-CN')).resolves.toBe('zh-CN');
-    expect(dao.updatePreferredLanguage).toHaveBeenCalledWith('me@example.com', 'zh-CN');
+  it('normalizes and stores an updated language against the account', async () => {
+    const { service, userDAO } = build();
+    await expect(service.updatePreferredLanguage(OWNER, 'zh-CN')).resolves.toBe('zh-CN');
+    expect(userDAO.updatePreferredLanguage).toHaveBeenCalledWith(OWNER, 'zh-CN');
   });
 });
 
@@ -323,39 +405,39 @@ describe('ProcessingService', () => {
 
   it('lists runs for the authenticated user', async () => {
     const { service, taskRunDAO } = build();
-    await service.listTaskRuns('me@example.com', {});
+    await service.listTaskRuns(OWNER, {});
     // The user scoping is the DAO's job; the service passes the filters through.
-    expect(taskRunDAO.listForUser.mock.calls[0][0]).toBe('me@example.com');
+    expect(taskRunDAO.listForUser.mock.calls[0][0]).toBe(OWNER);
   });
 
   it('implies latestPerType when no task type is given', async () => {
     const { service, taskRunDAO } = build();
-    await service.listTaskRuns('me@example.com', {});
+    await service.listTaskRuns(OWNER, {});
     expect(taskRunDAO.listForUser.mock.calls[0][1].latestPerType).toBe(true);
   });
 
   it('does not imply latestPerType when a task type is given', async () => {
     const { service, taskRunDAO } = build();
-    await service.listTaskRuns('me@example.com', { taskType: 'oauth2_refresh' });
+    await service.listTaskRuns(OWNER, { taskType: 'oauth2_refresh' });
     expect(taskRunDAO.listForUser.mock.calls[0][1].latestPerType).toBe(false);
   });
 
   it('rejects a task type outside the whitelist', async () => {
     // The whitelist is the point: an unknown type must be rejected, not defaulted.
     const { service, accessTokenService } = build();
-    await expect(service.triggerTask('me@example.com', 'delete_everything', 'app-1')).rejects.toBeInstanceOf(BadRequestError);
+    await expect(service.triggerTask(OWNER, 'delete_everything', 'app-1')).rejects.toBeInstanceOf(BadRequestError);
     expect(accessTokenService.refreshAccessToken).not.toHaveBeenCalled();
   });
 
   it('rejects a trigger for an application the caller does not own', async () => {
     const { service, applicationDAO } = build();
     applicationDAO.getByIdForUser.mockResolvedValue(undefined);
-    await expect(service.triggerTask('me@example.com', BACKGROUND_TASK_TYPE_OAUTH2_REFRESH, 'app-1')).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.triggerTask(OWNER, BACKGROUND_TASK_TYPE_OAUTH2_REFRESH, 'app-1')).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it('forces a refresh for an owned application', async () => {
     const { service, accessTokenService } = build();
-    await service.triggerTask('me@example.com', BACKGROUND_TASK_TYPE_OAUTH2_REFRESH, 'app-1');
+    await service.triggerTask(OWNER, BACKGROUND_TASK_TYPE_OAUTH2_REFRESH, 'app-1');
     expect(accessTokenService.refreshAccessToken).toHaveBeenCalledWith('app-1', { forceRefresh: true });
   });
 });

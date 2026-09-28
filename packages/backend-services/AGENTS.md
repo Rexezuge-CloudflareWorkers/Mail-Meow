@@ -11,8 +11,9 @@ Layer 3. May import layers 0–2 (`shared`, `backend-errors`, `backend-runtime`,
 - `apikey/ApiKeyService.ts` — issue/list/revoke API keys; hash before storage
   (`ApiKeyUtil.hashApiKey`, only `keyPrefix`/`keyLastFour` stored in plaintext);
   `resolveApplication` backs the `/api/:api_key/*` routes.
-- `application/ApplicationService.ts` — connected-application CRUD + quota enforcement.
-  `ApplicationResponseUtil.withRedirectUri` adds `oauth2RedirectUri` to list responses.
+- `application/ApplicationService.ts` — connected-application CRUD + quota enforcement. Takes an
+  `AccountIdentity`, not an email string: the id is the identity, the anchor is the pre-0011
+  fallback. `ApplicationResponseUtil.withRedirectUri` adds `oauth2RedirectUri` to list responses.
 - `auth/EmailValidationUtil.ts` — Cloudflare Access JWT verification via `jose`
   (`cf-access-jwt-assertion` header, `{TEAM_DOMAIN}/cdn-cgi/access/certs`, audience
   `POLICY_AUD`). `DEV_AUTH_EMAIL` is local-only and has no default.
@@ -22,7 +23,9 @@ Layer 3. May import layers 0–2 (`shared`, `backend-errors`, `backend-runtime`,
   `OAuth2AccessTokenService.ts` — token acquisition with KV cache and per-application DO
   fan-out. `OAuth2StateUtil.ts` — state/verifier generation and hashing.
 - `processing/ProcessingService.ts` — task-run queries and manual `oauth2_refresh` trigger.
-- `user/UserService.ts` — user upsert and `preferred_language` read/update.
+- `user/UserService.ts` — `upsertUser` (**resolve-then-create** via `user/accountLookup.ts`, so an address that already identifies an account can never fork a second one; returns an `AccountIdentity` rather than `void`), plus `preferred_language` read/update keyed on the account id so a choice survives an address change.
+- `user/accountLookup.ts` — shared `resolveAccount`/`resolveUserId`/`registerAccount`. A **revoked** registry row is authoritative and never resolves; a row-less address falls through to the `users` lookups (the pre-0011 floor, where the address is the anchor). `registerAccount` uses the address as the anchor when free and an opaque one only when the address is already another account's anchor, so a released address is never permanently unusable.
+- `identity/UserIdentityService.ts` — `resolveAccount`/`resolveUserId` (memoized per request scope) and the address-change path: `setPrimaryEmail` claims → moves → revokes, in that order, and never touches the frozen anchor; `linkVerifiedEmail` is the ops path. **Not routed**: Access is the sole authenticator, so a self-service address change needs a proof-of-control confirm step first (`scripts/change-email.ts` is the ops route).
 - `composition/` — `createRequestScope(env)`, the per-request composition root. See below.
 
 ## Composition Root

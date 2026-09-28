@@ -15,7 +15,7 @@ import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
  */
 type RouteContext = Context<{
   Bindings: Env;
-  Variables: { AuthenticatedUserEmailAddress: string };
+  Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId: string };
 }>;
 
 /**

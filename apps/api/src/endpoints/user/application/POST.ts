@@ -112,10 +112,10 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
   };
 
   protected async handleRequest(request: CreateApplicationRequest, env: Env, cxt: RouteContext): Promise<CreateApplicationResponse> {
-    const userEmail: string = this.getAuthenticatedUserEmailAddress(cxt);
+    const user = this.getAuthenticatedAccount(cxt);
     const scope = createRequestScope(env);
     const application = await scope.applications.createApplication({
-      userEmail,
+      user,
       displayName: request.displayName,
       providerId: request.providerId,
       connectionMethod: request.connectionMethod,

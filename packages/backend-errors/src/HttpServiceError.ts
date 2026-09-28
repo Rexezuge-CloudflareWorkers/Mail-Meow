@@ -13,6 +13,7 @@ const HTTP_ERROR_DEFINITIONS = {
   Unauthorized: { code: 401, defaultMessage: 'Authentication is required and has failed or has not yet been provided.' },
   Forbidden: { code: 403, defaultMessage: 'You do not have permission to perform this action.' },
   NotFound: { code: 404, defaultMessage: 'The requested resource was not found.' },
+  Conflict: { code: 409, defaultMessage: 'The request conflicts with the current state of the resource.' },
   MethodNotAllowed: { code: 405, defaultMessage: 'The requested method is not allowed for this resource.' },
   InternalServerError: {
     code: 500,
@@ -81,6 +82,18 @@ class NotFoundError extends HttpServiceError<'NotFound'> {
   }
 }
 
+/**
+ * The request is well-formed but the resource is in a state that forbids it —
+ * e.g. claiming an email address already verified for a different account.
+ * Distinct from `BadRequest` so the caller can tell "you typed something
+ * invalid" from "that value is taken", which is not retryable without a change.
+ */
+class ConflictError extends HttpServiceError<'Conflict'> {
+  constructor(message?: string) {
+    super('Conflict', message);
+  }
+}
+
 class MethodNotAllowedError extends HttpServiceError<'MethodNotAllowed'> {
   constructor(message?: string) {
     super('MethodNotAllowed', message);
@@ -103,6 +116,7 @@ const DefaultInternalServerError = new InternalServerError();
 
 export {
   BadRequestError,
+  ConflictError,
   DefaultInternalServerError,
   ForbiddenError,
   HTTP_ERROR_DEFINITIONS,

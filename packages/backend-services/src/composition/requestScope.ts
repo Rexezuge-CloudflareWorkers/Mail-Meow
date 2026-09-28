@@ -5,12 +5,14 @@ import {
   OAuth2AccessTokenCacheDAO,
   OAuth2AuthorizationSessionDAO,
   UserDAO,
+  UserEmailDAO,
 } from '@mail-meow/backend-data/dao';
 import type { D1Queryable } from '@mail-meow/backend-data/utils';
 import { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { ApiKeyService } from '../apikey/ApiKeyService';
 import { ApplicationService } from '../application/ApplicationService';
 import { MailDeliveryService } from '../email/MailDeliveryService';
+import { UserIdentityService } from '../identity/UserIdentityService';
 import { OAuth2AccessTokenService } from '../oauth2/OAuth2AccessTokenService';
 import { OAuth2AuthorizationService } from '../oauth2/OAuth2AuthorizationService';
 import { ProcessingService } from '../processing/ProcessingService';
@@ -40,6 +42,7 @@ interface AppServices {
   readonly config: AppConfigReader;
   readonly apiKeys: ApiKeyService;
   readonly applications: ApplicationService;
+  readonly identity: UserIdentityService;
   readonly mailDelivery: MailDeliveryService;
   readonly oauth2AccessTokens: OAuth2AccessTokenService;
   readonly oauth2Authorization: OAuth2AuthorizationService;
@@ -79,6 +82,7 @@ function createRequestScope(env: ServiceEnvironment): AppServices {
   const apiKeyDAO = memoize((): Promise<ApplicationApiKeyDAO> => Promise.resolve(new ApplicationApiKeyDAO(env.DB)));
   const sessionDAO = memoize((): Promise<OAuth2AuthorizationSessionDAO> => Promise.resolve(new OAuth2AuthorizationSessionDAO(env.DB)));
   const userDAO = memoize((): Promise<UserDAO> => Promise.resolve(new UserDAO(env.DB)));
+  const userEmailDAO = memoize((): Promise<UserEmailDAO> => Promise.resolve(new UserEmailDAO(env.DB)));
   const taskRunDAO = memoize((): Promise<BackgroundTaskRunDAO> => Promise.resolve(new BackgroundTaskRunDAO(env.DB)));
   const cacheDAO = memoize(
     async (): Promise<OAuth2AccessTokenCacheDAO> => new OAuth2AccessTokenCacheDAO(env.OAUTH2_TOKEN_CACHE, await masterKey()),
@@ -90,10 +94,15 @@ function createRequestScope(env: ServiceEnvironment): AppServices {
     config: readConfig,
   });
 
+  // One instance per request scope: it memoizes address lookups, and the auth
+  // path resolves the same address repeatedly within a request.
+  const identity: UserIdentityService = new UserIdentityService({ userDAO, userEmailDAO });
+
   return {
     config,
     apiKeys: new ApiKeyService({ applicationDAO, apiKeyDAO, config: readConfig }),
-    applications: new ApplicationService({ applicationDAO, config: readConfig }),
+    applications: new ApplicationService({ applicationDAO, userDAO, userEmailDAO, config: readConfig }),
+    identity,
     mailDelivery: new MailDeliveryService({ applicationDAO }),
     oauth2AccessTokens: accessTokens,
     oauth2Authorization: new OAuth2AuthorizationService({
@@ -105,7 +114,7 @@ function createRequestScope(env: ServiceEnvironment): AppServices {
     processing: new ProcessingService({ taskRunDAO, applicationDAO, accessTokenService: (): OAuth2AccessTokenService => accessTokens }),
     // SNS is credential-only: no DAO, no config, nothing to inject.
     sns: new SnsDeliveryService(),
-    users: new UserService({ userDAO, config: readConfig }),
+    users: new UserService({ userDAO, userEmailDAO, config: readConfig }),
   };
 }
 

@@ -48,7 +48,7 @@ class CreateOAuth2AuthorizationRoute extends IUserRoute<CreateOAuth2Authorizatio
     cxt: RouteContext,
   ): Promise<CreateOAuth2AuthorizationResponse> {
     const scope = createRequestScope(env);
-    return scope.oauth2Authorization.createAuthorization(this.getAuthenticatedUserEmailAddress(cxt), request.applicationId, request.raw);
+    return scope.oauth2Authorization.createAuthorization(this.getAuthenticatedAccount(cxt), request.applicationId, request.raw);
   }
 }
 

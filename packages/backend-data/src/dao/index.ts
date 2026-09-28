@@ -13,6 +13,8 @@ export { OAuth2AccessTokenCacheDAO } from './OAuth2AccessTokenCacheDAO';
 export { OAuth2AccessTokenRefreshStatusDAO } from './OAuth2AccessTokenRefreshStatusDAO';
 export type { OAuth2AccessTokenRefreshStatus } from './OAuth2AccessTokenRefreshStatusDAO';
 export { UserDAO } from './UserDAO';
+export { UserEmailDAO } from './UserEmailDAO';
+export type { UserEmailRow } from './UserEmailDAO';
 export { ConnectedApplicationDAO } from './ConnectedApplicationDAO';
 export { ApplicationApiKeyDAO } from './ApplicationApiKeyDAO';
 export { OAuth2AuthorizationSessionDAO } from './OAuth2AuthorizationSessionDAO';

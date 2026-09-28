@@ -1,6 +1,13 @@
 export type ProviderId = 'google-gmail' | 'microsoft-outlook' | 'amazon-sns';
 
 export interface CurrentUser {
+  /**
+  The stable account id. The address below is a mutable attribute of it.
+  */
+  id: string;
+  /**
+  The address the account currently signs in with.
+  */
   email: string;
   preferredLanguage?: string | null;
   limits: {

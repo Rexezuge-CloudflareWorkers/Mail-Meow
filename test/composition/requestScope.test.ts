@@ -18,6 +18,7 @@ describe('createRequestScope', () => {
 
     expect(scope.apiKeys).toBeDefined();
     expect(scope.applications).toBeDefined();
+    expect(scope.identity).toBeDefined();
     expect(scope.mailDelivery).toBeDefined();
     expect(scope.oauth2AccessTokens).toBeDefined();
     expect(scope.oauth2Authorization).toBeDefined();

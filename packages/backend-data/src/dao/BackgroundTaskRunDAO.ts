@@ -1,4 +1,5 @@
 import { UUIDUtil, TimestampUtil } from '@mail-meow/shared/utils';
+import type { AccountIdentity } from '@mail-meow/shared/model';
 import { executeD1WithRetry } from '../utils';
 import { CursorUtil } from '../utils';
 import { BaseDAO } from './BaseDAO';
@@ -156,10 +157,14 @@ class BackgroundTaskRunDAO extends BaseDAO {
     return row ? BackgroundTaskRunDAO.toRun(row) : undefined;
   }
 
-  public async listForUser(userEmail: string, options: ListTaskRunsOptions = {}): Promise<BackgroundTaskRunList> {
+  public async listForUser(user: AccountIdentity, options: ListTaskRunsOptions = {}): Promise<BackgroundTaskRunList> {
     const limit = Math.min(Math.max(options.limit ?? 25, 1), 50);
-    const conditions: string[] = ['ca.user_email = ?'];
-    const bindings: Array<string | number | null> = [userEmail];
+    // A run is visible to whoever owns its application. Matching on the
+    // application owner's id is what keeps task-run history visible across an
+    // address change; the address clause is the fallback for applications whose
+    // `user_id` backfill could not resolve them.
+    const conditions: string[] = [user.id ? '(ca.user_id = ? OR (ca.user_id IS NULL AND ca.user_email = ?))' : 'ca.user_email = ?'];
+    const bindings: Array<string | number | null> = user.id ? [user.id, user.anchorEmail] : [user.anchorEmail];
 
     if (options.taskType) {
       conditions.push('btr.task_type = ?');

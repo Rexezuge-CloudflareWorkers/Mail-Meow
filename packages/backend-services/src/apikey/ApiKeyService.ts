@@ -2,7 +2,7 @@ import type { ApplicationApiKeyDAO, ConnectedApplicationDAO } from '@mail-meow/b
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { BadRequestError, UnauthorizedError } from '@mail-meow/backend-errors';
 import { CONNECTED_APPLICATION_STATUS_CONNECTED } from '@mail-meow/shared/constants';
-import type { ApplicationApiKeyMetadata, ConnectedApplication } from '@mail-meow/shared/model';
+import type { AccountIdentity, ApplicationApiKeyMetadata, ConnectedApplication } from '@mail-meow/shared/model';
 import { ApiKeyUtil, TimestampUtil } from '@mail-meow/shared/utils';
 
 /**
@@ -46,19 +46,19 @@ class ApiKeyService {
     return application;
   }
 
-  async listApiKeys(applicationId: string, userEmail: string): Promise<ApplicationApiKeyMetadata[]> {
-    await this.requireOwnedApplication(applicationId, userEmail);
+  async listApiKeys(applicationId: string, user: AccountIdentity): Promise<ApplicationApiKeyMetadata[]> {
+    await this.requireOwnedApplication(applicationId, user);
     const apiKeyDAO: ApplicationApiKeyDAO = await this.deps.apiKeyDAO();
     return apiKeyDAO.listByApplication(applicationId);
   }
 
   async createApiKey(
     applicationId: string,
-    userEmail: string,
+    user: AccountIdentity,
     name: string,
     expiryDays?: number,
   ): Promise<{ metadata: ApplicationApiKeyMetadata; apiKey: string }> {
-    const application: ConnectedApplication = await this.requireOwnedApplication(applicationId, userEmail);
+    const application: ConnectedApplication = await this.requireOwnedApplication(applicationId, user);
     if (application.status !== CONNECTED_APPLICATION_STATUS_CONNECTED) {
       throw new BadRequestError('Connected application must be connected before API keys can be created.');
     }
@@ -88,8 +88,8 @@ class ApiKeyService {
     return { metadata, apiKey };
   }
 
-  async deleteApiKey(apiKeyId: string, applicationId: string, userEmail: string): Promise<void> {
-    await this.requireOwnedApplication(applicationId, userEmail);
+  async deleteApiKey(apiKeyId: string, applicationId: string, user: AccountIdentity): Promise<void> {
+    await this.requireOwnedApplication(applicationId, user);
     const apiKeyDAO: ApplicationApiKeyDAO = await this.deps.apiKeyDAO();
     await apiKeyDAO.deleteForApplication(apiKeyId, applicationId);
   }
@@ -99,9 +99,9 @@ class ApiKeyService {
    * key operation is ownership-checked rather than relying on the DELETE's own
    * `AND application_id = ?` predicate.
    */
-  private async requireOwnedApplication(applicationId: string, userEmail: string): Promise<ConnectedApplication> {
+  private async requireOwnedApplication(applicationId: string, user: AccountIdentity): Promise<ConnectedApplication> {
     const applicationDAO: ConnectedApplicationDAO = await this.deps.applicationDAO();
-    const application: ConnectedApplication | undefined = await applicationDAO.getByIdForUser(applicationId, userEmail);
+    const application: ConnectedApplication | undefined = await applicationDAO.getByIdForUser(applicationId, user);
     if (!application) {
       throw new BadRequestError('Connected application was not found.');
     }

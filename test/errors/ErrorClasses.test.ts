@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BadRequestError,
+  ConflictError,
   DatabaseError,
   DefaultInternalServerError,
   ForbiddenError,
@@ -63,6 +64,7 @@ describe('HTTP-semantic errors', () => {
   it('keeps the table and the classes in agreement', () => {
     expect(Object.keys(HTTP_ERROR_DEFINITIONS).sort()).toEqual([
       'BadRequest',
+      'Conflict',
       'Forbidden',
       'InternalServerError',
       'MethodNotAllowed',
@@ -70,6 +72,15 @@ describe('HTTP-semantic errors', () => {
       'Unauthorized',
     ]);
     expect(HTTP_ERROR_DEFINITIONS.NotFound.code).toBe(new NotFoundError().getErrorCode());
+  });
+
+  it('separates Conflict from BadRequest', () => {
+    // 409 says "that value is taken" — a different caller remedy from "you typed
+    // something invalid", so collapsing the two would mislead the client.
+    expect(new ConflictError().getErrorCode()).toBe(409);
+    expect(new ConflictError().getErrorType()).toBe('Conflict');
+    expect(new ConflictError('Email is already in use').getErrorMessage()).toBe('Email is already in use');
+    expect(new ConflictError('x').name).toBe('ConflictError');
   });
 });
 

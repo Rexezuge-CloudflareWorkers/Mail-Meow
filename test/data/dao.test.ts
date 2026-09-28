@@ -6,7 +6,9 @@ import {
   ConnectedApplicationDAO,
   OAuth2AuthorizationSessionDAO,
   UserDAO,
+  UserEmailDAO,
 } from '@mail-meow/backend-data/dao';
+import type { AccountIdentity } from '@mail-meow/shared/model';
 import { DatabaseError } from '@mail-meow/backend-errors';
 import { createFailingDb, createMockDb } from '../helpers/mockDb';
 import { encryptData } from '@mail-meow/backend-data/crypto';
@@ -38,6 +40,16 @@ const KEY_ROW = {
   last_used_at: null,
 };
 
+/**
+ * An account on a migrated database: a stable id, a mutable login address, and
+ * a frozen anchor that may or may not resemble the address.
+ */
+const OWNER: AccountIdentity = {
+  id: 'usr_0123456789abcdef0123456789abcdef',
+  email: 'me@example.com',
+  anchorEmail: 'me@example.com',
+};
+
 const SESSION_ROW = {
   session_id: 'sess-1',
   application_id: 'app-1',
@@ -54,13 +66,40 @@ describe('ConnectedApplicationDAO', () => {
     const mock = createMockDb([APPLICATION_ROW]);
     const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
 
-    await dao.create('me@example.com', 'My App', 'google-gmail', 'oauth2', { clientId: 'a', clientSecret: 'b' }, 'draft');
+    await dao.create(OWNER, 'My App', 'google-gmail', 'oauth2', { clientId: 'a', clientSecret: 'b' }, 'draft');
 
     const insert = mock.statements[0];
     expect(insert.sql).toContain('INSERT INTO connected_applications');
     // Values must be bound, never interpolated into the SQL text.
     expect(insert.bindings).toContain('me@example.com');
     expect(insert.sql).not.toContain('me@example.com');
+  });
+
+  it('stores the frozen anchor and the id together', async () => {
+    const mock = createMockDb([APPLICATION_ROW]);
+    const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
+
+    await dao.create(OWNER, 'My App', 'google-gmail', 'oauth2', { clientId: 'a', clientSecret: 'b' }, 'draft');
+
+    // `user_email` is the anchor the foreign key resolves against, so it must
+    // be the anchor and never the mutable login address. This owner has an
+    // opaque anchor to make the distinction observable.
+    const movedOwner: AccountIdentity = { id: OWNER.id, email: 'new@example.com', anchorEmail: 'anchor-1@users.invalid' };
+    const opaque = createMockDb([APPLICATION_ROW]);
+    await new ConnectedApplicationDAO(opaque.db, MASTER_KEY).create(
+      movedOwner,
+      'My App',
+      'google-gmail',
+      'oauth2',
+      { clientId: 'a' },
+      'draft',
+    );
+
+    const insert = opaque.statements[0];
+    expect(insert.sql).toContain('user_id');
+    expect(insert.bindings).toContain(movedOwner.anchorEmail);
+    expect(insert.bindings).toContain(movedOwner.id);
+    expect(insert.bindings).not.toContain(movedOwner.email);
   });
 
   it('maps a row to domain metadata', () => {
@@ -82,37 +121,79 @@ describe('ConnectedApplicationDAO', () => {
     const mock = createMockDb([[APPLICATION_ROW]]);
     const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
 
-    const list = await dao.listMetadataByUserEmail('me@example.com');
+    const list = await dao.listMetadataByUser(OWNER);
 
     expect(list).toHaveLength(1);
     expect(list[0].applicationId).toBe('app-1');
-    expect(mock.only().sql).toContain('ORDER BY updated_at DESC, created_at DESC');
-    expect(mock.only().bindings).toEqual(['me@example.com']);
+    expect(mock.only().sql).toContain('ORDER BY ca.updated_at DESC, ca.created_at DESC');
+    expect(mock.only().bindings).toEqual([OWNER.id, OWNER.anchorEmail]);
   });
 
-  it('scopes a lookup by user when an email is supplied', async () => {
+  it('matches on the id and falls back to the anchor for pre-0011 rows', async () => {
     const mock = createMockDb([APPLICATION_ROW]);
     const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
 
-    await dao.getMetadataByIdForUser('app-1', 'me@example.com');
+    await dao.getMetadataByIdForUser('app-1', OWNER);
 
     const statement = mock.only();
-    expect(statement.sql).toContain('user_email = ?');
+    // The id clause is what keeps access across an address change; the address
+    // clause is the fallback for rows whose `user_id` backfill found nothing.
+    expect(statement.sql).toContain('ca.user_id = ?');
+    expect(statement.sql).toContain('ca.user_id IS NULL AND ca.user_email = ?');
+    expect(statement.bindings).toEqual(['app-1', OWNER.id, OWNER.anchorEmail]);
+  });
+
+  it('falls back to the address alone when the account has no id', async () => {
+    const mock = createMockDb([APPLICATION_ROW]);
+    const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
+
+    await dao.getMetadataByIdForUser('app-1', { id: '', email: 'me@example.com', anchorEmail: 'me@example.com' });
+
+    const statement = mock.only();
+    // The join is still present (it is what resolves the reported address), but
+    // the *predicate* must be the address alone.
+    expect(statement.sql).not.toContain('user_id = ?');
+    expect(statement.sql).not.toContain('IS NULL');
     expect(statement.bindings).toEqual(['app-1', 'me@example.com']);
   });
 
-  it('omits the ownership predicate when no email is supplied', async () => {
+  it('omits the ownership predicate when no account is supplied', async () => {
     const mock = createMockDb([APPLICATION_ROW]);
     const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
 
-    await dao.getMetadataByIdForUser('app-1', undefined as unknown as string);
+    await dao.getMetadataByIdForUser('app-1', undefined as unknown as AccountIdentity);
 
     expect(mock.only().sql).not.toContain('user_email = ?');
   });
 
+  it('resolves the reported address from the joined account, not the anchor', async () => {
+    const dao = new ConnectedApplicationDAO(createMockDb().db, MASTER_KEY);
+    // A row whose anchor is the real address but whose account has since moved:
+    // the response must carry the current address, or an opaque
+    // `anchor-<hex>@users.invalid` would reach the client.
+    const mapped = (dao as unknown as { toMetadata(row: Record<string, unknown>): { userEmail: string } }).toMetadata({
+      ...APPLICATION_ROW,
+      user_email: 'anchor-old@users.invalid',
+      user_email_current: 'new@example.com',
+    });
+    expect(mapped.userEmail).toBe('new@example.com');
+  });
+
+  it('falls back to the stored address when no account is joined', () => {
+    const dao = new ConnectedApplicationDAO(createMockDb().db, MASTER_KEY);
+    // A pre-0011 row has no `user_id`, so the LEFT JOIN yields NULL and the
+    // stored value (which is the address) is the right answer.
+    const mapped = (dao as unknown as { toMetadata(row: Record<string, unknown>): { userEmail: string } }).toMetadata({
+      ...APPLICATION_ROW,
+      user_email: 'me@example.com',
+      user_email_current: null,
+    });
+    expect(mapped.userEmail).toBe('me@example.com');
+  });
+
   it('returns undefined for a missing row', async () => {
     const dao = new ConnectedApplicationDAO(createMockDb([null]).db, MASTER_KEY);
-    await expect(dao.getMetadataByIdForUser('nope', 'me@example.com')).resolves.toBeUndefined();
+    await expect(dao.getMetadataByIdForUser('nope', OWNER)).resolves.toBeUndefined();
   });
 
   it('decrypts credentials when loading a full application', async () => {
@@ -129,7 +210,7 @@ describe('ConnectedApplicationDAO', () => {
     const mock = createMockDb([{ count: 3 }]);
     const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
 
-    await expect(dao.countByUserEmail('me@example.com')).resolves.toBe(3);
+    await expect(dao.countByUser(OWNER)).resolves.toBe(3);
   });
 
   it('refuses to mark a non-OAuth2 application connected', async () => {
@@ -159,11 +240,14 @@ describe('ConnectedApplicationDAO', () => {
     const mock = createMockDb([{ success: true, meta: { changes: 1 } }]);
     const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
 
-    await dao.deleteForUser('app-1', 'me@example.com');
+    await dao.deleteForUser('app-1', OWNER);
 
     const statement = mock.only();
-    expect(statement.sql).toContain('user_email = ?');
-    expect(statement.bindings).toEqual(['app-1', 'me@example.com']);
+    expect(statement.sql).toContain('user_id = ?');
+    // The UPDATE is unqualified, so the clause must be too — a stray alias would
+    // not compile.
+    expect(statement.sql).not.toContain('ca.user_id');
+    expect(statement.bindings).toEqual(['app-1', OWNER.id, OWNER.anchorEmail]);
   });
 });
 
@@ -278,36 +362,141 @@ describe('OAuth2AuthorizationSessionDAO', () => {
 });
 
 describe('UserDAO', () => {
-  it('upserts by email', async () => {
+  const USER_ROW = {
+    id: 'usr_0123456789abcdef0123456789abcdef',
+    email: 'me@example.com',
+    current_email: 'me@example.com',
+    preferred_language: 'de',
+    created_at: 100,
+    updated_at: 200,
+  };
+
+  it('creates an account with the identity columns stamped', async () => {
     const mock = createMockDb([{ success: true, meta: { changes: 1 } }]);
     const dao = new UserDAO(mock.db);
 
-    await dao.upsertByEmail('me@example.com');
+    await dao.createUser({ id: 'usr_1', anchor: 'me@example.com', loginEmail: 'me@example.com', now: 1 });
 
-    // upsert is INSERT ... ON CONFLICT, issued as a single bound statement.
-    expect(mock.statementAt(0).bindings).toContain('me@example.com');
-    expect(mock.statementAt(0).sql).not.toContain('me@example.com');
+    const statement = mock.statementAt(0);
+    expect(statement.sql).toContain('INSERT INTO users');
+    // No-op on a lost race for the same anchor, which is what makes the
+    // retry-with-an-opaque-anchor path safe.
+    expect(statement.sql).toContain('ON CONFLICT(email) DO NOTHING');
+    expect(statement.bindings).toEqual(['me@example.com', 1, 1, 'usr_1', 'me@example.com']);
+    expect(statement.sql).not.toContain('me@example.com');
   });
 
-  it('reads the preferred language', async () => {
-    const mock = createMockDb([{ email: 'me@example.com', preferred_language: 'de' }]);
+  it('generates ids and anchors in the documented shapes', () => {
+    expect(UserDAO.newId()).toMatch(/^usr_[0-9a-f]{32}$/);
+    // The anchor must never be a real address, or it could never be released.
+    expect(UserDAO.newAnchor()).toMatch(/^anchor-[0-9a-f]{32}@users\.invalid$/);
+    expect(UserDAO.newId()).not.toBe(UserDAO.newId());
+  });
+
+  it('reads the preferred language, preferring the current address', () => {
+    const dao = new UserDAO(createMockDb().db);
+    // `email` is the frozen anchor and `current_email` the login address; the
+    // domain model must report the latter.
+    const mapped = UserDAO.toUser({ ...USER_ROW, email: 'old@example.com', current_email: 'me@example.com' });
+    expect(mapped).toMatchObject({ id: USER_ROW.id, email: 'me@example.com', anchorEmail: 'old@example.com', preferredLanguage: 'de' });
+  });
+
+  it('falls back to the anchor on a database without current_email', () => {
+    const dao = new UserDAO(createMockDb().db);
+    // A pre-0011 database: no id, no current_email. The mapping must still yield
+    // a usable address rather than a NULL.
+    const mapped = UserDAO.toUser({
+      email: 'me@example.com',
+      preferred_language: null,
+      created_at: 100,
+      updated_at: 200,
+    });
+    expect(mapped).toMatchObject({ id: '', email: 'me@example.com', anchorEmail: 'me@example.com' });
+  });
+
+  it('returns null for an unknown email', async () => {
+    await expect(new UserDAO(createMockDb([null]).db).getByEmail('nope@example.com')).resolves.toBeNull();
+  });
+
+  it('looks the login address up case-insensitively', async () => {
+    const mock = createMockDb([USER_ROW]);
+    await new UserDAO(mock.db).getByCurrentEmail('ME@Example.com');
+    // The registry and `current_email` are stored lowercased while Access may
+    // deliver mixed case, so the comparison folds.
+    expect(mock.only().sql).toContain('lower(current_email) = lower(?)');
+  });
+
+  it('updates the preferred language by id, so it survives an address change', async () => {
+    const mock = createMockDb([{ success: true, meta: { changes: 1 } }, USER_ROW]);
     const dao = new UserDAO(mock.db);
 
-    await expect(dao.getByEmail('me@example.com')).resolves.toMatchObject({ preferredLanguage: 'de' });
+    await dao.updatePreferredLanguage(OWNER, 'fr');
+
+    const update = mock.statementAt(0);
+    expect(update.sql).toContain('WHERE id = ?');
+    expect(update.sql).not.toContain('WHERE email = ?');
+    expect(update.bindings).toEqual(['fr', expect.any(Number), OWNER.id]);
   });
 
-  it('returns undefined for an unknown email', async () => {
-    await expect(new UserDAO(createMockDb([null]).db).getByEmail('nope@example.com')).resolves.toBeUndefined();
-  });
-
-  it('updates the preferred language', async () => {
-    const mock = createMockDb([{ success: true, meta: { changes: 1 } }]);
+  it('updates the preferred language by anchor on a pre-0011 database', async () => {
+    const mock = createMockDb([{ success: true, meta: { changes: 1 } }, USER_ROW]);
     const dao = new UserDAO(mock.db);
 
-    await dao.updatePreferredLanguage('me@example.com', 'fr');
+    await dao.updatePreferredLanguage({ id: '', email: 'me@example.com', anchorEmail: 'me@example.com' }, 'fr');
 
-    expect(mock.statementAt(0).sql).toContain('preferred_language');
-    expect(mock.statementAt(0).bindings).toContain('fr');
+    expect(mock.statementAt(0).sql).toContain('WHERE email = ?');
+    expect(mock.statementAt(0).bindings).toEqual(['fr', expect.any(Number), 'me@example.com']);
+  });
+});
+
+describe('UserEmailDAO', () => {
+  const ROW = { email: 'me@example.com', user_id: 'usr_1', is_verified: 1, created_at: 100 };
+
+  it('refuses to re-point a verified address', async () => {
+    // Silently re-pointing would hand one account's identity to another.
+    const mock = createMockDb([ROW]);
+    await expect(new UserEmailDAO(mock.db).register({ email: 'me@example.com', userId: 'usr_2', isVerified: true, now: 1 })).resolves.toBe(
+      'already-claimed',
+    );
+    expect(mock.statements.some((s) => s.sql.includes('INSERT'))).toBe(false);
+  });
+
+  it('re-points a revoked address, releasing it', async () => {
+    const mock = createMockDb([
+      { ...ROW, is_verified: 0 },
+      { success: true, meta: { changes: 1 } },
+    ]);
+    const outcome = await new UserEmailDAO(mock.db).register({ email: 'me@example.com', userId: 'usr_2', isVerified: true, now: 1 });
+    expect(outcome).toBe('claimed');
+    expect(mock.statementAt(1).sql).toContain('ON CONFLICT(email) DO UPDATE SET user_id = excluded.user_id');
+  });
+
+  it('claims a free address, lowercasing it', async () => {
+    const mock = createMockDb([null, { success: true, meta: { changes: 1 } }]);
+    await new UserEmailDAO(mock.db).register({ email: 'ME@Example.com', userId: 'usr_1', isVerified: true, now: 1 });
+    expect(mock.statementAt(1).bindings).toContain('me@example.com');
+  });
+
+  it('resolves only a verified address for login', async () => {
+    const verified = createMockDb([ROW]);
+    await new UserEmailDAO(verified.db).resolveVerified('me@example.com');
+    expect(verified.only().sql).toContain('is_verified = 1');
+
+    const revoked = createMockDb([{ ...ROW, is_verified: 0 }]);
+    await new UserEmailDAO(revoked.db).get('me@example.com');
+    // A revoked row is still *readable*, for attribution — just not for login.
+    // The two differ only in the filter, so assert the absence of the filter
+    // rather than the absence of the column, which both queries select.
+    expect(revoked.only().sql).not.toContain('WHERE email = ? AND');
+    expect(revoked.only().sql).toContain('WHERE email = ?');
+  });
+
+  it('revokes every other verified address for an account', async () => {
+    const mock = createMockDb([{ success: true, meta: { changes: 3 } }]);
+    await new UserEmailDAO(mock.db).revokeAllVerified('usr_1', 'new@example.com');
+    const statement = mock.only();
+    expect(statement.sql).toContain('user_id = ? AND email != ?');
+    expect(statement.bindings).toEqual(['usr_1', 'new@example.com']);
   });
 });
 

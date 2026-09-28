@@ -40,11 +40,15 @@ class UpdateCurrentUserRoute extends IUserRoute<UpdateCurrentUserRequest, Update
       throw new BadRequestError('Unsupported language.');
     }
     const scope = createRequestScope(env);
-    const userEmail = this.getAuthenticatedUserEmailAddress(cxt);
-    const normalized = await scope.users.updatePreferredLanguage(userEmail, request.preferredLanguage);
+    // Resolved rather than read off the context, so `email` reports the
+    // account's current address and the write keys on the account id — a chosen
+    // language then survives an address change.
+    const user = (await scope.users.upsertUser(this.getAuthenticatedUserEmailAddress(cxt))) ?? this.getAuthenticatedAccount(cxt);
+    const normalized = await scope.users.updatePreferredLanguage(user, request.preferredLanguage);
     const config = scope.config;
     return {
-      email: userEmail,
+      id: user.id,
+      email: user.email,
       preferredLanguage: normalized,
       limits: {
         maxApplicationsPerUser: config.maxApplicationsPerUser,
@@ -61,6 +65,13 @@ interface UpdateCurrentUserRequest extends IRequest {
 }
 
 interface UpdateCurrentUserResponse extends IResponse {
+  /**
+  The stable account id.
+  */
+  id: string;
+  /**
+  The address the account currently signs in with.
+  */
   email: string;
   preferredLanguage: string | null;
   limits: {

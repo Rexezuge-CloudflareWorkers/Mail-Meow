@@ -39,7 +39,7 @@ class ListApplicationApiKeysRoute extends IUserRoute<ListApplicationApiKeysReque
     }
     const scope = createRequestScope(env);
     return {
-      apiKeys: await scope.apiKeys.listApiKeys(applicationId, this.getAuthenticatedUserEmailAddress(cxt)),
+      apiKeys: await scope.apiKeys.listApiKeys(applicationId, this.getAuthenticatedAccount(cxt)),
     };
   }
 }

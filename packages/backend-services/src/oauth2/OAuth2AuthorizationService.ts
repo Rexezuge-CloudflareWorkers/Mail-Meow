@@ -2,7 +2,7 @@ import { CONNECTION_METHOD_OAUTH2 } from '@mail-meow/shared/constants';
 import type { ConnectedApplicationDAO, OAuth2AuthorizationSessionDAO } from '@mail-meow/backend-data/dao';
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { BadRequestError, NotFoundError } from '@mail-meow/backend-errors';
-import type { ConnectedApplication, OAuth2AuthorizationSession, OAuth2Credentials } from '@mail-meow/shared/model';
+import type { AccountIdentity, ConnectedApplication, OAuth2AuthorizationSession, OAuth2Credentials } from '@mail-meow/shared/model';
 import { BaseUrlUtil, TimestampUtil } from '@mail-meow/shared/utils';
 import { OAuth2ProviderUtil } from '@mail-meow/provider-clients/oauth2';
 import type { OAuth2AccessTokenService } from './OAuth2AccessTokenService';
@@ -33,9 +33,9 @@ class OAuth2AuthorizationService {
   /**
   Starts the consent flow: mints a PKCE pair and a one-time `state`.
   */
-  async createAuthorization(userEmail: string, applicationId: string, raw: Request): Promise<OAuth2AuthorizationResult> {
+  async createAuthorization(user: AccountIdentity, applicationId: string, raw: Request): Promise<OAuth2AuthorizationResult> {
     const applicationDAO: ConnectedApplicationDAO = await this.deps.applicationDAO();
-    const application: ConnectedApplication | undefined = await applicationDAO.getByIdForUser(applicationId, userEmail);
+    const application: ConnectedApplication | undefined = await applicationDAO.getByIdForUser(applicationId, user);
     if (!application) {
       throw new NotFoundError('Connected application was not found.');
     }
