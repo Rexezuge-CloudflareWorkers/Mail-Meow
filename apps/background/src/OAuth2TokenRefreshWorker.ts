@@ -1,20 +1,15 @@
 import { AbstractDurableObjectWorker } from '@mail-meow/backend-runtime/base';
-import {
-  CONNECTED_APPLICATION_STATUS_CONNECTED,
-  CONNECTION_METHOD_OAUTH2,
-  PROVIDER_GOOGLE_GMAIL,
-  PROVIDER_MICROSOFT_OUTLOOK,
-} from '@mail-meow/shared/constants';
+import { CONNECTED_APPLICATION_STATUS_CONNECTED, CONNECTION_METHOD_OAUTH2 } from '@mail-meow/shared/constants';
 import { ConnectedApplicationDAO, OAuth2AccessTokenCacheDAO, OAuth2AccessTokenRefreshStatusDAO } from '@mail-meow/backend-data/dao';
 import { createD1SessionEnv } from '@mail-meow/backend-data/utils';
 import type { ConnectedApplication, OAuth2Credentials } from '@mail-meow/shared/model';
 import { TimestampUtil } from '@mail-meow/shared/utils';
 import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
 import { BadRequestError, DefaultInternalServerError, NotFoundError, ProviderApiNonRetryableError } from '@mail-meow/backend-errors';
-import { ConfigurationManager } from '@mail-meow/backend-runtime/config';
-import { GmailProviderUtil } from '@mail-meow/provider-clients/gmail';
+import { AppConfigReader } from '@mail-meow/backend-runtime/config';
+import { PROVIDER_STRATEGIES } from '@mail-meow/provider-clients';
+import type { ProviderStrategy } from '@mail-meow/provider-clients';
 import { OAuth2ProviderUtil } from '@mail-meow/provider-clients/oauth2';
-import { OutlookProviderUtil } from '@mail-meow/provider-clients/outlook';
 import type { OAuth2TokenResult } from '@mail-meow/provider-clients/oauth2';
 
 const TOKEN_REFRESH_PATH: string = '/refresh';
@@ -96,7 +91,7 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
     const forceRefresh: boolean = payload.forceRefresh === true;
     const minValidSeconds: number = this.readPositiveNumber(
       payload.minValidSeconds,
-      ConfigurationManager.getOAuth2AccessTokenMinValidSeconds(this.env),
+      AppConfigReader.fromEnv(this.env).oauth2AccessTokenMinValidSeconds,
     );
     const masterKey: string = await this.env.AES_ENCRYPTION_KEY_SECRET.get();
     const cacheDAO = new OAuth2AccessTokenCacheDAO(this.env.OAUTH2_TOKEN_CACHE, masterKey);
@@ -174,16 +169,24 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
     return application;
   }
 
+  /**
+   * Best-effort mailbox address behind an access token.
+   *
+   * Falls back to the application's recorded owner when the provider cannot be
+   * reached or has no strategy registered: this is metadata for the run record,
+   * and failing the whole refresh over it would be the wrong trade.
+   */
   private async getProviderEmail(application: ConnectedApplication, accessToken: string): Promise<string> {
-    if (application.providerId === PROVIDER_GOOGLE_GMAIL) {
-      const gmailProfile = await GmailProviderUtil.getProfile(accessToken);
-      return gmailProfile.emailAddress;
+    const strategy: ProviderStrategy | undefined = PROVIDER_STRATEGIES.get(application.providerId);
+    if (!strategy) {
+      return application.userEmail;
     }
-    if (application.providerId === PROVIDER_MICROSOFT_OUTLOOK) {
-      const outlookProfile = await OutlookProviderUtil.getProfile(accessToken);
-      return outlookProfile.emailAddress;
+    try {
+      return await strategy.resolveProfileEmail(accessToken);
+    } catch (error: unknown) {
+      console.warn(`Could not resolve provider mailbox for application ${application.applicationId}:`, error);
+      return application.userEmail;
     }
-    return application.userEmail;
   }
 
   private async storeSuccessfulToken(
@@ -195,7 +198,7 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
   ): Promise<OAuth2TokenWorkerResponse> {
     const expiresInSeconds: number = OAuth2ProviderUtil.getExpiresInSeconds(
       tokenResult,
-      ConfigurationManager.getOAuth2AccessTokenFallbackTtlSeconds(this.env),
+      AppConfigReader.fromEnv(this.env).oauth2AccessTokenFallbackTtlSeconds,
     );
     const expiresAt: number = TimestampUtil.getCurrentUnixTimestampInSeconds() + expiresInSeconds;
     await cacheDAO.storeAccessToken(applicationId, tokenResult.accessToken, expiresAt);

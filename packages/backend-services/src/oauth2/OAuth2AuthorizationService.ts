@@ -1,21 +1,40 @@
 import { CONNECTION_METHOD_OAUTH2 } from '@mail-meow/shared/constants';
-import { ConnectedApplicationDAO, OAuth2AuthorizationSessionDAO } from '@mail-meow/backend-data/dao';
-import type { D1Queryable } from '@mail-meow/backend-data/utils';
+import type { ConnectedApplicationDAO, OAuth2AuthorizationSessionDAO } from '@mail-meow/backend-data/dao';
+import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { BadRequestError, NotFoundError } from '@mail-meow/backend-errors';
 import type { ConnectedApplication, OAuth2AuthorizationSession, OAuth2Credentials } from '@mail-meow/shared/model';
 import { BaseUrlUtil, TimestampUtil } from '@mail-meow/shared/utils';
-import { ConfigurationManager } from '@mail-meow/backend-runtime/config';
 import { OAuth2ProviderUtil } from '@mail-meow/provider-clients/oauth2';
-import { OAuth2AccessTokenService } from './OAuth2AccessTokenService';
-import type { OAuth2AccessTokenServiceEnv } from './OAuth2AccessTokenService';
+import type { OAuth2AccessTokenService } from './OAuth2AccessTokenService';
 import { OAuth2StateUtil } from './OAuth2StateUtil';
 
-class OAuth2AuthorizationService {
-  constructor(private readonly env: OAuth2AuthorizationServiceEnv) {}
+interface OAuth2AuthorizationResult {
+  authorizationUrl: string;
+  redirectUri: string;
+  expiresAt: number;
+}
 
+interface CompleteOAuth2CallbackInput {
+  applicationId: string;
+  code: string;
+  state: string;
+}
+
+interface OAuth2AuthorizationServiceDeps {
+  applicationDAO: () => Promise<ConnectedApplicationDAO>;
+  sessionDAO: () => Promise<OAuth2AuthorizationSessionDAO>;
+  accessTokenService: () => OAuth2AccessTokenService;
+  config: () => AppConfigReader;
+}
+
+class OAuth2AuthorizationService {
+  constructor(private readonly deps: OAuth2AuthorizationServiceDeps) {}
+
+  /**
+  Starts the consent flow: mints a PKCE pair and a one-time `state`.
+  */
   async createAuthorization(userEmail: string, applicationId: string, raw: Request): Promise<OAuth2AuthorizationResult> {
-    const masterKey: string = await this.env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO = new ConnectedApplicationDAO(this.env.DB, masterKey);
+    const applicationDAO: ConnectedApplicationDAO = await this.deps.applicationDAO();
     const application: ConnectedApplication | undefined = await applicationDAO.getByIdForUser(applicationId, userEmail);
     if (!application) {
       throw new NotFoundError('Connected application was not found.');
@@ -29,11 +48,14 @@ class OAuth2AuthorizationService {
     const codeVerifier: string = OAuth2StateUtil.generateCodeVerifier();
     const codeChallenge: string = await OAuth2StateUtil.getCodeChallenge(codeVerifier);
     const redirectUri: string = `${BaseUrlUtil.getBaseUrl(raw)}/api/oauth2/callback/${application.applicationId}`;
-    const stateHash: string = await OAuth2StateUtil.getStateHash(state);
-    const expiryMinutes: number = ConfigurationManager.getOauth2StateExpiryMinutes(this.env);
-    const expiresAt: number = TimestampUtil.addMinutes(TimestampUtil.getCurrentUnixTimestampInSeconds(), expiryMinutes);
-    const sessionDAO = new OAuth2AuthorizationSessionDAO(this.env.DB);
-    await sessionDAO.create(application.applicationId, stateHash, codeVerifier, redirectUri, expiresAt);
+    const expiresAt: number = TimestampUtil.addMinutes(
+      TimestampUtil.getCurrentUnixTimestampInSeconds(),
+      this.deps.config().oauth2StateExpiryMinutes,
+    );
+
+    const sessionDAO: OAuth2AuthorizationSessionDAO = await this.deps.sessionDAO();
+    await sessionDAO.create(application.applicationId, await OAuth2StateUtil.getStateHash(state), codeVerifier, redirectUri, expiresAt);
+
     return {
       authorizationUrl: OAuth2ProviderUtil.buildAuthorizationUrl({
         providerId: application.providerId,
@@ -48,31 +70,31 @@ class OAuth2AuthorizationService {
   }
 
   async completeCallback(input: CompleteOAuth2CallbackInput): Promise<void> {
-    const stateHash: string = await OAuth2StateUtil.getStateHash(input.state);
-    const sessionDAO = new OAuth2AuthorizationSessionDAO(this.env.DB);
-    const session: OAuth2AuthorizationSession | undefined = await sessionDAO.getActive(input.applicationId, stateHash);
+    const sessionDAO: OAuth2AuthorizationSessionDAO = await this.deps.sessionDAO();
+    const session: OAuth2AuthorizationSession | undefined = await sessionDAO.getActive(
+      input.applicationId,
+      await OAuth2StateUtil.getStateHash(input.state),
+    );
     if (!session) {
       throw new BadRequestError('OAuth2 authorization session is invalid or expired.');
     }
 
-    const masterKey: string = await this.env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO = new ConnectedApplicationDAO(this.env.DB, masterKey);
-    const application: ConnectedApplication | undefined = await applicationDAO.getById(input.applicationId);
-    if (!application) {
+    const applicationDAO: ConnectedApplicationDAO = await this.deps.applicationDAO();
+    if (!(await applicationDAO.getById(input.applicationId))) {
       throw new NotFoundError('Connected application was not found.');
     }
 
     // Claim the session BEFORE exchanging the code. Exchanging first and
     // consuming afterwards left a replay window: two callbacks carrying the same
     // `state` both passed getActive, and the loser's consume() reported success
-    // even though its UPDATE matched zero rows. Burning the session first is
-    // safe because the authorization code is single-use at the provider too, so
-    // a failed exchange just means restarting the flow.
+    // even though its UPDATE matched zero rows. Burning the session first is safe
+    // because the authorization code is single-use at the provider too, so a
+    // failed exchange just means restarting the flow.
     if (!(await sessionDAO.consume(session.sessionId))) {
       throw new BadRequestError('OAuth2 authorization session is invalid or expired.');
     }
 
-    await new OAuth2AccessTokenService(this.env as unknown as OAuth2AccessTokenServiceEnv).completeAuthorization({
+    await this.deps.accessTokenService().completeAuthorization({
       applicationId: input.applicationId,
       redirectUri: session.redirectUri,
       code: input.code,
@@ -81,26 +103,5 @@ class OAuth2AuthorizationService {
   }
 }
 
-interface OAuth2AuthorizationResult {
-  authorizationUrl: string;
-  redirectUri: string;
-  expiresAt: number;
-}
-
-interface CompleteOAuth2CallbackInput {
-  applicationId: string;
-  code: string;
-  state: string;
-}
-
-interface OAuth2AuthorizationServiceEnv {
-  DB: D1Queryable;
-  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret | { get(): Promise<string> };
-  OAUTH2_TOKEN_CACHE?: KVNamespace;
-  OAUTH2_TOKEN_REFRESHERS?: DurableObjectNamespace;
-  OAUTH2_ACCESS_TOKEN_MIN_VALID_SECONDS?: string;
-  OAUTH2_STATE_EXPIRY_MINUTES?: string;
-}
-
 export { OAuth2AuthorizationService };
-export type { CompleteOAuth2CallbackInput, OAuth2AuthorizationResult, OAuth2AuthorizationServiceEnv };
+export type { CompleteOAuth2CallbackInput, OAuth2AuthorizationResult, OAuth2AuthorizationServiceDeps };

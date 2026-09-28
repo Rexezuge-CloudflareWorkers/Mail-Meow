@@ -1,5 +1,2 @@
-export * from './ConfigurationDefaults';
-export * from './ConfigurationManager';
-export { AppConfiguration } from './AppConfiguration';
-export { EnvParser } from './EnvParser';
-export type { ServiceEnv } from './ServiceEnv';
+export { AppConfigReader, describeSettings, validateConfig } from './AppConfig';
+export type { AppConfig, SettingDescriptor, SettingKey } from './AppConfig';

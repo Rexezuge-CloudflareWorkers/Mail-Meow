@@ -1,30 +1,25 @@
+import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
 import { IUserRoute } from '@/endpoints/IUserRoute';
-import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
-import type { BackgroundTaskRun, BackgroundTaskRunStatus } from '@mail-meow/backend-data/dao';
+import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
+import type { BackgroundTaskRun, BackgroundTaskRunStatus } from '@mail-meow/backend-services/processing';
 
-class ListBackgroundTaskRunsRoute extends IUserRoute<
-  ListBackgroundTaskRunsRequest,
-  ListBackgroundTaskRunsResponse,
-  ListBackgroundTaskRunsEnv
-> {
+class ListBackgroundTaskRunsRoute extends IUserRoute<ListBackgroundTaskRunsRequest, ListBackgroundTaskRunsResponse> {
   schema = {
     tags: ['Processing'],
     summary: 'List background task runs for the authenticated user',
     description: 'Returns cron task run history (OAuth2 refresh + pruning) for applications owned by the authenticated user.',
-    responses: {
-      '200': { description: 'Background task runs' },
-    },
-    security: [{ CloudflareAccess: [] }],
+    responses: errorResponses(UNAUTHORIZED_ACCESS_MESSAGE),
+    security: CLOUDFLARE_ACCESS_SECURITY,
   };
 
   protected async handleRequest(
     request: ListBackgroundTaskRunsRequest,
-    env: ListBackgroundTaskRunsEnv,
-    cxt: RouteContext<ListBackgroundTaskRunsEnv>,
+    env: Env,
+    cxt: RouteContext,
   ): Promise<ListBackgroundTaskRunsResponse> {
     const scope = createRequestScope(env);
-    return scope.get(Tokens.ProcessingService).listTaskRuns(this.getAuthenticatedUserEmailAddress(cxt), {
+    return scope.processing.listTaskRuns(this.getAuthenticatedUserEmailAddress(cxt), {
       taskType: this.getQueryParam(request, 'taskType'),
       applicationId: this.getQueryParam(request, 'applicationId'),
       status: this.getQueryParam(request, 'status') as BackgroundTaskRunStatus | undefined,
@@ -39,7 +34,5 @@ interface ListBackgroundTaskRunsResponse extends IResponse {
   runs: BackgroundTaskRun[];
   nextCursor?: string;
 }
-
-type ListBackgroundTaskRunsEnv = IUserEnv;
 
 export { ListBackgroundTaskRunsRoute };

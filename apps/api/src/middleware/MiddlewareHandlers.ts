@@ -1,7 +1,7 @@
 import { ServiceError } from '@mail-meow/backend-errors';
 import { EmailValidationUtil } from '@mail-meow/backend-services/auth';
 import { Context, Next } from 'hono';
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
 
 type UserContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
@@ -13,7 +13,7 @@ class MiddlewareHandlers {
       const scope = createRequestScope(c.env);
       try {
         const userEmail: string = await EmailValidationUtil.getAuthenticatedUserEmail(c.req.raw, c.env);
-        await scope.get(Tokens.UserService).upsertUser(userEmail);
+        await scope.users.upsertUser(userEmail);
         c.set('AuthenticatedUserEmailAddress', userEmail);
         await next();
       } catch (error: unknown) {

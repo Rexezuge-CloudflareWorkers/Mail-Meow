@@ -1,15 +1,17 @@
+import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
 import {
   CONNECTED_APPLICATION_STATUS_CONNECTED,
   CONNECTED_APPLICATION_STATUS_DRAFT,
+  type ConnectedApplicationStatus,
   CONNECTION_METHOD_ACCESS_KEYS,
 } from '@mail-meow/shared/constants';
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 
 import { IUserRoute } from '@/endpoints/IUserRoute';
-import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
+import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 import type { ConnectedApplicationCredentials, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
 
-class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, UpdateApplicationResponse, UpdateApplicationEnv> {
+class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, UpdateApplicationResponse> {
   schema = {
     tags: ['Applications'],
     summary: 'Update connected application',
@@ -109,196 +111,11 @@ class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, Update
         },
       },
     },
-    responses: {
-      '200': {
-        description: 'Application updated',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              required: ['application'],
-              properties: {
-                application: {
-                  type: 'object' as const,
-                  required: [
-                    'applicationId',
-                    'userEmail',
-                    'displayName',
-                    'providerId',
-                    'connectionMethod',
-                    'status',
-                    'createdAt',
-                    'updatedAt',
-                    'oauth2RedirectUri',
-                  ],
-                  properties: {
-                    applicationId: {
-                      type: 'string' as const,
-                      format: 'uuid',
-                      description: 'Unique identifier of the updated application',
-                      example: '123e4567-e89b-12d3-a456-426614174000',
-                    },
-                    userEmail: {
-                      type: 'string' as const,
-                      format: 'email',
-                      description: 'Owner email address',
-                      example: 'john.doe@company.com',
-                    },
-                    displayName: {
-                      type: 'string' as const,
-                      description: 'Human-readable application name',
-                      example: 'Gmail sender (updated)',
-                    },
-                    providerId: {
-                      type: 'string' as const,
-                      enum: ['google-gmail', 'microsoft-outlook', 'amazon-sns'],
-                      description: 'Delivery provider identifier',
-                      example: 'google-gmail',
-                    },
-                    connectionMethod: {
-                      type: 'string' as const,
-                      enum: ['oauth2', 'access-keys'],
-                      description: 'Credential mechanism used by the application',
-                      example: 'oauth2',
-                    },
-                    status: {
-                      type: 'string' as const,
-                      enum: ['draft', 'connected'],
-                      description: 'Status after update',
-                      example: 'draft',
-                    },
-                    createdAt: {
-                      type: 'number' as const,
-                      description: 'Unix timestamp in seconds when the application was created',
-                      example: 1_757_548_800,
-                    },
-                    updatedAt: {
-                      type: 'number' as const,
-                      description: 'Unix timestamp in seconds when the application was last updated',
-                      example: 1_757_635_200,
-                    },
-                    oauth2RedirectUri: {
-                      type: 'string' as const,
-                      format: 'uri',
-                      description: 'OAuth2 callback URI for this application',
-                      example: 'https://mail.example.com/api/oauth2/callback/123e4567-e89b-12d3-a456-426614174000',
-                    },
-                  },
-                },
-              },
-            },
-            examples: {
-              updated: {
-                summary: 'Application after update',
-                value: {
-                  application: {
-                    applicationId: '123e4567-e89b-12d3-a456-426614174000',
-                    userEmail: 'john.doe@company.com',
-                    displayName: 'Gmail sender (updated)',
-                    providerId: 'google-gmail',
-                    connectionMethod: 'oauth2',
-                    status: 'draft',
-                    createdAt: 1_757_548_800,
-                    updatedAt: 1_757_635_200,
-                    oauth2RedirectUri: 'https://mail.example.com/api/oauth2/callback/123e4567-e89b-12d3-a456-426614174000',
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '400': {
-        description: 'Invalid request - application not found or immutable fields changed',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'BadRequest',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Details about the invalid request',
-                      example: 'Provider and connection method cannot be changed after creation.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '401': {
-        description: 'Unauthorized - Missing or invalid authentication headers',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'Unauthorized',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Authentication error details',
-                      example: 'No Cloudflare Access JWT token provided in request headers.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '500': {
-        description: 'Internal server error while updating the application',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'InternalServerError',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Error description',
-                      example: 'The server encountered an internal error and was unable to complete your request.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    security: [
-      {
-        CloudflareAccess: [],
-      },
-    ],
+    responses: errorResponses(UNAUTHORIZED_ACCESS_MESSAGE),
+    security: CLOUDFLARE_ACCESS_SECURITY,
   };
 
-  protected async handleRequest(
-    request: UpdateApplicationRequest,
-    env: UpdateApplicationEnv,
-    cxt: RouteContext<UpdateApplicationEnv>,
-  ): Promise<UpdateApplicationResponse> {
+  protected async handleRequest(request: UpdateApplicationRequest, env: Env, cxt: RouteContext): Promise<UpdateApplicationResponse> {
     const userEmail: string = this.getAuthenticatedUserEmailAddress(cxt);
     const scope = createRequestScope(env);
     const credentials: ConnectedApplicationCredentials =
@@ -312,22 +129,20 @@ class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, Update
             clientId: request.clientId!,
             clientSecret: request.clientSecret!,
           };
-    const status: string =
+    const status: ConnectedApplicationStatus =
       request.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
         ? CONNECTED_APPLICATION_STATUS_CONNECTED
         : CONNECTED_APPLICATION_STATUS_DRAFT;
-    const application = await scope
-      .get(Tokens.ApplicationService)
-      .updateApplication(
-        request.applicationId,
-        userEmail,
-        request.displayName,
-        request.providerId,
-        request.connectionMethod,
-        credentials,
-        status,
-        request.raw,
-      );
+    const application = await scope.applications.updateApplication(
+      request.applicationId,
+      userEmail,
+      request.displayName,
+      request.providerId,
+      request.connectionMethod,
+      credentials,
+      status,
+      request.raw,
+    );
     return {
       application,
     };
@@ -353,7 +168,5 @@ interface ApplicationResponse extends ConnectedApplicationMetadata {
 interface UpdateApplicationResponse extends IResponse {
   application: ApplicationResponse;
 }
-
-type UpdateApplicationEnv = IUserEnv;
 
 export { UpdateApplicationRoute };

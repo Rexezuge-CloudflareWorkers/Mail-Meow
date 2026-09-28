@@ -1,10 +1,11 @@
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 
 import { IUserRoute } from '@/endpoints/IUserRoute';
-import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
+import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 import type { ConnectedApplicationMetadata } from '@mail-meow/shared/model';
 
-class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, CreateApplicationResponse, CreateApplicationEnv> {
+class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, CreateApplicationResponse> {
   schema = {
     tags: ['Applications'],
     summary: 'Create connected application',
@@ -106,215 +107,14 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
         },
       },
     },
-    responses: {
-      '200': {
-        description: 'Application created',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              required: ['application'],
-              properties: {
-                application: {
-                  type: 'object' as const,
-                  required: [
-                    'applicationId',
-                    'userEmail',
-                    'displayName',
-                    'providerId',
-                    'connectionMethod',
-                    'status',
-                    'createdAt',
-                    'updatedAt',
-                    'oauth2RedirectUri',
-                  ],
-                  properties: {
-                    applicationId: {
-                      type: 'string' as const,
-                      format: 'uuid',
-                      description: 'Unique identifier of the created application',
-                      example: '123e4567-e89b-12d3-a456-426614174000',
-                    },
-                    userEmail: {
-                      type: 'string' as const,
-                      format: 'email',
-                      description: 'Owner email address',
-                      example: 'john.doe@company.com',
-                    },
-                    displayName: {
-                      type: 'string' as const,
-                      description: 'Human-readable application name',
-                      example: 'Gmail sender',
-                    },
-                    providerId: {
-                      type: 'string' as const,
-                      enum: ['google-gmail', 'microsoft-outlook', 'amazon-sns'],
-                      description: 'Delivery provider identifier',
-                      example: 'google-gmail',
-                    },
-                    connectionMethod: {
-                      type: 'string' as const,
-                      enum: ['oauth2', 'access-keys'],
-                      description: 'Credential mechanism used by the application',
-                      example: 'oauth2',
-                    },
-                    status: {
-                      type: 'string' as const,
-                      enum: ['draft', 'connected'],
-                      description: 'Initial status: draft for oauth2, connected for access-keys',
-                      example: 'draft',
-                    },
-                    createdAt: {
-                      type: 'number' as const,
-                      description: 'Unix timestamp in seconds when the application was created',
-                      example: 1_757_548_800,
-                    },
-                    updatedAt: {
-                      type: 'number' as const,
-                      description: 'Unix timestamp in seconds when the application was last updated',
-                      example: 1_757_548_800,
-                    },
-                    oauth2RedirectUri: {
-                      type: 'string' as const,
-                      format: 'uri',
-                      description: 'OAuth2 callback URI to register with the provider',
-                      example: 'https://mail.example.com/api/oauth2/callback/123e4567-e89b-12d3-a456-426614174000',
-                    },
-                  },
-                },
-              },
-            },
-            examples: {
-              'oauth2-draft': {
-                summary: 'OAuth2 application created as draft',
-                value: {
-                  application: {
-                    applicationId: '123e4567-e89b-12d3-a456-426614174000',
-                    userEmail: 'john.doe@company.com',
-                    displayName: 'Gmail sender',
-                    providerId: 'google-gmail',
-                    connectionMethod: 'oauth2',
-                    status: 'draft',
-                    createdAt: 1_757_548_800,
-                    updatedAt: 1_757_548_800,
-                    oauth2RedirectUri: 'https://mail.example.com/api/oauth2/callback/123e4567-e89b-12d3-a456-426614174000',
-                  },
-                },
-              },
-              'sns-connected': {
-                summary: 'SNS application created as connected',
-                value: {
-                  application: {
-                    applicationId: '223e4567-e89b-12d3-a456-426614174001',
-                    userEmail: 'john.doe@company.com',
-                    displayName: 'Order notifications',
-                    providerId: 'amazon-sns',
-                    connectionMethod: 'access-keys',
-                    status: 'connected',
-                    createdAt: 1_757_548_800,
-                    updatedAt: 1_757_548_800,
-                    oauth2RedirectUri: 'https://mail.example.com/api/oauth2/callback/223e4567-e89b-12d3-a456-426614174001',
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '400': {
-        description: 'Invalid request - validation failed or application limit reached',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'BadRequest',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Details about the invalid request',
-                      example: 'Invalid request body: providerId: providerId and connectionMethod are not a supported combination.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '401': {
-        description: 'Unauthorized - Missing or invalid authentication headers',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'Unauthorized',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Authentication error details',
-                      example: 'No Cloudflare Access JWT token provided in request headers.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '500': {
-        description: 'Internal server error while creating the application',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'InternalServerError',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Error description',
-                      example: 'The server encountered an internal error and was unable to complete your request.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    security: [
-      {
-        CloudflareAccess: [],
-      },
-    ],
+    responses: errorResponses(UNAUTHORIZED_ACCESS_MESSAGE),
+    security: CLOUDFLARE_ACCESS_SECURITY,
   };
 
-  protected async handleRequest(
-    request: CreateApplicationRequest,
-    env: CreateApplicationEnv,
-    cxt: RouteContext<CreateApplicationEnv>,
-  ): Promise<CreateApplicationResponse> {
+  protected async handleRequest(request: CreateApplicationRequest, env: Env, cxt: RouteContext): Promise<CreateApplicationResponse> {
     const userEmail: string = this.getAuthenticatedUserEmailAddress(cxt);
     const scope = createRequestScope(env);
-    const application = await scope.get(Tokens.ApplicationService).createApplication({
+    const application = await scope.applications.createApplication({
       userEmail,
       displayName: request.displayName,
       providerId: request.providerId,
@@ -349,10 +149,6 @@ interface ApplicationResponse extends ConnectedApplicationMetadata {
 
 interface CreateApplicationResponse extends IResponse {
   application: ApplicationResponse;
-}
-
-interface CreateApplicationEnv extends IUserEnv {
-  MAX_APPLICATIONS_PER_USER?: string;
 }
 
 export { CreateApplicationRoute };

@@ -1,9 +1,10 @@
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { NO_SECURITY, UNAUTHORIZED_API_KEY_MESSAGE, errorResponses } from '@/openapi/components';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 import { BadRequestError } from '@mail-meow/backend-errors';
 import { IBaseRoute } from '@/endpoints/IBaseRoute';
-import type { ExtendedResponse, IEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IBaseRoute';
+import type { ExtendedResponse, IRequest, IResponse, RouteContext } from '@/endpoints/IBaseRoute';
 
-class OAuth2CallbackRoute extends IBaseRoute<OAuth2CallbackRequest, OAuth2CallbackResponse, OAuth2CallbackEnv> {
+class OAuth2CallbackRoute extends IBaseRoute<OAuth2CallbackRequest, OAuth2CallbackResponse> {
   schema = {
     tags: ['OAuth2'],
     summary: 'OAuth2 provider callback',
@@ -55,80 +56,14 @@ class OAuth2CallbackRoute extends IBaseRoute<OAuth2CallbackRequest, OAuth2Callba
         },
       },
     ],
-    responses: {
-      '302': {
-        description: 'Redirects to the user UI after callback processing',
-        headers: {
-          Location: {
-            description:
-              'Management UI URL: /user?oauth2=connected&applicationId=... on success, /user?oauth2=error&message=... on provider error',
-            schema: {
-              type: 'string' as const,
-              format: 'uri',
-              example: '/user?oauth2=connected&applicationId=123e4567-e89b-12d3-a456-426614174000',
-            },
-          },
-        },
-      },
-      '400': {
-        description: 'Invalid callback - missing code/state or expired session',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'BadRequest',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Details about the invalid callback',
-                      example: 'OAuth2 authorization session is invalid or expired.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '500': {
-        description: 'Internal server error during code exchange',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'InternalServerError',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Error description',
-                      example: 'The server encountered an internal error and was unable to complete your request.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+    responses: errorResponses(UNAUTHORIZED_API_KEY_MESSAGE, { notFound: true }),
+    security: NO_SECURITY,
   };
 
   protected async handleRequest(
     request: OAuth2CallbackRequest,
-    env: OAuth2CallbackEnv,
-    cxt: RouteContext<OAuth2CallbackEnv>,
+    env: Env,
+    cxt: RouteContext,
   ): Promise<ExtendedResponse<OAuth2CallbackResponse>> {
     const applicationId: string | undefined = cxt.req.param('applicationId');
     if (!applicationId) {
@@ -146,7 +81,7 @@ class OAuth2CallbackRoute extends IBaseRoute<OAuth2CallbackRequest, OAuth2Callba
     }
 
     const scope = createRequestScope(env);
-    await scope.get(Tokens.OAuth2AuthorizationService).completeCallback({
+    await scope.oauth2Authorization.completeCallback({
       applicationId,
       code,
       state,
@@ -166,10 +101,5 @@ type OAuth2CallbackRequest = IRequest;
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface OAuth2CallbackResponse extends IResponse {}
-
-interface OAuth2CallbackEnv extends IEnv {
-  DB: D1Database;
-  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret;
-}
 
 export { OAuth2CallbackRoute };

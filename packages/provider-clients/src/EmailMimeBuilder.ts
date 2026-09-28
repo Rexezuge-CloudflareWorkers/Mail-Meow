@@ -1,10 +1,12 @@
+import { convert } from 'html-to-text';
+
 interface EmailBody {
   text?: string;
   html?: string;
 }
 
 /**
- * Builds RFC 5322 messages for provider send APIs.
+ * Builds RFC 5322 messages and encodes them for provider wire formats.
  *
  * Exists mainly to keep CRLF out of header values. Header injection through an
  * unsanitized `Subject` (or `To`, or `From`) lets a caller append arbitrary
@@ -77,6 +79,49 @@ class EmailMimeBuilder {
       ],
       [body],
     );
+  }
+
+  /**
+   * Builds the message Gmail's `messages.send` expects: the RFC 5322 source
+   * encoded as base64url in the `raw` field.
+   */
+  public static buildRawMessage(sender: string, recipient: string, subject: string, body: EmailBody): string {
+    if (!body.html) {
+      return this.base64UrlEncode(this.buildTextEmail(sender, recipient, subject, body.text ?? ''));
+    }
+    // Every alternative part needs a text/plain counterpart, derived from the
+    // HTML when the caller supplied only one.
+    const textBody: string = body.text ?? this.stripHtml(body.html);
+    return this.base64UrlEncode(this.buildAlternativeEmail(sender, recipient, subject, textBody, body.html));
+  }
+
+  public static base64UrlEncode(value: string): string {
+    const bytes: Uint8Array = new TextEncoder().encode(value);
+    let binary = '';
+    // Accumulated in a loop rather than via spread: a large body would exceed
+    // the engine's argument-count ceiling on String.fromCodePoint(...bytes).
+    for (const byte of bytes) {
+      binary += String.fromCodePoint(byte);
+    }
+    return btoa(binary)
+      .replaceAll('+', '-')
+      .replaceAll('/', '_')
+      .replace(/={0,2}$/, '');
+  }
+
+  /**
+  Renders HTML down to a readable plain-text alternative.
+  */
+  public static stripHtml(value: string): string {
+    return convert(value, {
+      wordwrap: false,
+      selectors: [
+        { selector: 'script', format: 'skip' },
+        { selector: 'style', format: 'skip' },
+        { selector: 'br', format: 'lineBreak' },
+        { selector: 'p', options: { leadingLineBreaks: 0, trailingLineBreaks: 1 } },
+      ],
+    });
   }
 
   private static joinHeaders(headers: Array<[string, string]>, bodyLines: string[]): string {

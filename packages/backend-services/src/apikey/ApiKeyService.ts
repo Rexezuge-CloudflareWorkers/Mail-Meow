@@ -1,35 +1,44 @@
-import { ApplicationApiKeyDAO, ConnectedApplicationDAO } from '@mail-meow/backend-data/dao';
-import type { D1Queryable } from '@mail-meow/backend-data/utils';
+import type { ApplicationApiKeyDAO, ConnectedApplicationDAO } from '@mail-meow/backend-data/dao';
+import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { BadRequestError, UnauthorizedError } from '@mail-meow/backend-errors';
+import { CONNECTED_APPLICATION_STATUS_CONNECTED } from '@mail-meow/shared/constants';
 import type { ApplicationApiKeyMetadata, ConnectedApplication } from '@mail-meow/shared/model';
 import { ApiKeyUtil, TimestampUtil } from '@mail-meow/shared/utils';
-import { ConfigurationManager } from '@mail-meow/backend-runtime/config';
-import { CONNECTED_APPLICATION_STATUS_CONNECTED } from '@mail-meow/shared/constants';
 
-interface ApiKeyServiceEnv {
-  DB: D1Queryable;
-  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret | { get(): Promise<string> };
-  MAX_API_KEYS_PER_APPLICATION?: string;
-  DEFAULT_API_KEY_EXPIRY_DAYS?: string;
-  MAX_API_KEY_EXPIRY_DAYS?: string;
+/**
+ * Collaborators, supplied by the composition root.
+ *
+ * DAOs are async factories because the encrypted ones need the Secrets Store
+ * master key, which is only available after an await.
+ */
+interface ApiKeyServiceDeps {
+  applicationDAO: () => Promise<ConnectedApplicationDAO>;
+  apiKeyDAO: () => Promise<ApplicationApiKeyDAO>;
+  config: () => AppConfigReader;
 }
 
 class ApiKeyService {
-  constructor(private readonly env: ApiKeyServiceEnv) {}
+  constructor(private readonly deps: ApiKeyServiceDeps) {}
 
+  /**
+   * Resolves the application behind a path API key.
+   *
+   * Every failure mode returns `UnauthorizedError` with a distinct message: a
+   * caller holding an invalid key must not be able to tell "no such key" from
+   * "key exists but its application is gone".
+   */
   async resolveApplication(apiKey: string | undefined): Promise<ConnectedApplication> {
     if (!apiKey) {
       throw new UnauthorizedError('API key is required.');
     }
     const keyHash: string = await ApiKeyUtil.hashApiKey(apiKey);
-    const apiKeyDAO = new ApplicationApiKeyDAO(this.env.DB);
+    const apiKeyDAO: ApplicationApiKeyDAO = await this.deps.apiKeyDAO();
     const keyMetadata: ApplicationApiKeyMetadata | undefined = await apiKeyDAO.getByHash(keyHash, true);
     if (!keyMetadata) {
       throw new UnauthorizedError('The API key is invalid or expired.');
     }
     await apiKeyDAO.updateLastUsed(keyMetadata.apiKeyId);
-    const masterKey: string = await this.env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO = new ConnectedApplicationDAO(this.env.DB, masterKey);
+    const applicationDAO: ConnectedApplicationDAO = await this.deps.applicationDAO();
     const application: ConnectedApplication | undefined = await applicationDAO.getById(keyMetadata.applicationId);
     if (!application) {
       throw new UnauthorizedError('The API key is not connected to an application.');
@@ -38,11 +47,8 @@ class ApiKeyService {
   }
 
   async listApiKeys(applicationId: string, userEmail: string): Promise<ApplicationApiKeyMetadata[]> {
-    const masterKey: string = await this.env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO = new ConnectedApplicationDAO(this.env.DB, masterKey);
-    const application = await applicationDAO.getByIdForUser(applicationId, userEmail);
-    if (!application) throw new BadRequestError('Connected application was not found.');
-    const apiKeyDAO = new ApplicationApiKeyDAO(this.env.DB);
+    await this.requireOwnedApplication(applicationId, userEmail);
+    const apiKeyDAO: ApplicationApiKeyDAO = await this.deps.apiKeyDAO();
     return apiKeyDAO.listByApplication(applicationId);
   }
 
@@ -52,26 +58,26 @@ class ApiKeyService {
     name: string,
     expiryDays?: number,
   ): Promise<{ metadata: ApplicationApiKeyMetadata; apiKey: string }> {
-    const masterKey: string = await this.env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO = new ConnectedApplicationDAO(this.env.DB, masterKey);
-    const application = await applicationDAO.getByIdForUser(applicationId, userEmail);
-    if (!application) throw new BadRequestError('Connected application was not found.');
+    const application: ConnectedApplication = await this.requireOwnedApplication(applicationId, userEmail);
     if (application.status !== CONNECTED_APPLICATION_STATUS_CONNECTED) {
       throw new BadRequestError('Connected application must be connected before API keys can be created.');
     }
-    const apiKeyDAO = new ApplicationApiKeyDAO(this.env.DB);
-    const maxKeys = ConfigurationManager.getMaxApiKeysPerApplication(this.env);
+
+    const config: AppConfigReader = this.deps.config();
+    const apiKeyDAO: ApplicationApiKeyDAO = await this.deps.apiKeyDAO();
+    const maxKeys: number = config.maxApiKeysPerApplication;
     if ((await apiKeyDAO.countByApplication(applicationId)) >= maxKeys) {
-      throw new BadRequestError(`Maximum ${maxKeys} API keys allowed per connected application.`);
+      throw new BadRequestError(`Maximum ${maxKeys.toString()} API keys allowed per connected application.`);
     }
-    const { defaultExpiryDays, maxExpiryDays } = ConfigurationManager.getApiKeyExpiry(this.env);
-    const requestedDays = expiryDays ?? defaultExpiryDays;
-    if (requestedDays < 1 || requestedDays > maxExpiryDays) {
-      throw new BadRequestError(`API key expiry cannot exceed ${maxExpiryDays} days.`);
+
+    const requestedDays: number = expiryDays ?? config.defaultApiKeyExpiryDays;
+    if (requestedDays < 1 || requestedDays > config.maxApiKeyExpiryDays) {
+      throw new BadRequestError(`API key expiry cannot exceed ${config.maxApiKeyExpiryDays.toString()} days.`);
     }
+
     const apiKey: string = ApiKeyUtil.generateApiKey();
     const expiresAt: number = TimestampUtil.addDays(TimestampUtil.getCurrentUnixTimestampInSeconds(), requestedDays);
-    const metadata = await apiKeyDAO.create(
+    const metadata: ApplicationApiKeyMetadata = await apiKeyDAO.create(
       applicationId,
       await ApiKeyUtil.hashApiKey(apiKey),
       name,
@@ -83,14 +89,25 @@ class ApiKeyService {
   }
 
   async deleteApiKey(apiKeyId: string, applicationId: string, userEmail: string): Promise<void> {
-    const masterKey: string = await this.env.AES_ENCRYPTION_KEY_SECRET.get();
-    const applicationDAO = new ConnectedApplicationDAO(this.env.DB, masterKey);
-    const application = await applicationDAO.getByIdForUser(applicationId, userEmail);
-    if (!application) throw new BadRequestError('Connected application was not found.');
-    const apiKeyDAO = new ApplicationApiKeyDAO(this.env.DB);
+    await this.requireOwnedApplication(applicationId, userEmail);
+    const apiKeyDAO: ApplicationApiKeyDAO = await this.deps.apiKeyDAO();
     await apiKeyDAO.deleteForApplication(apiKeyId, applicationId);
+  }
+
+  /**
+   * Confirms the application exists *and* belongs to the caller, so every mutating
+   * key operation is ownership-checked rather than relying on the DELETE's own
+   * `AND application_id = ?` predicate.
+   */
+  private async requireOwnedApplication(applicationId: string, userEmail: string): Promise<ConnectedApplication> {
+    const applicationDAO: ConnectedApplicationDAO = await this.deps.applicationDAO();
+    const application: ConnectedApplication | undefined = await applicationDAO.getByIdForUser(applicationId, userEmail);
+    if (!application) {
+      throw new BadRequestError('Connected application was not found.');
+    }
+    return application;
   }
 }
 
 export { ApiKeyService };
-export type { ApiKeyServiceEnv };
+export type { ApiKeyServiceDeps };

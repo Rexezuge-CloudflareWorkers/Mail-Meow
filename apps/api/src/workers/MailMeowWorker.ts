@@ -19,11 +19,30 @@ import {
   UpdateCurrentUserRoute,
 } from '@/endpoints';
 import { MiddlewareHandlers } from '@/middleware';
+import { OPENAPI_COMPONENTS } from '@/openapi/components';
 import { SPA_HTML } from '@/generated/spa-shell';
 import { DURABLE_OBJECT_CRON_TASKS_RUN_URL, DURABLE_OBJECT_NAMESPACE_GLOBAL } from '@mail-meow/backend-runtime/constants';
 import { createD1SessionEnv } from '@mail-meow/backend-data/utils';
 
 const D1_BOOKMARK_HEADER: string = 'x-d1-bookmark';
+
+/**
+ * The slice of zod-to-openapi's registry that chanfana re-exports.
+ *
+ * Declared structurally because `openapi3-ts` and
+ * `@asteasolutions/zod-to-openapi` reach this project only transitively,
+ * through chanfana.
+ */
+interface OpenAPIComponentRegistrar {
+  registerComponent(type: 'securitySchemes' | 'schemas', name: string, component: Record<string, unknown>): unknown;
+}
+
+/**
+The router plus the registry chanfana attaches to it.
+*/
+interface RouterWithRegistry {
+  registry: OpenAPIComponentRegistrar;
+}
 
 type AppRouter = HonoOpenAPIRouterType<{
   Bindings: Env;
@@ -74,6 +93,8 @@ class MailMeowWorker extends AbstractEntrypointWorker {
       },
     });
 
+    MailMeowWorker.withSecuritySchemes(openapi);
+
     this.registerUserRoutes(openapi);
     this.registerPublicApiRoutes(openapi);
 
@@ -86,6 +107,29 @@ class MailMeowWorker extends AbstractEntrypointWorker {
     });
 
     this.app = openapi;
+  }
+
+  /**
+   * Registers the security schemes the routes reference.
+   *
+   * The `/user/*` routes declare `security: [{ CloudflareAccess: [] }]`, but
+   * `fromHono` builds `components` from the route schemas alone, so the
+   * generated document referenced a scheme it never defined and every consumer
+   * of `/openapi.json` saw a dangling requirement.
+   *
+   * Registering through the registry rather than patching the response means
+   * the JSON, the YAML, and the Swagger UI all read the same document.
+   */
+  private static withSecuritySchemes(openapi: AppRouter): void {
+    // `HonoOpenAPIRouterType` does not re-expose `registry` even though the
+    // router implements it, so reach it through a structural view.
+    const registry = (openapi as unknown as RouterWithRegistry).registry;
+    for (const [name, scheme] of Object.entries(OPENAPI_COMPONENTS.securitySchemes)) {
+      registry.registerComponent('securitySchemes', name, scheme);
+    }
+    for (const [name, schema] of Object.entries(OPENAPI_COMPONENTS.schemas)) {
+      registry.registerComponent('schemas', name, schema);
+    }
   }
 
   private registerUserRoutes(openapi: AppRouter): void {

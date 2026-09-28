@@ -1,41 +1,51 @@
 import { CONNECTED_APPLICATION_STATUS_CONNECTED, CONNECTION_METHOD_OAUTH2 } from '@mail-meow/shared/constants';
-import { ConnectedApplicationDAO } from '@mail-meow/backend-data/dao';
-import type { D1Queryable } from '@mail-meow/backend-data/utils';
+import type { ConnectedApplicationDAO } from '@mail-meow/backend-data/dao';
 import { BadRequestError } from '@mail-meow/backend-errors';
 import type { ConnectedApplication, OAuth2Credentials } from '@mail-meow/shared/model';
+import { resolveStrategy } from '@mail-meow/provider-clients';
 import { OAuth2ProviderUtil } from '@mail-meow/provider-clients/oauth2';
-import { MailDeliveryUtil } from '@mail-meow/provider-clients';
+import type { EmailBody } from '@mail-meow/provider-clients';
 
-interface MailDeliveryServiceEnv {
-  DB: D1Queryable;
-  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret | { get(): Promise<string> };
+interface MailDeliveryServiceDeps {
+  applicationDAO: () => Promise<ConnectedApplicationDAO>;
 }
 
 class MailDeliveryService {
-  constructor(private readonly env: MailDeliveryServiceEnv) {}
+  constructor(private readonly deps: MailDeliveryServiceDeps) {}
 
-  async sendEmailForApplication(
-    application: ConnectedApplication,
-    to: string,
-    subject: string,
-    body: { text?: string; html?: string },
-  ): Promise<void> {
+  /**
+   * Sends a message on behalf of a connected application.
+   *
+   * A fresh token is obtained per send rather than read from cache: the
+   * background refresh cron exists for the cron-driven paths, and a cached
+   * token is exactly what would have gone stale between refreshes.
+   */
+  async sendEmailForApplication(application: ConnectedApplication, to: string, subject: string, body: EmailBody): Promise<void> {
     if (application.connectionMethod !== CONNECTION_METHOD_OAUTH2 || application.status !== CONNECTED_APPLICATION_STATUS_CONNECTED) {
       throw new BadRequestError('The API key is not connected to an authorized OAuth2 email application.');
     }
-    const credentials: OAuth2Credentials = application.credentials as OAuth2Credentials;
     const tokenResult = await OAuth2ProviderUtil.refreshAccessToken({
       providerId: application.providerId,
-      credentials,
+      credentials: application.credentials as OAuth2Credentials,
     });
+
     if (tokenResult.refreshToken) {
-      const masterKey: string = await this.env.AES_ENCRYPTION_KEY_SECRET.get();
-      const applicationDAO = new ConnectedApplicationDAO(this.env.DB, masterKey);
+      // Providers may rotate the refresh token on every use. Persisting it is
+      // what stops the next refresh from failing on a token the provider
+      // already invalidated.
+      const applicationDAO: ConnectedApplicationDAO = await this.deps.applicationDAO();
       await applicationDAO.updateOAuth2RefreshToken(application.applicationId, tokenResult.refreshToken);
     }
-    await MailDeliveryUtil.sendEmail(application.providerId, application.userEmail, to, subject, body, tokenResult.accessToken);
+
+    await resolveStrategy(application.providerId).sendEmail({
+      from: application.userEmail,
+      to,
+      subject,
+      body,
+      accessToken: tokenResult.accessToken,
+    });
   }
 }
 
 export { MailDeliveryService };
-export type { MailDeliveryServiceEnv };
+export type { MailDeliveryServiceDeps };
