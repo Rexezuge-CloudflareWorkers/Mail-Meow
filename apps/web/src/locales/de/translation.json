@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "Verbundenes E-Mail- und SNS-Versenden",
-    "loading": "Wird geladen…",
     "unauthorizedTitle": "Nicht autorisiert",
     "unauthorizedBody": "Melden Sie sich mit Cloudflare Access an, um Anwendungen zu verwalten."
   },
@@ -10,8 +7,7 @@
     "language": "Sprache",
     "selectLanguage": "Sprache wählen",
     "unknownLanguage": "Unbekannt",
-    "docs": "Doku",
-    "signOut": "Abmelden"
+    "menu": "Menü"
   },
   "nav": {
     "mailboxes": "Postfächer",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "Verbundene Anwendungen",
     "empty": "Noch keine verbundenen Anwendungen",
-    "emptyHint": "Erstellen Sie Ihre erste Anwendung, um E-Mails oder SNS-Nachrichten zu senden.",
     "newApplication": "Neue Anwendung",
     "editApplication": "Anwendung bearbeiten",
     "displayName": "Anzeigename",
-    "displayNamePlaceholder": "Gmail-Absender",
-    "provider": "Anbieter",
-    "connectionMethod": "Verbindungsmethode",
     "oauth2ClientId": "OAuth2-Client-ID",
     "oauth2ClientSecret": "OAuth2-Client-Secret",
     "awsAccessKeyId": "AWS-Zugangsschlüssel-ID",
@@ -37,27 +29,25 @@
     "cancel": "Abbrechen",
     "delete": "Löschen",
     "edit": "Bearbeiten",
-    "authorize": "Beim Anbieter autorisieren",
-    "copyRedirectUri": "OAuth2-Weiterleitungs-URI kopieren",
-    "statusDraft": "Entwurf",
-    "statusConnected": "Verbunden"
+    "copyRedirectUri": "OAuth2-Weiterleitungs-URI kopieren"
   },
   "apiKeys": {
     "title": "API-Schlüssel",
     "empty": "Noch keine API-Schlüssel",
-    "keyName": "Schlüsselname",
-    "keyNamePlaceholder": "Produktionsschlüssel",
-    "expiryDays": "Ablauftage",
-    "create": "API-Schlüssel erstellen",
-    "delete": "Widerrufen",
-    "createdHint": "Kopieren Sie diesen Schlüssel jetzt. Er wird nicht erneut angezeigt."
+    "keyName": "Schlüsselname"
   },
   "processing": {
     "title": "Hintergrundaufgaben",
     "empty": "Noch keine Aufgabenläufe",
     "taskType": "Aufgabentyp",
     "runNow": "Jetzt ausführen",
-    "status": "Status"
+    "status": "Status",
+    "loadFailed": "Aufgabenläufe konnten nicht geladen werden",
+    "loading": "Wird geladen…",
+    "started": "Gestartet",
+    "summary": "Zusammenfassung",
+    "manual": "Manuell aktualisieren",
+    "triggerFailed": "Aktualisierung konnte nicht ausgelöst werden"
   },
   "help": {
     "title": "Hilfe",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "OAuth2 konnte nicht gestartet werden.",
     "copyFailed": "Weiterleitungs-URI konnte nicht kopiert werden.",
     "apiKeyCreateFailed": "API-Schlüssel konnte nicht erstellt werden.",
-    "apiKeyDeleteFailed": "API-Schlüssel konnte nicht gelöscht werden."
+    "apiKeyDeleteFailed": "API-Schlüssel konnte nicht gelöscht werden.",
+    "dismiss": "Schließen"
   }
 }

@@ -36,6 +36,13 @@ jobs:
         run: node scripts/check-god-files.mjs
         continue-on-error: true
 
+      - name: Validate Translation Bundles
+        # Parity *and* usage. Parity alone passed on a 29-key drift, because
+        # all twelve locales agreed with each other while disagreeing with the
+        # code: keys the UI called were defined nowhere (silent English
+        # fallback in every language) and defined keys nothing called.
+        run: python3 apps/web/scripts/validate_locales.py
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest

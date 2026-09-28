@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "已连接的邮件与 SNS 发送",
-    "loading": "加载中…",
     "unauthorizedTitle": "未授权",
     "unauthorizedBody": "使用 Cloudflare Access 登录以管理应用。"
   },
@@ -10,8 +7,7 @@
     "language": "语言",
     "selectLanguage": "选择语言",
     "unknownLanguage": "未知",
-    "docs": "文档",
-    "signOut": "退出登录"
+    "menu": "菜单"
   },
   "nav": {
     "mailboxes": "邮箱",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "已连接应用",
     "empty": "暂无已连接应用",
-    "emptyHint": "创建第一个应用以开始发送邮件或 SNS 消息。",
     "newApplication": "新建应用",
     "editApplication": "编辑应用",
     "displayName": "显示名称",
-    "displayNamePlaceholder": "Gmail 发件人",
-    "provider": "提供商",
-    "connectionMethod": "连接方式",
     "oauth2ClientId": "OAuth2 客户端 ID",
     "oauth2ClientSecret": "OAuth2 客户端密钥",
     "awsAccessKeyId": "AWS 访问密钥 ID",
@@ -37,27 +29,25 @@
     "cancel": "取消",
     "delete": "删除",
     "edit": "编辑",
-    "authorize": "使用提供商授权",
-    "copyRedirectUri": "复制 OAuth2 回调 URI",
-    "statusDraft": "草稿",
-    "statusConnected": "已连接"
+    "copyRedirectUri": "复制 OAuth2 回调 URI"
   },
   "apiKeys": {
     "title": "API 密钥",
     "empty": "暂无 API 密钥",
-    "keyName": "密钥名称",
-    "keyNamePlaceholder": "生产密钥",
-    "expiryDays": "有效天数",
-    "create": "创建 API 密钥",
-    "delete": "吊销",
-    "createdHint": "请立即复制此密钥。它不会再次显示。"
+    "keyName": "密钥名称"
   },
   "processing": {
     "title": "后台任务运行",
     "empty": "暂无任务运行",
     "taskType": "任务类型",
     "runNow": "立即运行",
-    "status": "状态"
+    "status": "状态",
+    "loadFailed": "无法加载任务运行记录",
+    "loading": "加载中…",
+    "started": "开始时间",
+    "summary": "摘要",
+    "manual": "手动刷新",
+    "triggerFailed": "无法触发刷新"
   },
   "help": {
     "title": "帮助",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "无法启动 OAuth2。",
     "copyFailed": "无法复制 URI。",
     "apiKeyCreateFailed": "无法创建 API 密钥。",
-    "apiKeyDeleteFailed": "无法删除 API 密钥。"
+    "apiKeyDeleteFailed": "无法删除 API 密钥。",
+    "dismiss": "关闭"
   }
 }

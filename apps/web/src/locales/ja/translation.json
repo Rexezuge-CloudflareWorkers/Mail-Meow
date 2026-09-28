@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "接続済みメール・SNS配信",
-    "loading": "読み込み中…",
     "unauthorizedTitle": "未認証",
     "unauthorizedBody": "Cloudflare Accessでサインインしてアプリケーションを管理します。"
   },
@@ -10,8 +7,7 @@
     "language": "言語",
     "selectLanguage": "言語を選択してください",
     "unknownLanguage": "不明",
-    "docs": "ドキュメント",
-    "signOut": "サインアウト"
+    "menu": "メニュー"
   },
   "nav": {
     "mailboxes": "メールボックス",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "接続済みアプリケーション",
     "empty": "接続済みアプリケーションはまだありません",
-    "emptyHint": "最初のアプリケーションを作成してメールやSNSメッセージの送信を開始します。",
     "newApplication": "新規アプリケーション",
     "editApplication": "アプリケーションを編集",
     "displayName": "表示名",
-    "displayNamePlaceholder": "Gmail送信者",
-    "provider": "プロバイダー",
-    "connectionMethod": "接続方法",
     "oauth2ClientId": "OAuth2クライアントID",
     "oauth2ClientSecret": "OAuth2クライアントシークレット",
     "awsAccessKeyId": "AWSアクセスキーID",
@@ -37,27 +29,25 @@
     "cancel": "キャンセル",
     "delete": "削除",
     "edit": "編集",
-    "authorize": "プロバイダーで認証",
-    "copyRedirectUri": "OAuth2リダイレクトURIをコピー",
-    "statusDraft": "下書き",
-    "statusConnected": "接続済み"
+    "copyRedirectUri": "OAuth2リダイレクトURIをコピー"
   },
   "apiKeys": {
     "title": "APIキー",
     "empty": "APIキーはまだありません",
-    "keyName": "キー名",
-    "keyNamePlaceholder": "本番キー",
-    "expiryDays": "有効日数",
-    "create": "APIキーを作成",
-    "delete": "無効化",
-    "createdHint": "このキーを今コピーしてください。再表示されません。"
+    "keyName": "キー名"
   },
   "processing": {
     "title": "バックグラウンドタスク実行",
     "empty": "実行履歴はまだありません",
     "taskType": "タスク種別",
     "runNow": "今すぐ実行",
-    "status": "状態"
+    "status": "状態",
+    "loadFailed": "実行履歴を読み込めませんでした",
+    "loading": "読み込み中…",
+    "started": "開始",
+    "summary": "概要",
+    "manual": "手動更新",
+    "triggerFailed": "更新を開始できませんでした"
   },
   "help": {
     "title": "ヘルプ",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "OAuth2を開始できませんでした。",
     "copyFailed": "URIをコピーできませんでした。",
     "apiKeyCreateFailed": "APIキーを作成できませんでした。",
-    "apiKeyDeleteFailed": "APIキーを削除できませんでした。"
+    "apiKeyDeleteFailed": "APIキーを削除できませんでした。",
+    "dismiss": "閉じる"
   }
 }

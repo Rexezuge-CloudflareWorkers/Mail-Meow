@@ -39,8 +39,11 @@ SPA UI strings live in `src/locales/<tag>/translation.json` (12 locales: `en`, `
 renders).
 
 - Add the key + English default to `en/translation.json` first, then mirror it into the other
-  11 files in the same key order. Validate with `scripts/validate_locales.py` (JSON-valid,
-  key parity including no extra keys, `{{placeholder}}` parity, no empty values).
+  11 files in the same key order. Validate with `apps/web/scripts/validate_locales.py`, which
+  runs in CI and checks **both** parity and usage. The usage check is what catches a key the code
+  calls but no locale defines — such a key does not fail anything, it silently renders the
+  English default in every language. If you build a key name from a template literal, add it to
+  the script's `DYNAMIC_KEYS` allow-list or it will report a false failure.
 - Lazy loading: `src/i18n.ts` code-splits per-locale chunks; never statically import a
   non-English locale (only `en` is static — importing another breaks code-splitting).
 - Detection precedence: backend `preferredLanguage` > `localStorage('mail-meow-lng')` >

@@ -86,12 +86,14 @@ export default defineConfig({
       // files invisible. A barrel with no importer now shows up as uncovered.
       exclude: ['**/*.test.ts', '**/*.test.tsx', '**/*.d.ts', '**/types.d.ts', '**/model/**', '**/generated/**'],
       thresholds: {
-        // Raised from the 19/8/28/20 floor after the dead-code removal and the
-        // composition-root refactor. See docs/agents/testing/AGENTS.md.
-        statements: 60,
-        branches: 45,
-        functions: 60,
-        lines: 60,
+        // Raised from 60/45/60/60 after the account-resolution, JWT, cron-task
+        // and i18n work, and after `**/index.ts` stopped being excluded from
+        // coverage (which had been hiding four entirely dead root barrels).
+        // Actual: 66.59 / 59.94 / 68.24 / 67.24. Raise, never lower.
+        statements: 66,
+        branches: 59,
+        functions: 68,
+        lines: 67,
       },
     },
   },

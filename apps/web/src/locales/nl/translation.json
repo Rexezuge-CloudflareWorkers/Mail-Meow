@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "Verbonden e-mail- en SNS-verzending",
-    "loading": "Laden…",
     "unauthorizedTitle": "Niet geautoriseerd",
     "unauthorizedBody": "Log in met Cloudflare Access om applicaties te beheren."
   },
@@ -10,8 +7,7 @@
     "language": "Taal",
     "selectLanguage": "Selecteer taal",
     "unknownLanguage": "Onbekend",
-    "docs": "Docs",
-    "signOut": "Afmelden"
+    "menu": "Menu"
   },
   "nav": {
     "mailboxes": "Mailboxen",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "Verbonden applicaties",
     "empty": "Nog geen verbonden applicaties",
-    "emptyHint": "Maak uw eerste applicatie om e-mail of SNS-berichten te verzenden.",
     "newApplication": "Nieuwe applicatie",
     "editApplication": "Applicatie bewerken",
     "displayName": "Weergavenaam",
-    "displayNamePlaceholder": "Gmail-afzender",
-    "provider": "Provider",
-    "connectionMethod": "Verbindingsmethode",
     "oauth2ClientId": "OAuth2-client-ID",
     "oauth2ClientSecret": "OAuth2-clientgeheim",
     "awsAccessKeyId": "AWS-toegangssleutel-ID",
@@ -37,27 +29,25 @@
     "cancel": "Annuleren",
     "delete": "Verwijderen",
     "edit": "Bewerken",
-    "authorize": "Autoriseren bij provider",
-    "copyRedirectUri": "OAuth2-redirect-URI kopiëren",
-    "statusDraft": "Concept",
-    "statusConnected": "Verbonden"
+    "copyRedirectUri": "OAuth2-redirect-URI kopiëren"
   },
   "apiKeys": {
     "title": "API-sleutels",
     "empty": "Nog geen API-sleutels",
-    "keyName": "Sleutelnaam",
-    "keyNamePlaceholder": "Productiesleutel",
-    "expiryDays": "Vervaldagen",
-    "create": "API-sleutel maken",
-    "delete": "Intrekken",
-    "createdHint": "Kopieer deze sleutel nu. Hij wordt niet opnieuw getoond."
+    "keyName": "Sleutelnaam"
   },
   "processing": {
     "title": "Achtergrondtaken",
     "empty": "Nog geen taken",
     "taskType": "Taaktype",
     "runNow": "Nu uitvoeren",
-    "status": "Status"
+    "status": "Status",
+    "loadFailed": "Kan taakuitvoeringen niet laden",
+    "loading": "Laden…",
+    "started": "Gestart",
+    "summary": "Overzicht",
+    "manual": "Handmatig vernieuwen",
+    "triggerFailed": "Vernieuwen kon niet worden gestart"
   },
   "help": {
     "title": "Help",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "OAuth2 kon niet worden gestart.",
     "copyFailed": "URI kon niet worden gekopieerd.",
     "apiKeyCreateFailed": "API-sleutel kon niet worden gemaakt.",
-    "apiKeyDeleteFailed": "API-sleutel kon niet worden verwijderd."
+    "apiKeyDeleteFailed": "API-sleutel kon niet worden verwijderd.",
+    "dismiss": "Sluiten"
   }
 }

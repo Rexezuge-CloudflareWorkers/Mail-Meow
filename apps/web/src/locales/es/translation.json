@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "Envío conectado de correo y SNS",
-    "loading": "Cargando…",
     "unauthorizedTitle": "No autorizado",
     "unauthorizedBody": "Inicie sesión con Cloudflare Access para gestionar aplicaciones."
   },
@@ -10,8 +7,7 @@
     "language": "Idioma",
     "selectLanguage": "Elegir idioma",
     "unknownLanguage": "Desconocido",
-    "docs": "Docs",
-    "signOut": "Cerrar sesión"
+    "menu": "Menú"
   },
   "nav": {
     "mailboxes": "Buzones",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "Aplicaciones conectadas",
     "empty": "Aún no hay aplicaciones conectadas",
-    "emptyHint": "Cree su primera aplicación para enviar correos o mensajes SNS.",
     "newApplication": "Nueva aplicación",
     "editApplication": "Editar aplicación",
     "displayName": "Nombre visible",
-    "displayNamePlaceholder": "Remitente de Gmail",
-    "provider": "Proveedor",
-    "connectionMethod": "Método de conexión",
     "oauth2ClientId": "ID de cliente OAuth2",
     "oauth2ClientSecret": "Secreto de cliente OAuth2",
     "awsAccessKeyId": "ID de clave de acceso AWS",
@@ -37,27 +29,25 @@
     "cancel": "Cancelar",
     "delete": "Eliminar",
     "edit": "Editar",
-    "authorize": "Autorizar con el proveedor",
-    "copyRedirectUri": "Copiar URI de redirección OAuth2",
-    "statusDraft": "Borrador",
-    "statusConnected": "Conectado"
+    "copyRedirectUri": "Copiar URI de redirección OAuth2"
   },
   "apiKeys": {
     "title": "Claves API",
     "empty": "Aún no hay claves API",
-    "keyName": "Nombre de clave",
-    "keyNamePlaceholder": "Clave de producción",
-    "expiryDays": "Días de vencimiento",
-    "create": "Crear clave API",
-    "delete": "Revocar",
-    "createdHint": "Copie esta clave ahora. No se mostrará de nuevo."
+    "keyName": "Nombre de clave"
   },
   "processing": {
     "title": "Ejecuciones de tareas",
     "empty": "Aún no hay ejecuciones",
     "taskType": "Tipo de tarea",
     "runNow": "Ejecutar ahora",
-    "status": "Estado"
+    "status": "Estado",
+    "loadFailed": "No se pudieron cargar las ejecuciones",
+    "loading": "Cargando…",
+    "started": "Inicio",
+    "summary": "Resumen",
+    "manual": "Actualización manual",
+    "triggerFailed": "No se pudo iniciar la actualización"
   },
   "help": {
     "title": "Ayuda",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "No se pudo iniciar OAuth2.",
     "copyFailed": "No se pudo copiar la URI.",
     "apiKeyCreateFailed": "No se pudo crear la clave API.",
-    "apiKeyDeleteFailed": "No se pudo eliminar la clave API."
+    "apiKeyDeleteFailed": "No se pudo eliminar la clave API.",
+    "dismiss": "Cerrar"
   }
 }
