@@ -1,8 +1,6 @@
 import { OAuth2AccessTokenRefreshStatusDAO } from '@mail-meow/backend-data/dao';
 import { createD1SessionEnv } from '@mail-meow/backend-data/utils';
-import { ConfigurationManager } from '@mail-meow/backend-runtime/config';
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
-import { OAuth2AccessTokenService } from '@mail-meow/backend-services/oauth2';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 import { BACKGROUND_TASK_TYPE_OAUTH2_REFRESH } from '@mail-meow/shared/constants';
 import { TimestampUtil } from '@mail-meow/shared/utils';
 import { IScheduledTask } from './IScheduledTask';
@@ -19,8 +17,8 @@ class OAuth2AccessTokenRefreshTask extends IScheduledTask<OAuth2AccessTokenRefre
     _ctx: ExecutionContext,
   ): Promise<TaskRunSummary> {
     const scope = createRequestScope(env);
-    const refreshWindowSeconds: number = ConfigurationManager.getOAuth2AccessTokenRefreshWindowSeconds(env);
-    const batchSize: number = ConfigurationManager.getOAuth2TokenRefreshBatchSize(env);
+    const refreshWindowSeconds: number = scope.config.oauth2AccessTokenRefreshWindowSeconds;
+    const batchSize: number = scope.config.oauth2TokenRefreshBatchSize;
     const refreshBefore: number = TimestampUtil.getCurrentUnixTimestampInSeconds() + refreshWindowSeconds;
     const sessionEnv = createD1SessionEnv(env);
     const statusDAO = new OAuth2AccessTokenRefreshStatusDAO(sessionEnv.DB);
@@ -30,9 +28,7 @@ class OAuth2AccessTokenRefreshTask extends IScheduledTask<OAuth2AccessTokenRefre
     let failed = 0;
     for (const applicationId of applicationIds) {
       try {
-        await scope
-          .get<OAuth2AccessTokenService>(Tokens.OAuth2AccessTokenService)
-          .refreshAccessToken(applicationId, { forceRefresh: true });
+        await scope.oauth2AccessTokens.refreshAccessToken(applicationId, { forceRefresh: true });
         refreshed++;
       } catch {
         failed++;

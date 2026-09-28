@@ -1,9 +1,10 @@
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { API_KEY_SECURITY, UNAUTHORIZED_API_KEY_MESSAGE, errorResponses } from '@/openapi/components';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 
 import { IPublicApplicationRoute } from '@/endpoints/IPublicApplicationRoute';
-import type { IPublicApplicationEnv, IPublicApplicationRequest, IResponse, RouteContext } from '@/endpoints/IPublicApplicationRoute';
+import type { IPublicApplicationRequest, IResponse, RouteContext } from '@/endpoints/IPublicApplicationRoute';
 
-class SendEmailRoute extends IPublicApplicationRoute<SendEmailRequest, SendEmailResponse, SendEmailEnv> {
+class SendEmailRoute extends IPublicApplicationRoute<SendEmailRequest, SendEmailResponse> {
   schema = {
     tags: ['Delivery'],
     summary: 'Send email',
@@ -89,119 +90,13 @@ class SendEmailRoute extends IPublicApplicationRoute<SendEmailRequest, SendEmail
         },
       },
     },
-    responses: {
-      '200': {
-        description: 'Email sent',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              required: ['message'],
-              properties: {
-                message: {
-                  type: 'string' as const,
-                  description: 'Human-readable delivery confirmation',
-                  example: 'The email was sent successfully.',
-                },
-              },
-            },
-            examples: {
-              sent: {
-                summary: 'Email accepted by the provider',
-                value: { message: 'The email was sent successfully.' },
-              },
-            },
-          },
-        },
-      },
-      '400': {
-        description: 'Invalid request - validation failed or key is not linked to an authorized OAuth2 email application',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'BadRequest',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Details about the invalid request',
-                      example: 'The API key is not connected to an authorized OAuth2 email application.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '401': {
-        description: 'Unauthorized - API key missing, invalid, or expired',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'Unauthorized',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Authentication error details',
-                      example: 'The API key is invalid or expired.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '500': {
-        description: 'Internal server error during email delivery',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'InternalServerError',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Error description',
-                      example: 'The server encountered an internal error and was unable to complete your request.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+    responses: errorResponses(UNAUTHORIZED_API_KEY_MESSAGE),
+    security: API_KEY_SECURITY,
   };
 
-  protected async handleRequest(
-    request: SendEmailRequest,
-    env: SendEmailEnv,
-    _cxt: RouteContext<SendEmailEnv>,
-  ): Promise<SendEmailResponse> {
+  protected async handleRequest(request: SendEmailRequest, env: Env, _cxt: RouteContext): Promise<SendEmailResponse> {
     const scope = createRequestScope(env);
-    await scope.get(Tokens.MailDeliveryService).sendEmailForApplication(request.application, request.to, request.subject, {
+    await scope.mailDelivery.sendEmailForApplication(request.application, request.to, request.subject, {
       text: request.text,
       html: request.html,
     });
@@ -219,7 +114,5 @@ interface SendEmailRequest extends IPublicApplicationRequest {
 interface SendEmailResponse extends IResponse {
   message: string;
 }
-
-type SendEmailEnv = IPublicApplicationEnv;
 
 export { SendEmailRoute };

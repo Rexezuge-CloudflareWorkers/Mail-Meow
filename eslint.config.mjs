@@ -323,8 +323,7 @@ export default tseslint.config(
             },
             {
               group: ['@mail-meow/backend-data/dao', '@mail-meow/backend-data/dao/*'],
-              message: 'apps/api must not import DAOs directly; use @mail-meow/backend-services instead (type-only imports are allowed)',
-              allowTypeImports: true,
+              message: 'apps/api must not import DAOs directly; use @mail-meow/backend-services instead',
             },
           ],
         },

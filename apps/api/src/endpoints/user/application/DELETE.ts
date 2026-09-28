@@ -1,8 +1,9 @@
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 import { IUserRoute } from '@/endpoints/IUserRoute';
-import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
+import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 
-class DeleteApplicationRoute extends IUserRoute<DeleteApplicationRequest, DeleteApplicationResponse, DeleteApplicationEnv> {
+class DeleteApplicationRoute extends IUserRoute<DeleteApplicationRequest, DeleteApplicationResponse> {
   schema = {
     tags: ['Applications'],
     summary: 'Delete connected application',
@@ -36,124 +37,13 @@ class DeleteApplicationRoute extends IUserRoute<DeleteApplicationRequest, Delete
         },
       },
     },
-    responses: {
-      '200': {
-        description: 'Application deleted',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              required: ['success'],
-              properties: {
-                success: {
-                  type: 'boolean' as const,
-                  description: 'Whether the delete operation succeeded',
-                  example: true,
-                },
-              },
-            },
-            examples: {
-              deleted: {
-                summary: 'Application deleted successfully',
-                value: { success: true },
-              },
-            },
-          },
-        },
-      },
-      '400': {
-        description: 'Invalid request - missing or malformed applicationId',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'BadRequest',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Details about the invalid request',
-                      example: 'Invalid request body: applicationId: Value must be a valid UUID.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '401': {
-        description: 'Unauthorized - Missing or invalid authentication headers',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'Unauthorized',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Authentication error details',
-                      example: 'No Cloudflare Access JWT token provided in request headers.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '500': {
-        description: 'Internal server error while deleting the application',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'InternalServerError',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Error description',
-                      example: 'The server encountered an internal error and was unable to complete your request.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    security: [
-      {
-        CloudflareAccess: [],
-      },
-    ],
+    responses: errorResponses(UNAUTHORIZED_ACCESS_MESSAGE),
+    security: CLOUDFLARE_ACCESS_SECURITY,
   };
 
-  protected async handleRequest(
-    request: DeleteApplicationRequest,
-    env: DeleteApplicationEnv,
-    cxt: RouteContext<DeleteApplicationEnv>,
-  ): Promise<DeleteApplicationResponse> {
+  protected async handleRequest(request: DeleteApplicationRequest, env: Env, cxt: RouteContext): Promise<DeleteApplicationResponse> {
     const scope = createRequestScope(env);
-    await scope.get(Tokens.ApplicationService).deleteApplication(request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
+    await scope.applications.deleteApplication(request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
     return { success: true };
   }
 }
@@ -165,7 +55,5 @@ interface DeleteApplicationRequest extends IRequest {
 interface DeleteApplicationResponse extends IResponse {
   success: boolean;
 }
-
-type DeleteApplicationEnv = IUserEnv;
 
 export { DeleteApplicationRoute };

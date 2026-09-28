@@ -1,33 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-import { GetCurrentUserRoute as OriginalGetCurrentUserRoute } from './user/me/GET';
-import { UpdateCurrentUserRoute as OriginalUpdateCurrentUserRoute } from './user/me/PUT';
-import { ListApplicationsRoute as OriginalListApplicationsRoute } from './user/applications/GET';
-import { CreateApplicationRoute as OriginalCreateApplicationRoute } from './user/application/POST';
-import { UpdateApplicationRoute as OriginalUpdateApplicationRoute } from './user/application/PUT';
-import { DeleteApplicationRoute as OriginalDeleteApplicationRoute } from './user/application/DELETE';
-import { CreateOAuth2AuthorizationRoute as OriginalCreateOAuth2AuthorizationRoute } from './user/application/oauth2/authorize/POST';
-import { ListApplicationApiKeysRoute as OriginalListApplicationApiKeysRoute } from './user/application/api-keys/GET';
-import { CreateApplicationApiKeyRoute as OriginalCreateApplicationApiKeyRoute } from './user/application/api-key/POST';
-import { DeleteApplicationApiKeyRoute as OriginalDeleteApplicationApiKeyRoute } from './user/application/api-key/DELETE';
-import { ListBackgroundTaskRunsRoute as OriginalListBackgroundTaskRunsRoute } from './user/processing/task-runs/GET';
-import { RunTaskNowRoute as OriginalRunTaskNowRoute } from './user/processing/run-task/POST';
-import { OAuth2CallbackRoute as OriginalOAuth2CallbackRoute } from './api/oauth2/callback/GET';
-import { SendEmailRoute as OriginalSendEmailRoute } from './api/email/POST';
-import { SendSNSRoute as OriginalSendSNSRoute } from './api/sns/POST';
-
-export const GetCurrentUserRoute: any = OriginalGetCurrentUserRoute;
-export const UpdateCurrentUserRoute: any = OriginalUpdateCurrentUserRoute;
-export const ListApplicationsRoute: any = OriginalListApplicationsRoute;
-export const CreateApplicationRoute: any = OriginalCreateApplicationRoute;
-export const UpdateApplicationRoute: any = OriginalUpdateApplicationRoute;
-export const DeleteApplicationRoute: any = OriginalDeleteApplicationRoute;
-export const CreateOAuth2AuthorizationRoute: any = OriginalCreateOAuth2AuthorizationRoute;
-export const ListApplicationApiKeysRoute: any = OriginalListApplicationApiKeysRoute;
-export const CreateApplicationApiKeyRoute: any = OriginalCreateApplicationApiKeyRoute;
-export const DeleteApplicationApiKeyRoute: any = OriginalDeleteApplicationApiKeyRoute;
-export const ListBackgroundTaskRunsRoute: any = OriginalListBackgroundTaskRunsRoute;
-export const RunTaskNowRoute: any = OriginalRunTaskNowRoute;
-export const OAuth2CallbackRoute: any = OriginalOAuth2CallbackRoute;
-export const SendEmailRoute: any = OriginalSendEmailRoute;
-export const SendSNSRoute: any = OriginalSendSNSRoute;
+export { GetCurrentUserRoute } from './user/me/GET';
+export { UpdateCurrentUserRoute } from './user/me/PUT';
+export { ListApplicationsRoute } from './user/applications/GET';
+export { CreateApplicationRoute } from './user/application/POST';
+export { UpdateApplicationRoute } from './user/application/PUT';
+export { DeleteApplicationRoute } from './user/application/DELETE';
+export { CreateOAuth2AuthorizationRoute } from './user/application/oauth2/authorize/POST';
+export { ListApplicationApiKeysRoute } from './user/application/api-keys/GET';
+export { CreateApplicationApiKeyRoute } from './user/application/api-key/POST';
+export { DeleteApplicationApiKeyRoute } from './user/application/api-key/DELETE';
+export { ListBackgroundTaskRunsRoute } from './user/processing/task-runs/GET';
+export { RunTaskNowRoute } from './user/processing/run-task/POST';
+export { OAuth2CallbackRoute } from './api/oauth2/callback/GET';
+export { SendEmailRoute } from './api/email/POST';
+export { SendSNSRoute } from './api/sns/POST';

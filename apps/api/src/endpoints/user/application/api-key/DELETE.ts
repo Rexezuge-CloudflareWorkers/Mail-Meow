@@ -1,13 +1,10 @@
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 
 import { IUserRoute } from '@/endpoints/IUserRoute';
-import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
+import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 
-class DeleteApplicationApiKeyRoute extends IUserRoute<
-  DeleteApplicationApiKeyRequest,
-  DeleteApplicationApiKeyResponse,
-  DeleteApplicationApiKeyEnv
-> {
+class DeleteApplicationApiKeyRoute extends IUserRoute<DeleteApplicationApiKeyRequest, DeleteApplicationApiKeyResponse> {
   schema = {
     tags: ['API Keys'],
     summary: 'Delete application API key',
@@ -48,111 +45,17 @@ class DeleteApplicationApiKeyRoute extends IUserRoute<
         },
       },
     },
-    responses: {
-      '200': {
-        description: 'Application API key deleted',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              required: ['success'],
-              properties: {
-                success: {
-                  type: 'boolean' as const,
-                  description: 'Whether the delete operation succeeded',
-                  example: true,
-                },
-              },
-            },
-            examples: {
-              deleted: {
-                summary: 'API key deleted successfully',
-                value: { success: true },
-              },
-            },
-          },
-        },
-      },
-      '400': {
-        description: 'Invalid request - application not found or malformed ids',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: { type: 'string' as const, example: 'BadRequest' },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Details about the invalid request',
-                      example: 'Connected application was not found.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '401': {
-        description: 'Unauthorized - Missing or invalid authentication',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: { type: 'string' as const, example: 'Unauthorized' },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Authentication error details',
-                      example: 'No Cloudflare Access JWT token provided in request headers.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '500': {
-        description: 'Internal server error while deleting the API key',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: { type: 'string' as const, example: 'InternalServerError' },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Error description',
-                      example: 'The server encountered an internal error and was unable to complete your request.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    security: [{ CloudflareAccess: [] }],
+    responses: errorResponses(UNAUTHORIZED_ACCESS_MESSAGE),
+    security: CLOUDFLARE_ACCESS_SECURITY,
   };
 
   protected async handleRequest(
     request: DeleteApplicationApiKeyRequest,
-    env: DeleteApplicationApiKeyEnv,
-    cxt: RouteContext<DeleteApplicationApiKeyEnv>,
+    env: Env,
+    cxt: RouteContext,
   ): Promise<DeleteApplicationApiKeyResponse> {
     const scope = createRequestScope(env);
-    await scope.get(Tokens.ApiKeyService).deleteApiKey(request.apiKeyId, request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
+    await scope.apiKeys.deleteApiKey(request.apiKeyId, request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
     return { success: true };
   }
 }
@@ -165,7 +68,5 @@ interface DeleteApplicationApiKeyRequest extends IRequest {
 interface DeleteApplicationApiKeyResponse extends IResponse {
   success: boolean;
 }
-
-type DeleteApplicationApiKeyEnv = IUserEnv;
 
 export { DeleteApplicationApiKeyRoute };

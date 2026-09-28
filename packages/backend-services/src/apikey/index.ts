@@ -1,2 +1,2 @@
 export { ApiKeyService } from './ApiKeyService';
-export type { ApiKeyServiceEnv } from './ApiKeyService';
+export type { ApiKeyServiceDeps } from './ApiKeyService';

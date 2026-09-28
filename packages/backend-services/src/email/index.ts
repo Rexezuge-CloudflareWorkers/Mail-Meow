@@ -1,2 +1,2 @@
 export { MailDeliveryService } from './MailDeliveryService';
-export type { MailDeliveryServiceEnv } from './MailDeliveryService';
+export type { MailDeliveryServiceDeps } from './MailDeliveryService';

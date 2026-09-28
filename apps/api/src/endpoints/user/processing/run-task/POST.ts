@@ -1,8 +1,9 @@
+import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
 import { IUserRoute } from '@/endpoints/IUserRoute';
-import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 
-class RunTaskNowRoute extends IUserRoute<RunTaskNowRequest, RunTaskNowResponse, RunTaskNowEnv> {
+class RunTaskNowRoute extends IUserRoute<RunTaskNowRequest, RunTaskNowResponse> {
   schema = {
     tags: ['Processing'],
     summary: 'Manually trigger OAuth2 token refresh for a connected application',
@@ -22,20 +23,14 @@ class RunTaskNowRoute extends IUserRoute<RunTaskNowRequest, RunTaskNowResponse, 
         },
       },
     },
-    responses: {
-      '200': { description: 'Task triggered' },
-    },
-    security: [{ CloudflareAccess: [] }],
+    responses: errorResponses(UNAUTHORIZED_ACCESS_MESSAGE),
+    security: CLOUDFLARE_ACCESS_SECURITY,
   };
 
-  protected async handleRequest(
-    request: RunTaskNowRequest,
-    env: RunTaskNowEnv,
-    cxt: RouteContext<RunTaskNowEnv>,
-  ): Promise<RunTaskNowResponse> {
+  protected async handleRequest(request: RunTaskNowRequest, env: Env, cxt: RouteContext): Promise<RunTaskNowResponse> {
     const userEmail = this.getAuthenticatedUserEmailAddress(cxt);
     const scope = createRequestScope(env);
-    await scope.get(Tokens.ProcessingService).triggerTask(userEmail, request.taskType, request.applicationId, env);
+    await scope.processing.triggerTask(userEmail, request.taskType, request.applicationId);
     return { triggered: true };
   }
 }
@@ -47,13 +42,6 @@ interface RunTaskNowRequest extends IRequest {
 
 interface RunTaskNowResponse extends IResponse {
   triggered: boolean;
-}
-
-interface RunTaskNowEnv extends IUserEnv {
-  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret;
-  OAUTH2_TOKEN_CACHE: KVNamespace;
-  OAUTH2_TOKEN_REFRESHERS: DurableObjectNamespace;
-  OAUTH2_ACCESS_TOKEN_MIN_VALID_SECONDS?: string;
 }
 
 export { RunTaskNowRoute };

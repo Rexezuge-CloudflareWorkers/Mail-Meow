@@ -1,8 +1,9 @@
-import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
+import { API_KEY_SECURITY, UNAUTHORIZED_API_KEY_MESSAGE, errorResponses } from '@/openapi/components';
+import { createRequestScope } from '@mail-meow/backend-services/composition';
 import { IPublicApplicationRoute } from '@/endpoints/IPublicApplicationRoute';
-import type { IPublicApplicationEnv, IPublicApplicationRequest, IResponse, RouteContext } from '@/endpoints/IPublicApplicationRoute';
+import type { IPublicApplicationRequest, IResponse, RouteContext } from '@/endpoints/IPublicApplicationRoute';
 
-class SendSNSRoute extends IPublicApplicationRoute<SendSNSRequest, SendSNSResponse, SendSNSEnv> {
+class SendSNSRoute extends IPublicApplicationRoute<SendSNSRequest, SendSNSResponse> {
   schema = {
     tags: ['Delivery'],
     summary: 'Publish SNS message',
@@ -64,125 +65,13 @@ class SendSNSRoute extends IPublicApplicationRoute<SendSNSRequest, SendSNSRespon
         },
       },
     },
-    responses: {
-      '200': {
-        description: 'SNS message published',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              required: ['message', 'messageId'],
-              properties: {
-                message: {
-                  type: 'string' as const,
-                  description: 'Human-readable delivery confirmation',
-                  example: 'The message was published successfully.',
-                },
-                messageId: {
-                  type: 'string' as const,
-                  description: 'SNS message ID returned by the Publish call',
-                  example: '95df01b4-ee98-5cb9-9903-4c221d41eb5e',
-                },
-              },
-            },
-            examples: {
-              published: {
-                summary: 'Message accepted by SNS',
-                value: {
-                  message: 'The message was published successfully.',
-                  messageId: '95df01b4-ee98-5cb9-9903-4c221d41eb5e',
-                },
-              },
-            },
-          },
-        },
-      },
-      '400': {
-        description: 'Invalid request - validation failed or key is not linked to an SNS access-key application',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'BadRequest',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Details about the invalid request',
-                      example: 'The API key is not connected to an Amazon SNS access-key application.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '401': {
-        description: 'Unauthorized - API key missing, invalid, or expired',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'Unauthorized',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Authentication error details',
-                      example: 'The API key is invalid or expired.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '500': {
-        description: 'Internal server error during SNS publish',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object' as const,
-              properties: {
-                Exception: {
-                  type: 'object' as const,
-                  properties: {
-                    Type: {
-                      type: 'string' as const,
-                      example: 'InternalServerError',
-                    },
-                    Message: {
-                      type: 'string' as const,
-                      description: 'Error description',
-                      example: 'The server encountered an internal error and was unable to complete your request.',
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
+    responses: errorResponses(UNAUTHORIZED_API_KEY_MESSAGE),
+    security: API_KEY_SECURITY,
   };
 
-  protected async handleRequest(request: SendSNSRequest, env: SendSNSEnv, _cxt: RouteContext<SendSNSEnv>): Promise<SendSNSResponse> {
+  protected async handleRequest(request: SendSNSRequest, env: Env, _cxt: RouteContext): Promise<SendSNSResponse> {
     const scope = createRequestScope(env);
-    const messageId: string = await scope
-      .get(Tokens.SnsDeliveryService)
-      .publishForApplication(request.application, request.message, request.subject);
+    const messageId: string = await scope.sns.publishForApplication(request.application, request.message, request.subject);
     return {
       message: 'The message was published successfully.',
       messageId,
@@ -199,7 +88,5 @@ interface SendSNSResponse extends IResponse {
   message: string;
   messageId: string;
 }
-
-type SendSNSEnv = IPublicApplicationEnv;
 
 export { SendSNSRoute };

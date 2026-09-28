@@ -1,25 +1,18 @@
 import { IBaseRoute } from './IBaseRoute';
-import type { IEnv, IRequest, IResponse, RouteContext } from './IBaseRoute';
+import type { IRequest, IResponse, RouteContext } from './IBaseRoute';
 
-abstract class IUserRoute<TRequest extends IRequest, TResponse extends IResponse, TEnv extends IUserEnv> extends IBaseRoute<
-  TRequest,
-  TResponse,
-  TEnv
-> {
-  protected getAuthenticatedUserEmailAddress(c: RouteContext<TEnv>): string {
+/**
+ * Base for routes behind Cloudflare Access.
+ *
+ * Authentication happens once in `MiddlewareHandlers.userAuthentication`, which
+ * runs on `/user/*` and stores the verified address in the Hono context. This
+ * class only reads it — there is deliberately no per-route auth check to forget.
+ */
+abstract class IUserRoute<TRequest extends IRequest, TResponse extends IResponse> extends IBaseRoute<TRequest, TResponse> {
+  protected getAuthenticatedUserEmailAddress(c: RouteContext): string {
     return c.get('AuthenticatedUserEmailAddress');
   }
 }
 
-interface IUserEnv extends IEnv {
-  Variables: {
-    AuthenticatedUserEmailAddress: string;
-  };
-  DB: D1Database;
-  AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret;
-}
-
 export { IUserRoute };
-export type { IUserEnv };
-
-export { type IRequest, type IResponse, type RouteContext } from './IBaseRoute';
+export type { IRequest, IResponse, RouteContext } from './IBaseRoute';
