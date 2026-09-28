@@ -5,10 +5,10 @@ import {
   type ConnectedApplicationStatus,
   type ConnectionMethod,
 } from '@mail-meow/shared/constants';
-import type { ConnectedApplicationDAO } from '@mail-meow/backend-data/dao';
+import type { ConnectedApplicationDAO, UserDAO, UserEmailDAO } from '@mail-meow/backend-data/dao';
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { BadRequestError } from '@mail-meow/backend-errors';
-import type { ConnectedApplicationCredentials, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
+import type { AccountIdentity, ConnectedApplicationCredentials, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
 import { BaseUrlUtil } from '@mail-meow/shared/utils';
 
 /**
@@ -17,7 +17,7 @@ An application plus the redirect URI the provider must be configured with.
 type ApplicationWithRedirect = ConnectedApplicationMetadata & { oauth2RedirectUri: string };
 
 interface CreateApplicationInput {
-  userEmail: string;
+  user: AccountIdentity;
   displayName: string;
   providerId: string;
   connectionMethod: string;
@@ -31,6 +31,8 @@ interface CreateApplicationInput {
 
 interface ApplicationServiceDeps {
   applicationDAO: () => Promise<ConnectedApplicationDAO>;
+  userDAO: () => Promise<UserDAO>;
+  userEmailDAO: () => Promise<UserEmailDAO>;
   config: () => AppConfigReader;
 }
 
@@ -40,13 +42,13 @@ class ApplicationService {
   async createApplication(input: CreateApplicationInput): Promise<ApplicationWithRedirect> {
     const dao: ConnectedApplicationDAO = await this.deps.applicationDAO();
     const maxApplications: number = this.deps.config().maxApplicationsPerUser;
-    if ((await dao.countByUserEmail(input.userEmail)) >= maxApplications) {
+    if ((await dao.countByUser(input.user)) >= maxApplications) {
       throw new BadRequestError(`Maximum ${maxApplications.toString()} connected applications allowed per user.`);
     }
     const connectionMethod: ConnectionMethod =
       input.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS ? CONNECTION_METHOD_ACCESS_KEYS : 'oauth2';
     const application: ConnectedApplicationMetadata = await dao.create(
-      input.userEmail,
+      input.user,
       input.displayName,
       input.providerId,
       connectionMethod,
@@ -58,14 +60,14 @@ class ApplicationService {
     return { ...application, oauth2RedirectUri: ApplicationService.buildRedirectUri(application.applicationId, input.raw) };
   }
 
-  async listApplications(userEmail: string): Promise<ConnectedApplicationMetadata[]> {
+  async listApplications(user: AccountIdentity): Promise<ConnectedApplicationMetadata[]> {
     const dao: ConnectedApplicationDAO = await this.deps.applicationDAO();
-    return dao.listMetadataByUserEmail(userEmail);
+    return dao.listMetadataByUser(user);
   }
 
   async updateApplication(
     applicationId: string,
-    userEmail: string,
+    user: AccountIdentity,
     displayName: string,
     providerId: string,
     connectionMethod: string,
@@ -74,7 +76,7 @@ class ApplicationService {
     raw: Request,
   ): Promise<ApplicationWithRedirect> {
     const dao: ConnectedApplicationDAO = await this.deps.applicationDAO();
-    const existing: ConnectedApplicationMetadata | undefined = await dao.getMetadataByIdForUser(applicationId, userEmail);
+    const existing: ConnectedApplicationMetadata | undefined = await dao.getMetadataByIdForUser(applicationId, user);
     if (!existing) {
       throw new BadRequestError('Connected application was not found.');
     }
@@ -85,7 +87,7 @@ class ApplicationService {
     }
     const updated: ConnectedApplicationMetadata | undefined = await dao.updateForUser(
       applicationId,
-      userEmail,
+      user,
       displayName,
       credentials,
       status,
@@ -96,9 +98,9 @@ class ApplicationService {
     return { ...updated, oauth2RedirectUri: ApplicationService.buildRedirectUri(updated.applicationId, raw) };
   }
 
-  async deleteApplication(applicationId: string, userEmail: string): Promise<void> {
+  async deleteApplication(applicationId: string, user: AccountIdentity): Promise<void> {
     const dao: ConnectedApplicationDAO = await this.deps.applicationDAO();
-    await dao.deleteForUser(applicationId, userEmail);
+    await dao.deleteForUser(applicationId, user);
   }
 
   private static buildCredentials(connectionMethod: ConnectionMethod, input: CreateApplicationInput): ConnectedApplicationCredentials {

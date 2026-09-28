@@ -116,7 +116,7 @@ class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, Update
   };
 
   protected async handleRequest(request: UpdateApplicationRequest, env: Env, cxt: RouteContext): Promise<UpdateApplicationResponse> {
-    const userEmail: string = this.getAuthenticatedUserEmailAddress(cxt);
+    const user = this.getAuthenticatedAccount(cxt);
     const scope = createRequestScope(env);
     const credentials: ConnectedApplicationCredentials =
       request.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
@@ -135,7 +135,7 @@ class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, Update
         : CONNECTED_APPLICATION_STATUS_DRAFT;
     const application = await scope.applications.updateApplication(
       request.applicationId,
-      userEmail,
+      user,
       request.displayName,
       request.providerId,
       request.connectionMethod,

@@ -10,15 +10,20 @@ Layer 2. May import `@mail-meow/shared` and `@mail-meow/backend-errors`. Must no
 - `BaseDAO` — holds the `D1Queryable`; provides the static `findById` generic lookup with
   SQL-identifier allow-listing. `EncryptedDAO` adds the `masterKey` used by
   `ConnectedApplicationDAO`.
-- `ConnectedApplicationDAO` — connected applications (encrypted credential blobs,
-  `status` CHECK-constrained, paginated listing with an opaque cursor).
 - `ApplicationApiKeyDAO` — API key records (hash + prefix + last four, expiry, last-used).
 - `OAuth2AuthorizationSessionDAO` — PKCE `code_verifier`, hashed `state_hash`, `consumed_at`
   for one-time use.
 - `OAuth2AccessTokenRefreshStatusDAO` — per-application token expiry/refresh bookkeeping.
 - `OAuth2AccessTokenCacheDAO` — KV-backed encrypted access-token cache.
-- `UserDAO` — `users` by email, including `preferred_language`.
-- `BackgroundTaskRunDAO` — cron task-run history: start/succeed/fail/skip plus batched pruning.
+- `UserDAO` — `users` by id or address (`createUser` stamping the 0011 `id`/`current_email` columns, `newId()`/`newAnchor()`, `getById`/`getByEmail` (frozen anchor, exact match)/`getByCurrentEmail` (case-insensitive), `setCurrentEmail`, `updatePreferredLanguage` keyed on id with the anchor as the pre-0011 fallback).
+- `UserEmailDAO` — the `user_emails` address registry: `register` re-points a revoked row but refuses a verified one, `get`/`resolveVerified`, `revokeAllVerified`, `listByUserId`.
+- `ConnectedApplicationDAO` — connected applications (encrypted credential blobs, `status` CHECK-constrained, paginated listing with an opaque cursor). Ownership matches `(user_id = ? OR (user_id IS NULL AND user_email = ?))`; the reported `userEmail` is `COALESCE(users.current_email, user_email)` via a LEFT JOIN, so an opaque anchor never reaches an API response.
+- `BackgroundTaskRunDAO` — cron task-run history: start/succeed/fail/skip plus batched pruning. `listForUser` scopes by the owning application's `user_id`, with the `*_email` fallback.
+
+## Migrations
+
+- `0011_user_identity.sql` is the user-identity migration and is deliberately **not** a table rebuild — see `docs/agents/runtime/AGENTS.md` for why the `REFERENCES users(email)` clause cannot be repointed on D1. `UserIdentityUpgrade.int.test.ts` seeds every cascade edge, applies it, and asserts zero row loss + a clean `foreign_key_check`.
+- `0007_v3_reset_schema.sql` recreates `users` from scratch. Any table with a foreign key to `users` must appear in its drop list (`user_emails` does), or the reset leaves the child pointing at a `users` without the newer columns.
 - `IKeyValueDAO` — thin typed wrapper over a KV namespace binding.
 
 ## utils

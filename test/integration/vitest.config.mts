@@ -32,11 +32,18 @@ if (migrationFiles.length === 0) {
       'Integration tests would run against an empty schema and fail with confusing "no such table" errors.',
   );
 }
-const migrationSql = migrationFiles.map((file) => readFileSync(resolve(migrationsDir, file), 'utf-8')).join('\n\n');
+// File boundaries must survive into the test runtime: D1 scopes PRAGMAs to the
+// current transaction, so a migration can only rely on one holding for every
+// statement that follows if each file is applied in its own batch. The identity
+// upgrade test also needs to apply a *range* of files, which a single
+// concatenated string cannot express.
+const migrationFileList = migrationFiles.map((name) => ({ name, sql: readFileSync(resolve(migrationsDir, name), 'utf-8') }));
+const migrationSql = migrationFileList.map((f) => f.sql).join('\n\n');
 
 export default defineConfig({
   define: {
     __INTEGRATION_MIGRATION_SQL__: JSON.stringify(migrationSql),
+    __INTEGRATION_MIGRATION_FILES__: JSON.stringify(migrationFileList),
   },
   plugins: [
     cloudflareTest({

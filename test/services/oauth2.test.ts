@@ -4,8 +4,11 @@ import { OAuth2AccessTokenService } from '@mail-meow/backend-services/oauth2';
 import { OAuth2StateUtil } from '@mail-meow/backend-services/oauth2';
 import { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { BadRequestError, NotFoundError, OAuth2TokenNonRetryableError, OAuth2TokenRetryableError } from '@mail-meow/backend-errors';
+import type { AccountIdentity } from '@mail-meow/shared/model';
 
 const RAW = new Request('https://example.com/user/application/oauth2/authorize');
+
+const OWNER: AccountIdentity = { id: 'usr_0123456789abcdef0123456789abcdef', email: 'me@example.com', anchorEmail: 'me@example.com' };
 
 const SESSION = {
   sessionId: 'sess-1',
@@ -54,18 +57,18 @@ describe('OAuth2AuthorizationService.createAuthorization', () => {
   it('rejects an application the caller does not own', async () => {
     const { service, applicationDAO } = authorizationService();
     applicationDAO.getByIdForUser.mockResolvedValue(undefined);
-    await expect(service.createAuthorization('me@example.com', 'app-1', RAW)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.createAuthorization(OWNER, 'app-1', RAW)).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it('rejects a non-OAuth2 application', async () => {
     const { service } = authorizationService({ application: { ...APPLICATION, connectionMethod: 'access-keys' } });
-    await expect(service.createAuthorization('me@example.com', 'app-1', RAW)).rejects.toThrow(/does not use OAuth2/);
+    await expect(service.createAuthorization(OWNER, 'app-1', RAW)).rejects.toThrow(/does not use OAuth2/);
   });
 
   it('persists a session and returns a provider authorization URL', async () => {
     const { service, sessionDAO } = authorizationService();
 
-    const result = await service.createAuthorization('me@example.com', 'app-1', RAW);
+    const result = await service.createAuthorization(OWNER, 'app-1', RAW);
 
     expect(result.authorizationUrl).toContain('https://accounts.google.com/o/oauth2/v2/auth');
     expect(result.authorizationUrl).toContain('code_challenge_method=S256');
@@ -76,7 +79,7 @@ describe('OAuth2AuthorizationService.createAuthorization', () => {
   it('never stores the raw state, only its hash', async () => {
     const { service, sessionDAO } = authorizationService();
 
-    const result = await service.createAuthorization('me@example.com', 'app-1', RAW);
+    const result = await service.createAuthorization(OWNER, 'app-1', RAW);
 
     const stateParam = new URL(result.authorizationUrl).searchParams.get('state');
     const [, storedHash] = sessionDAO.create.mock.calls[0];

@@ -17,9 +17,7 @@ class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListAppl
 
   protected async handleRequest(request: ListApplicationsRequest, env: Env, cxt: RouteContext): Promise<ListApplicationsResponse> {
     const scope = createRequestScope(env);
-    const applications: ConnectedApplicationMetadata[] = await scope.applications.listApplications(
-      this.getAuthenticatedUserEmailAddress(cxt),
-    );
+    const applications: ConnectedApplicationMetadata[] = await scope.applications.listApplications(this.getAuthenticatedAccount(cxt));
     return {
       applications: applications.map((application: ConnectedApplicationMetadata) =>
         ApplicationResponseUtil.withRedirectUri(application, request.raw),

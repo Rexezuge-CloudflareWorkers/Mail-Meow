@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MailMeowWorker } from '@/workers/MailMeowWorker';
+import type { AccountIdentity } from '@mail-meow/shared/model';
 
 /**
  * Route tests drive the real assembled Hono app, so registration, the auth
@@ -87,6 +88,16 @@ vi.mock('@mail-meow/backend-services/composition', () => {
   };
 });
 
+/**
+ * The account the auth middleware resolves the asserted address to. Every
+ * user-keyed call now receives this instead of a bare email string.
+ */
+const ACCOUNT: AccountIdentity = {
+  id: 'usr_0123456789abcdef0123456789abcdef',
+  email: 'me@example.com',
+  anchorEmail: 'me@example.com',
+};
+
 const APP_ID = '11111111-1111-4111-8111-111111111111';
 const KEY_ID = '22222222-2222-4222-8222-222222222222';
 
@@ -150,7 +161,7 @@ beforeEach(() => {
   hoisted.resolveApplication.mockResolvedValue(APPLICATION);
   hoisted.listApplications.mockResolvedValue([APPLICATION]);
   hoisted.getPreferredLanguage.mockResolvedValue('en');
-  hoisted.upsertUser.mockResolvedValue(undefined);
+  hoisted.upsertUser.mockResolvedValue(ACCOUNT);
   hoisted.listApiKeys.mockResolvedValue([]);
   hoisted.listTaskRuns.mockResolvedValue({ runs: [] });
   hoisted.publishForApplication.mockResolvedValue('message-1');
@@ -197,9 +208,11 @@ describe('redirects and SPA fallback', () => {
 describe('GET /user/me', () => {
   it('returns the authenticated user with the effective limits', async () => {
     const response = await call('/user/me');
-    const body = (await response.json()) as { email: string; preferredLanguage: string; limits: Record<string, number> };
+    const body = (await response.json()) as { id: string; email: string; preferredLanguage: string; limits: Record<string, number> };
 
     expect(response.status).toBe(200);
+    // The id is the identity; the email is the current sign-in address.
+    expect(body.id).toBe(ACCOUNT.id);
     expect(body.email).toBe('me@example.com');
     expect(body.preferredLanguage).toBe('en');
     expect(body.limits).toEqual({
@@ -213,6 +226,27 @@ describe('GET /user/me', () => {
   it('records the user on every authenticated request', async () => {
     await call('/user/me');
     expect(hoisted.upsertUser).toHaveBeenCalledWith('me@example.com');
+  });
+
+  it('passes the resolved account, not the bare address, to the services', async () => {
+    // This is the seam the whole change rests on: a route must hand the DAOs an
+    // id, or an address change would lock the user out of their own rows.
+    await call('/user/applications');
+    expect(hoisted.listApplications).toHaveBeenCalledWith(ACCOUNT);
+  });
+
+  it('falls back to an id-less account when the account cannot be resolved', async () => {
+    // A database that has not run migration 0011. The id is empty and the DAOs
+    // match on the address alone, so the request must still succeed.
+    hoisted.upsertUser.mockResolvedValue(null);
+    const response = await call('/user/applications');
+
+    expect(response.status).toBe(200);
+    expect(hoisted.listApplications).toHaveBeenCalledWith({
+      id: '',
+      email: 'me@example.com',
+      anchorEmail: 'me@example.com',
+    });
   });
 });
 
@@ -296,7 +330,7 @@ describe('DELETE /user/application', () => {
   it('deletes an owned application', async () => {
     const { status } = await callJson('/user/application', { applicationId: APP_ID }, 'DELETE');
     expect(status).toBe(200);
-    expect(hoisted.deleteApplication).toHaveBeenCalledWith(APP_ID, 'me@example.com');
+    expect(hoisted.deleteApplication).toHaveBeenCalledWith(APP_ID, ACCOUNT);
   });
 });
 
@@ -324,7 +358,7 @@ describe('API key routes', () => {
   it('revokes a key', async () => {
     const { status } = await callJson('/user/application/api-key', { apiKeyId: KEY_ID, applicationId: APP_ID }, 'DELETE');
     expect(status).toBe(200);
-    expect(hoisted.deleteApiKey).toHaveBeenCalledWith(KEY_ID, APP_ID, 'me@example.com');
+    expect(hoisted.deleteApiKey).toHaveBeenCalledWith(KEY_ID, APP_ID, ACCOUNT);
   });
 });
 
@@ -385,7 +419,7 @@ describe('processing routes', () => {
     // The whitelist is the service's concern (see the ProcessingService tests);
     // the route's job is to validate and delegate.
     await callJson('/user/processing/run-task', { taskType: 'delete_everything', applicationId: APP_ID });
-    expect(hoisted.triggerTask).toHaveBeenCalledWith('me@example.com', 'delete_everything', APP_ID);
+    expect(hoisted.triggerTask).toHaveBeenCalledWith(ACCOUNT, 'delete_everything', APP_ID);
   });
 
   it('surfaces a service rejection as a client error', async () => {

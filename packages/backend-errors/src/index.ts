@@ -2,6 +2,7 @@ export { ServiceError } from './IServiceError';
 export type { ErrorCode } from './IServiceError';
 export {
   BadRequestError,
+  ConflictError,
   DefaultInternalServerError,
   ForbiddenError,
   HTTP_ERROR_DEFINITIONS,

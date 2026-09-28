@@ -55,7 +55,7 @@ class DeleteApplicationApiKeyRoute extends IUserRoute<DeleteApplicationApiKeyReq
     cxt: RouteContext,
   ): Promise<DeleteApplicationApiKeyResponse> {
     const scope = createRequestScope(env);
-    await scope.apiKeys.deleteApiKey(request.apiKeyId, request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
+    await scope.apiKeys.deleteApiKey(request.apiKeyId, request.applicationId, this.getAuthenticatedAccount(cxt));
     return { success: true };
   }
 }

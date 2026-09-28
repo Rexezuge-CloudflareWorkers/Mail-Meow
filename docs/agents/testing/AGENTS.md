@@ -59,6 +59,14 @@ drops everything `0001`–`0006` created, so replaying them is wasted setup. The
 the numeric prefix rather than comparing filenames, and throws if nothing is found — an empty
 migration set otherwise produces confusing "no such table" failures.
 
+Each file is embedded separately (`__INTEGRATION_MIGRATION_FILES__`) and applied **one statement
+at a time**, and `applyMigrations(db, {from, to})` applies a range. A range is what
+`UserIdentityUpgrade.int.test.ts` needs: apply through `0010`, seed a populated legacy database,
+then apply `0011` alone and assert nothing was lost. Do not switch to `db.batch()` per file — a
+batch is prepared in full before the first statement runs, so a file that adds a column and
+then creates a table referencing it fails with `foreign key mismatch` (see
+`docs/agents/runtime/AGENTS.md`).
+
 ## Other guards
 
 - `scripts/check-god-files.mjs` (soft 300 / hard 400 LOC).

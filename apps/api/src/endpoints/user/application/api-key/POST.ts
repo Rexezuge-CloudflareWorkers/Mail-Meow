@@ -73,7 +73,7 @@ class CreateApplicationApiKeyRoute extends IUserRoute<CreateApplicationApiKeyReq
     const scope = createRequestScope(env);
     const { metadata, apiKey } = await scope.apiKeys.createApiKey(
       request.applicationId,
-      this.getAuthenticatedUserEmailAddress(cxt),
+      this.getAuthenticatedAccount(cxt),
       request.name,
       request.expiresInDays,
     );

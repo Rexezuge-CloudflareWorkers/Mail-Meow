@@ -4,6 +4,12 @@ DROP TABLE IF EXISTS application_api_keys;
 DROP TABLE IF EXISTS connected_applications;
 DROP TABLE IF EXISTS oauth;
 DROP TABLE IF EXISTS users;
+-- Child of `users`, so it must go before the parent or the drop is refused.
+-- Added with `0011_user_identity.sql`; a database that already ran 0007 once is
+-- unaffected (it has no `user_emails` yet), but re-running this reset — which the
+-- integration harness does on every `applyMigrations` call — would otherwise
+-- leave the registry pointing at a `users` table recreated without `id`.
+DROP TABLE IF EXISTS user_emails;
 
 CREATE TABLE users (
     email TEXT PRIMARY KEY,

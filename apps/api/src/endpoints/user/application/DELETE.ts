@@ -43,7 +43,7 @@ class DeleteApplicationRoute extends IUserRoute<DeleteApplicationRequest, Delete
 
   protected async handleRequest(request: DeleteApplicationRequest, env: Env, cxt: RouteContext): Promise<DeleteApplicationResponse> {
     const scope = createRequestScope(env);
-    await scope.applications.deleteApplication(request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
+    await scope.applications.deleteApplication(request.applicationId, this.getAuthenticatedAccount(cxt));
     return { success: true };
   }
 }

@@ -28,9 +28,9 @@ class RunTaskNowRoute extends IUserRoute<RunTaskNowRequest, RunTaskNowResponse> 
   };
 
   protected async handleRequest(request: RunTaskNowRequest, env: Env, cxt: RouteContext): Promise<RunTaskNowResponse> {
-    const userEmail = this.getAuthenticatedUserEmailAddress(cxt);
+    const user = this.getAuthenticatedAccount(cxt);
     const scope = createRequestScope(env);
-    await scope.processing.triggerTask(userEmail, request.taskType, request.applicationId);
+    await scope.processing.triggerTask(user, request.taskType, request.applicationId);
     return { triggered: true };
   }
 }
