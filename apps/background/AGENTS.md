@@ -13,6 +13,7 @@ Scope: `apps/background/**`. Parent index: `../../AGENTS.md`.
 ## Background Task Visibility
 
 `ProcessingView` (`apps/web/src/components/views/`) exposes cron task run history. Routes:
+
 - `GET /user/processing/task-runs` — `BackgroundTaskRunDAO`
 - `POST /user/processing/run-task` — manual trigger via `ProcessingService` (only `oauth2_refresh`)
 

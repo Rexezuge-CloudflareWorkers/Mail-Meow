@@ -3,7 +3,11 @@ import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IU
 import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
 import type { BackgroundTaskRun, BackgroundTaskRunStatus } from '@mail-meow/backend-data/dao';
 
-class ListBackgroundTaskRunsRoute extends IUserRoute<ListBackgroundTaskRunsRequest, ListBackgroundTaskRunsResponse, ListBackgroundTaskRunsEnv> {
+class ListBackgroundTaskRunsRoute extends IUserRoute<
+  ListBackgroundTaskRunsRequest,
+  ListBackgroundTaskRunsResponse,
+  ListBackgroundTaskRunsEnv
+> {
   schema = {
     tags: ['Processing'],
     summary: 'List background task runs for the authenticated user',

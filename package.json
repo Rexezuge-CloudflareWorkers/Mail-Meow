@@ -6,12 +6,14 @@
     "postinstall": "node scripts/ensure-spa-shell-stub.mjs && pnpm run typegen",
     "build": "pnpm -r build",
     "prettier": "prettier --write .",
+    "prettier:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run --config test/integration/vitest.config.mts",
     "test:coverage:integration": "vitest run --coverage --config test/integration/vitest.config.mts",
-    "lint": "eslint --fix --quiet .",
+    "lint": "NODE_OPTIONS=--max-old-space-size=6144 eslint --fix .",
+    "lint:check": "NODE_OPTIONS=--max-old-space-size=6144 eslint .",
     "typegen": "wrangler types --config ./apps/api/wrangler.template.jsonc --env-interface CloudflareEnv"
   },
   "devDependencies": {

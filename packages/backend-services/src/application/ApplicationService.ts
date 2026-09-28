@@ -6,10 +6,7 @@ import {
 import { ConnectedApplicationDAO } from '@mail-meow/backend-data/dao';
 import type { D1Queryable } from '@mail-meow/backend-data/utils';
 import { BadRequestError } from '@mail-meow/backend-errors';
-import type {
-  ConnectedApplicationCredentials,
-  ConnectedApplicationMetadata,
-} from '@mail-meow/shared/model';
+import type { ConnectedApplicationCredentials, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
 import { BaseUrlUtil } from '@mail-meow/shared/utils';
 import { ConfigurationManager } from '@mail-meow/backend-runtime/config';
 
@@ -69,14 +66,7 @@ class ApplicationService {
       input.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
         ? CONNECTED_APPLICATION_STATUS_CONNECTED
         : CONNECTED_APPLICATION_STATUS_DRAFT;
-    const application = await dao.create(
-      input.userEmail,
-      input.displayName,
-      input.providerId,
-      input.connectionMethod,
-      credentials,
-      status,
-    );
+    const application = await dao.create(input.userEmail, input.displayName, input.providerId, input.connectionMethod, credentials, status);
     return {
       ...application,
       oauth2RedirectUri: `${BaseUrlUtil.getBaseUrl(input.raw)}/api/oauth2/callback/${application.applicationId}`,

@@ -34,8 +34,7 @@ export default function Header({ user, view, onViewChange, language, onLanguageC
         </div>
         <div className="flex items-center gap-3">
           <label className="text-sm text-[#aab4c2]">
-            {t('header.language', 'Language')}{' '}
-            <LanguageSelector value={language} onChange={onLanguageChange} disabled={languageDisabled} />
+            {t('header.language', 'Language')} <LanguageSelector value={language} onChange={onLanguageChange} disabled={languageDisabled} />
           </label>
           <div className="text-sm text-[#aab4c2] truncate">{user.email}</div>
         </div>

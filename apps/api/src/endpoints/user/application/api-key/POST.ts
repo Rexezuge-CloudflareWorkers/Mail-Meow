@@ -1,10 +1,8 @@
 import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
 
-
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 import type { ApplicationApiKeyMetadata } from '@mail-meow/shared/model';
-
 
 class CreateApplicationApiKeyRoute extends IUserRoute<
   CreateApplicationApiKeyRequest,

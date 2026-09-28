@@ -41,7 +41,9 @@ class UserService {
     }
   }
 
-  async getCurrentUserSummary(userEmail: string): Promise<{ email: string; preferredLanguage: string | null; maxApplicationsPerUser: number }> {
+  async getCurrentUserSummary(
+    userEmail: string,
+  ): Promise<{ email: string; preferredLanguage: string | null; maxApplicationsPerUser: number }> {
     const userDAO = await this.deps.userDAO();
     const user = await userDAO.getByEmail(userEmail);
     return {

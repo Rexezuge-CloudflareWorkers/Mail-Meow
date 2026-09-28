@@ -4,7 +4,6 @@ import { TimestampUtil, UUIDUtil } from '@mail-meow/shared/utils';
 import { BaseDAO } from './BaseDAO';
 
 class ApplicationApiKeyDAO extends BaseDAO {
-
   public async create(
     applicationId: string,
     keyHash: string,

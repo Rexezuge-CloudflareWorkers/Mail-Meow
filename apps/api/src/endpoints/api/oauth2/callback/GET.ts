@@ -3,8 +3,6 @@ import { BadRequestError } from '@mail-meow/backend-errors';
 import { IBaseRoute } from '@/endpoints/IBaseRoute';
 import type { ExtendedResponse, IEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IBaseRoute';
 
-
-
 class OAuth2CallbackRoute extends IBaseRoute<OAuth2CallbackRequest, OAuth2CallbackResponse, OAuth2CallbackEnv> {
   schema = {
     tags: ['OAuth2'],
@@ -62,7 +60,8 @@ class OAuth2CallbackRoute extends IBaseRoute<OAuth2CallbackRequest, OAuth2Callba
         description: 'Redirects to the user UI after callback processing',
         headers: {
           Location: {
-            description: 'Management UI URL: /user?oauth2=connected&applicationId=... on success, /user?oauth2=error&message=... on provider error',
+            description:
+              'Management UI URL: /user?oauth2=connected&applicationId=... on success, /user?oauth2=error&message=... on provider error',
             schema: {
               type: 'string' as const,
               format: 'uri',

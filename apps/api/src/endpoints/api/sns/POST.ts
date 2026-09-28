@@ -178,13 +178,11 @@ class SendSNSRoute extends IPublicApplicationRoute<SendSNSRequest, SendSNSRespon
     },
   };
 
-  protected async handleRequest(
-    request: SendSNSRequest,
-    env: SendSNSEnv,
-    _cxt: RouteContext<SendSNSEnv>,
-  ): Promise<SendSNSResponse> {
+  protected async handleRequest(request: SendSNSRequest, env: SendSNSEnv, _cxt: RouteContext<SendSNSEnv>): Promise<SendSNSResponse> {
     const scope = createRequestScope(env);
-    const messageId: string = await scope.get(Tokens.SnsDeliveryService).publishForApplication(request.application, request.message, request.subject);
+    const messageId: string = await scope
+      .get(Tokens.SnsDeliveryService)
+      .publishForApplication(request.application, request.message, request.subject);
     return {
       message: 'The message was published successfully.',
       messageId,

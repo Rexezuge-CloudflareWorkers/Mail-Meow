@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 
-import { execSync } from 'child_process';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { parse } from 'jsonc-parser';
 
 interface WranglerConfig {
@@ -25,9 +25,9 @@ function exec(command: string): string {
 }
 
 function parseWranglerConfig(): WranglerConfig {
-  const configPath = join(process.cwd(), 'wrangler.jsonc');
+  const configPath = path.join(process.cwd(), 'wrangler.jsonc');
   const content = readFileSync(configPath, 'utf8');
-  return parse(content);
+  return parse(content) as WranglerConfig;
 }
 
 function checkSecret(storeId: string, secretName: string): boolean {
@@ -42,7 +42,13 @@ function checkSecret(storeId: string, secretName: string): boolean {
 async function generateAESGCMKey(): Promise<string> {
   const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   const exported = await crypto.subtle.exportKey('raw', key);
-  return btoa(String.fromCharCode(...new Uint8Array(exported)));
+  // Chunked to stay well clear of the engine's spread-argument ceiling.
+  const keyBytes = new Uint8Array(exported);
+  let binary = '';
+  for (const byte of keyBytes) {
+    binary += String.fromCodePoint(byte);
+  }
+  return btoa(binary);
 }
 
 function createSecret(storeId: string, secretName: string, secretValue: string): void {
@@ -55,7 +61,9 @@ async function main() {
   const config = parseWranglerConfig();
   if (config.secrets_store_secrets) {
     for (const secret of config.secrets_store_secrets) {
-      if (!checkSecret(secret.store_id, secret.secret_name)) {
+      if (checkSecret(secret.store_id, secret.secret_name)) {
+        console.log(`Secret ${secret.secret_name} already exists`);
+      } else {
         let secretValue: string;
         if (secret.secret_name === 'mail-meow-aes-encryption-key') {
           secretValue = await generateAESGCMKey();
@@ -65,8 +73,6 @@ async function main() {
         }
         createSecret(secret.store_id, secret.secret_name, secretValue);
         console.log(`Created secret: ${secret.secret_name}`);
-      } else {
-        console.log(`Secret ${secret.secret_name} already exists`);
       }
     }
   }

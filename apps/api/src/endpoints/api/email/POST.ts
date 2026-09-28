@@ -1,10 +1,7 @@
 import { Tokens, createRequestScope } from '@mail-meow/backend-services/composition';
 
-
 import { IPublicApplicationRoute } from '@/endpoints/IPublicApplicationRoute';
 import type { IPublicApplicationEnv, IPublicApplicationRequest, IResponse, RouteContext } from '@/endpoints/IPublicApplicationRoute';
-
-
 
 class SendEmailRoute extends IPublicApplicationRoute<SendEmailRequest, SendEmailResponse, SendEmailEnv> {
   schema = {

@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const outPath = resolve(here, '..', 'apps/api/src/generated/spa-shell.ts');
+const here = path.dirname(fileURLToPath(import.meta.url));
+const outPath = path.resolve(here, '..', 'apps/api/src/generated/spa-shell.ts');
 
 if (existsSync(outPath)) process.exit(0);
 
-mkdirSync(dirname(outPath), { recursive: true });
+mkdirSync(path.dirname(outPath), { recursive: true });
 writeFileSync(
   outPath,
   "// Auto-generated stub - real content is produced by `npm run build` via the Vite plugin.\nexport const SPA_HTML: string = '';\n",

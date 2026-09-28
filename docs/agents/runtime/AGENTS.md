@@ -18,13 +18,13 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
 
 ## Optional vars (defaults in `ConfigurationDefaults.ts`)
 
-| Group | Vars (default) |
-|---|---|
-| Limits | `MAX_APPLICATIONS_PER_USER` (`99`), `MAX_API_KEYS_PER_APPLICATION` (`5`) |
-| API keys | `DEFAULT_API_KEY_EXPIRY_DAYS` (`365`), `MAX_API_KEY_EXPIRY_DAYS` (`365`) |
-| OAuth2 | `OAUTH2_STATE_EXPIRY_MINUTES` (`15`), `OAUTH2_ACCESS_TOKEN_REFRESH_WINDOW_SECONDS` (`900`), `OAUTH2_ACCESS_TOKEN_MIN_VALID_SECONDS` (`60`), `OAUTH2_ACCESS_TOKEN_FALLBACK_TTL_SECONDS` (`3600`), `OAUTH2_TOKEN_REFRESH_BATCH_SIZE` (`25`) |
-| Retention | `BACKGROUND_TASK_RUN_RETENTION_DAYS` (`30`) |
-| Misc | `DEBUG_MODE` (`false`) |
+| Group     | Vars (default)                                                                                                                                                                                                                            |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Limits    | `MAX_APPLICATIONS_PER_USER` (`99`), `MAX_API_KEYS_PER_APPLICATION` (`5`)                                                                                                                                                                  |
+| API keys  | `DEFAULT_API_KEY_EXPIRY_DAYS` (`365`), `MAX_API_KEY_EXPIRY_DAYS` (`365`)                                                                                                                                                                  |
+| OAuth2    | `OAUTH2_STATE_EXPIRY_MINUTES` (`15`), `OAUTH2_ACCESS_TOKEN_REFRESH_WINDOW_SECONDS` (`900`), `OAUTH2_ACCESS_TOKEN_MIN_VALID_SECONDS` (`60`), `OAUTH2_ACCESS_TOKEN_FALLBACK_TTL_SECONDS` (`3600`), `OAUTH2_TOKEN_REFRESH_BATCH_SIZE` (`25`) |
+| Retention | `BACKGROUND_TASK_RUN_RETENTION_DAYS` (`30`)                                                                                                                                                                                               |
+| Misc      | `DEBUG_MODE` (`false`)                                                                                                                                                                                                                    |
 
 Add new env vars in `ConfigurationDefaults.ts` (+ `ConfigurationManager` getter + `AppConfiguration` method), not inline.
 
