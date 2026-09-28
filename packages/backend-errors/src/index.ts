@@ -1,18 +1,25 @@
 export { ServiceError } from './IServiceError';
-export { BadRequestError } from './BadRequestError';
+export type { ErrorCode } from './IServiceError';
+export {
+  BadRequestError,
+  DefaultInternalServerError,
+  ForbiddenError,
+  HTTP_ERROR_DEFINITIONS,
+  HttpServiceError,
+  InternalServerError,
+  MethodNotAllowedError,
+  NotFoundError,
+  UnauthorizedError,
+} from './HttpServiceError';
+export type { HttpErrorType } from './HttpServiceError';
 export { DatabaseError } from './DatabaseError';
 export {
-  AiSummaryRetryableError,
+  NonRetryableError,
   OAuth2TokenNonRetryableError,
   OAuth2TokenRetryableError,
+  OutcomeError,
   ProviderApiNonRetryableError,
   ProviderApiRetryableError,
-} from './EmailProcessingError';
-export { ForbiddenError } from './ForbiddenError';
-export { InternalServerError, DefaultInternalServerError } from './InternalServerError';
-export { MethodNotAllowedError } from './MethodNotAllowedError';
-export { NonRetryableError } from './NonRetryableError';
-export { NotFoundError } from './NotFoundError';
-export { RetryableError } from './RetryableError';
-export { UnauthorizedError } from './UnauthorizedError';
+  RetryableError,
+} from './OutcomeError';
 export type { ErrorResponse } from './model/ErrorResponse';

@@ -29,11 +29,26 @@ export function normalizeLanguage(tag: string | null | undefined): SupportedLang
   if ((SUPPORTED_LANGUAGES as readonly string[]).includes(canonical)) {
     return canonical as SupportedLanguage;
   }
-  const base = canonical.split('-', 1)[0]?.toLowerCase() ?? 'en';
-  if (base === 'zh') return 'zh-CN';
-  const match = (SUPPORTED_LANGUAGES as readonly string[]).find((l) => l.toLowerCase() === base);
-  if (match) return match as SupportedLanguage;
-  return 'en';
+
+  // The script and region subtags must be read before falling back to the base
+  // language. Both Chinese variants ship and they are not interchangeable: with
+  // only the base language considered, a Traditional tag (zh-Hant-TW, zh-HK)
+  // collapsed to simplified zh-CN.
+  const parts: string[] = canonical.split('-');
+  const language: string = (parts[0] ?? '').toLowerCase();
+  // Search from index 1: a two-letter *language* subtag would otherwise be
+  // mistaken for the region, and `zh` is exactly two letters.
+  const subtags: string[] = parts.slice(1);
+  const script: string = subtags.find((part: string): boolean => part.length === 4)?.toLowerCase() ?? '';
+  const region: string = subtags.find((part: string): boolean => part.length === 2)?.toUpperCase() ?? '';
+
+  if (language === 'zh') {
+    const isTraditional: boolean = script === 'hant' || ['TW', 'HK', 'MO'].includes(region);
+    return isTraditional ? 'zh-TW' : 'zh-CN';
+  }
+
+  const match: string | undefined = (SUPPORTED_LANGUAGES as readonly string[]).find((l: string): boolean => l.toLowerCase() === language);
+  return (match as SupportedLanguage) ?? 'en';
 }
 
 export function detectInitialLanguage(): SupportedLanguage {

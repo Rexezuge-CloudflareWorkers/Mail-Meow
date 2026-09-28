@@ -1,8 +1,15 @@
-import { InternalServerError } from './InternalServerError';
+import { HttpServiceError } from './HttpServiceError';
 
-class DatabaseError extends InternalServerError {
+/**
+ * A D1 failure.
+ *
+ * `retryable` is supplied by the thrower because D1 distinguishes a transient
+ * lock or timeout from a constraint violation, and only the classifier that read
+ * the error text knows which it was.
+ */
+class DatabaseError extends HttpServiceError<'InternalServerError'> {
   constructor(message?: string, retryable: boolean = false) {
-    super(message ?? 'The system encountered an unexpected problem while accessing the database.');
+    super('InternalServerError', message ?? 'The system encountered an unexpected problem while accessing the database.');
     this.retryable = retryable;
   }
 
