@@ -45,4 +45,28 @@ function isD1ErrorRetryable(errorMessage: string): boolean {
   return false;
 }
 
-export { isD1ErrorRetryable };
+/**
+ * The message D1 reports when a migration has not created a table yet.
+ *
+ * Deliberately narrower than the `no such (table|column|index)` entry in
+ * `NON_RETRYABLE_PATTERNS`: this is the single signal that separates "this
+ * database predates a feature" from "this query failed", and conflating the two
+ * is what let a transient D1 error be treated as an absent table.
+ */
+const MISSING_TABLE_PATTERN = /no\s+such\s+table/i;
+
+/**
+ * Whether a failure means the schema is not there, rather than the query failing.
+ *
+ * A pre-0011 database has no `user_emails` table, and the pre-0011 `users`
+ * lookups are the correct floor for it. Every other failure — a timeout, a lock,
+ * a permissions problem — must propagate instead: swallowing it makes a
+ * transient outage indistinguishable from an absent table, and the caller then
+ * takes a fallback path that was only ever safe for an old schema.
+ */
+function isMissingTableError(error: unknown): boolean {
+  const message: string = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  return MISSING_TABLE_PATTERN.test(message);
+}
+
+export { isD1ErrorRetryable, isMissingTableError };

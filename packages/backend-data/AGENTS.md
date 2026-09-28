@@ -34,7 +34,10 @@ Layer 2. May import `@mail-meow/shared` and `@mail-meow/backend-errors`. Must no
 - `CursorUtil.ts` — opaque base64url cursor codec used by every paginated DAO.
 - `RepositoryHelper.ts` — `pruneInBatches` (bounded), `computeUnixCutoffSeconds`,
   `computeDateCutoffIso`, `DEFAULT_PRUNE_BATCH_SIZE`.
-- `D1ErrorClassifier.ts` — decides whether a D1 failure is retryable.
+- `D1ErrorClassifier.ts` — `isD1ErrorRetryable` decides whether a D1 failure is retryable;
+  `isMissingTableError` reports that the _schema_ is absent (a migration has not run) rather than
+  the query failing. The second is what lets callers keep a documented pre-migration fallback
+  without also swallowing real outages — see `backend-services/src/user/accountLookup.ts`.
 
 ## Rules
 
