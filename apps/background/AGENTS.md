@@ -8,7 +8,7 @@ Scope: `apps/background/**`. Parent index: `../../AGENTS.md`.
 - Tasks resolve services via `createRequestScope(env)` from `@mail-meow/backend-services/composition` and call them directly (`scope.oauth2AccessTokens`, ...). Never `new XService(...)`. Config comes from `scope.config` (an `AppConfigReader`) rather than raw env reads.
 - Shared scheduled bases: `IScheduledTask` (Template Method; override `getTaskType()` to opt into run tracking and `createTaskRunDAO` to substitute the DAO in tests), `AbstractPruningTask` (Template Method: `getRetentionDays` + `pruneBatch` abstract, cutoff + bounded `pruneInBatches` in base; `RepositoryHelper.pruneInBatches` in `backend-data/utils`).
 - `OAuth2TokenRefreshWorker.ts` — DO for token refresh and auth-code exchange (per-application `idFromName`, `runExclusive` serialization).
-- Error logging in token-adjacent `try` blocks: log static messages with application IDs only — never interpolate the caught error (CodeQL `js/clear-text-logging`).
+- Error logging: never pass a caught error object to a `console.*` sink. Log a static context tag (task name, application ID) plus `ErrorSanitizationUtil.sanitizeErrorForLogging(error)` — the redacted `name: message` pair. A raw provider error can carry an `Authorization` header, an auth code, or a token-in-URL. The sanitizer's `.replaceAll` acts as a CodeQL `js/clear-text-logging` masking barrier, which is why the call must be the sanitizer and not a hand-rolled redaction. The same redaction applies to text persisted to D1 and read back through `GET /user/processing/task-runs` (`IScheduledTask` calls it once and reuses the string for both the log and `failRun`).
 
 ## Background Task Visibility
 

@@ -60,9 +60,11 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
           : error instanceof BadRequestError || error instanceof ProviderApiNonRetryableError
             ? 400
             : 500;
-      if (status >= 500) console.error('OAuth2 token operation failed:', error);
-      // 5xx detail is redacted before it leaves the Durable Object; the
-      // unsanitized error is already in the log above.
+      // The error can carry a provider Authorization header, an auth code, or a
+      // token-in-URL, so it is redacted rather than logged raw.
+      if (status >= 500) console.error('OAuth2 token operation failed:', ErrorSanitizationUtil.sanitizeErrorForLogging(error));
+      // 5xx detail is redacted before it leaves the Durable Object. The log line
+      // above is redacted too, so the two are safe to read independently.
       const message: string =
         status >= 500 ? DefaultInternalServerError.getErrorMessage() : ErrorSanitizationUtil.sanitizeErrorForLogging(error);
       return Response.json({ error: message }, { status });
@@ -184,7 +186,10 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
     try {
       return await strategy.resolveProfileEmail(accessToken);
     } catch (error: unknown) {
-      console.warn(`Could not resolve provider mailbox for application ${application.applicationId}:`, error);
+      console.warn(
+        `Could not resolve provider mailbox for application ${application.applicationId}:`,
+        ErrorSanitizationUtil.sanitizeErrorForLogging(error),
+      );
       return application.userEmail;
     }
   }

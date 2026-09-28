@@ -23,6 +23,7 @@ import { OPENAPI_COMPONENTS } from '@/openapi/components';
 import { SPA_HTML } from '@/generated/spa-shell';
 import { DURABLE_OBJECT_CRON_TASKS_RUN_URL, DURABLE_OBJECT_NAMESPACE_GLOBAL } from '@mail-meow/backend-runtime/constants';
 import { createD1SessionEnv } from '@mail-meow/backend-data/utils';
+import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
 
 const D1_BOOKMARK_HEADER: string = 'x-d1-bookmark';
 
@@ -192,11 +193,15 @@ class MailMeowWorker extends AbstractEntrypointWorker {
         .fetch(cronTasksRequest)
         .then(async (response: Response): Promise<void> => {
           if (!response.ok && response.status !== 202) {
-            console.error('CronTasksWorker returned an error response:', response.status, await response.text());
+            console.error(
+              'CronTasksWorker returned an error response:',
+              response.status,
+              ErrorSanitizationUtil.sanitizeMessage(await response.text()),
+            );
           }
         })
         .catch((error: unknown): void => {
-          console.error('Failed to invoke CronTasksWorker:', error);
+          console.error('Failed to invoke CronTasksWorker:', ErrorSanitizationUtil.sanitizeErrorForLogging(error));
         }),
     );
   }

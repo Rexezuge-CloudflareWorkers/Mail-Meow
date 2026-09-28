@@ -1,6 +1,6 @@
 import { decryptData, encryptData } from '../crypto';
 import { KV_MINIMUM_TIME_TO_LIVE_SECONDS, KV_NAMESPACE_OAUTH2_ACCESS_TOKEN_CACHE } from '../constants';
-import { TimestampUtil } from '@mail-meow/shared/utils';
+import { ErrorSanitizationUtil, TimestampUtil } from '@mail-meow/shared/utils';
 import { IKeyValueDAO } from './IKeyValueDAO';
 
 interface OAuth2CachedAccessToken {
@@ -42,7 +42,12 @@ class OAuth2AccessTokenCacheDAO extends IKeyValueDAO {
       // while the poisoned entry stayed in KV indefinitely, so evict it and let
       // the caller refresh.
       await this.delete(applicationId);
-      console.warn(`Discarding undecryptable cached access token for application ${applicationId}:`, error);
+      // The failure is a cipher/decrypt error over a token payload; redact
+      // before it reaches the log.
+      console.warn(
+        `Discarding undecryptable cached access token for application ${applicationId}:`,
+        ErrorSanitizationUtil.sanitizeErrorForLogging(error),
+      );
       return undefined;
     }
 

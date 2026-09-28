@@ -1,4 +1,5 @@
 import { AbstractDurableObjectWorker } from '@mail-meow/backend-runtime/base';
+import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
 import { tasksForPhase } from '@mail-meow/background/scheduled';
 
 const CRON_TASKS_RUN_PATH: string = '/run';
@@ -30,7 +31,9 @@ class CronTasksWorker extends AbstractDurableObjectWorker {
       await run;
       return Response.json({ status: 'completed' });
     } catch (error: unknown) {
-      console.error('Cron task run failed:', error);
+      // Tasks reach provider APIs on this path, so the caught error is redacted
+      // before it reaches the log.
+      console.error('Cron task run failed:', ErrorSanitizationUtil.sanitizeErrorForLogging(error));
       return Response.json({ status: 'failed' }, { status: 500 });
     } finally {
       if (this.currentRun === run) {

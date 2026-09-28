@@ -1,3 +1,5 @@
+import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
+
 abstract class AbstractEntrypointWorker {
   public async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url: URL = new URL(request.url);
@@ -17,7 +19,7 @@ abstract class AbstractEntrypointWorker {
     try {
       return await this.onRequest(request, env, ctx);
     } catch (err: unknown) {
-      console.error('Unhandled error in fetch():', err);
+      console.error('Unhandled error in fetch():', ErrorSanitizationUtil.sanitizeErrorForLogging(err));
       return new Response('Internal Error', { status: 500 });
     }
   }
@@ -26,7 +28,7 @@ abstract class AbstractEntrypointWorker {
     try {
       await this.onScheduled(event, env, ctx);
     } catch (err: unknown) {
-      console.error('Unhandled error in scheduled():', err);
+      console.error('Unhandled error in scheduled():', ErrorSanitizationUtil.sanitizeErrorForLogging(err));
     }
   }
 

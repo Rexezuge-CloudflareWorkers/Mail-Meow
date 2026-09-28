@@ -1,5 +1,6 @@
 import { BackgroundTaskRunDAO } from '@mail-meow/backend-data/dao';
 import type { D1Queryable } from '@mail-meow/backend-data/utils';
+import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
 
 interface TaskRunSummary {
   itemsProcessed: number;
@@ -29,7 +30,7 @@ abstract class IScheduledTask<TEnv extends IEnv> {
     // re-instantiating per call re-runs the constructor for nothing.
     const dao: BackgroundTaskRunDAO | undefined = taskType && db ? this.createTaskRunDAO(db) : undefined;
     const runId: string | undefined = await dao?.startRun({ taskType: taskType as string }).catch((error: unknown) => {
-      console.warn(`[${this.constructor.name}] Failed to start task run record:`, error);
+      console.warn(`[${this.constructor.name}] Failed to start task run record:`, ErrorSanitizationUtil.sanitizeErrorForLogging(error));
       return undefined;
     });
 
@@ -37,14 +38,24 @@ abstract class IScheduledTask<TEnv extends IEnv> {
       const result = await this.handleScheduledTask(event, tEnv, ctx);
       if (dao && runId) {
         await dao.succeedRun(runId, result ?? { itemsProcessed: 0, itemsFailed: 0 }).catch((error: unknown) => {
-          console.warn(`[${this.constructor.name}] Failed to mark task run succeeded:`, error);
+          console.warn(
+            `[${this.constructor.name}] Failed to mark task run succeeded:`,
+            ErrorSanitizationUtil.sanitizeErrorForLogging(error),
+          );
         });
       }
     } catch (error: unknown) {
-      console.error(`[${this.constructor.name}] Uncaught error:`, error);
+      const sanitized: string = ErrorSanitizationUtil.sanitizeErrorForLogging(error);
+      console.error(`[${this.constructor.name}] Uncaught error:`, sanitized);
       if (dao && runId) {
-        await dao.failRun(runId, String(error)).catch((recordError: unknown) => {
-          console.warn(`[${this.constructor.name}] Failed to mark task run failed:`, recordError);
+        // last_error is persisted to D1 and read back through
+        // GET /user/processing/task-runs, so it carries the same redaction as
+        // the log line — String(error) would round-trip a token into the UI.
+        await dao.failRun(runId, sanitized).catch((recordError: unknown) => {
+          console.warn(
+            `[${this.constructor.name}] Failed to mark task run failed:`,
+            ErrorSanitizationUtil.sanitizeErrorForLogging(recordError),
+          );
         });
       }
     }

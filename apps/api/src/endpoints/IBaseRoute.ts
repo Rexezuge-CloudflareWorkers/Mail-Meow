@@ -107,7 +107,9 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
       log(`Responding with ${error.getErrorType()}`);
       return c.json({ Exception: { Type: error.getErrorType(), Message: IBaseRoute.clientFacingMessage(error) } }, error.getErrorCode());
     }
-    console.error('Caught an untyped error during execution:', error);
+    // An untyped error from a route can carry a provider response body or an
+    // Authorization header, so it is redacted before logging.
+    console.error('Caught an untyped error during execution:', ErrorSanitizationUtil.sanitizeErrorForLogging(error));
     return c.json(
       {
         Exception: {
@@ -126,7 +128,7 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
    * passing them through verbatim handed API clients internal detail (table and
    * column names, and whatever the provider echoed back). 4xx messages are
    * authored for the caller and returned as-is, after redaction as a backstop.
-   * The unsanitized text still reaches the log above.
+   * Both the log and the response are redacted, so neither leaks the raw text.
    */
   private static clientFacingMessage(error: ServiceError): string {
     if (error.getErrorCode() >= 500) {
