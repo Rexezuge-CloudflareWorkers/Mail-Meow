@@ -245,6 +245,8 @@ class BackgroundTaskRunDAO extends BaseDAO {
              WHERE run_id IN (
                SELECT run_id FROM background_task_runs
                WHERE started_at < ?
+                 AND status != 'running'
+               ORDER BY started_at
                LIMIT ?
              )`,
           )

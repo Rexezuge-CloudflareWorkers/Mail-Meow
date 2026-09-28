@@ -52,7 +52,18 @@ class ConfigurationManager {
     return this.limits.getMaxApiKeysPerApplication(env);
   }
   public static getApiKeyExpiry(env: unknown): { defaultExpiryDays: number; maxExpiryDays: number } {
-    return { defaultExpiryDays: this.apikey.getDefaultExpiryDays(env), maxExpiryDays: this.apikey.getMaxExpiryDays(env) };
+    const defaultExpiryDays: number = this.apikey.getDefaultExpiryDays(env);
+    const maxExpiryDays: number = this.apikey.getMaxExpiryDays(env);
+    // A default above the maximum is always a misconfiguration. Left unchecked it
+    // surfaced per-request as "requested expiry exceeds maximum" for every caller
+    // that did not pass an explicit expiry, which reads like a request bug rather
+    // than a bad deployment.
+    if (defaultExpiryDays > maxExpiryDays) {
+      throw new Error(
+        `DEFAULT_API_KEY_EXPIRY_DAYS (${defaultExpiryDays.toString()}) must not exceed MAX_API_KEY_EXPIRY_DAYS (${maxExpiryDays.toString()}).`,
+      );
+    }
+    return { defaultExpiryDays, maxExpiryDays };
   }
   public static getDebugMode(env: unknown): boolean {
     return EnvParser.boolean(env, 'DEBUG_MODE', DEFAULT_DEBUG_MODE);

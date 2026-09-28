@@ -1,8 +1,9 @@
 import { OpenAPIRoute } from 'chanfana';
 import { Context } from 'hono';
-import type { StatusCode } from 'hono/utils/http-status';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { BadRequestError, DefaultInternalServerError, ServiceError } from '@mail-meow/backend-errors';
 import { validateRequestInput } from '@mail-meow/shared/schema';
+import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
 
 abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse, TEnv extends IEnv> extends OpenAPIRoute {
   async handle(c: RouteContext<TEnv>) {
@@ -40,7 +41,7 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
       for (const [key, value] of headers) {
         c.header(key, value);
       }
-      c.status(statusCode as StatusCode);
+      c.status(statusCode as ContentfulStatusCode);
       if (statusCode >= 300 && statusCode < 400) {
         return c.body(null);
       }
@@ -58,17 +59,14 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
 
   protected toErrorResponse(error: unknown, c: RouteContext<TEnv>) {
     // Typed service errors (including NotFoundError/DatabaseError and 5xx
-    // domain errors) map to their own status/type/message with the original
-    // cause preserved. Only untyped errors are masked as internal errors.
+    // domain errors) map to their own status/type/message. Only untyped errors
+    // are masked as internal errors.
     if (error instanceof ServiceError) {
-      if (error.getErrorCode() < 500) {
-        console.warn(`Responding with ${error.getErrorType()}`);
-      } else {
-        console.error(`Responding with ${error.getErrorType()}`);
-      }
-      return c.json({ Exception: { Type: error.getErrorType(), Message: error.getErrorMessage() } }, error.getErrorCode());
+      const log = error.getErrorCode() < 500 ? console.warn : console.error;
+      log(`Responding with ${error.getErrorType()}`);
+      return c.json({ Exception: { Type: error.getErrorType(), Message: this.clientFacingMessage(error) } }, error.getErrorCode());
     }
-    console.error('Caught service error during execution');
+    console.error('Caught an untyped error during execution:', error);
     return c.json(
       {
         Exception: {
@@ -78,6 +76,22 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
       },
       DefaultInternalServerError.getErrorCode(),
     );
+  }
+
+  /**
+   * Decides what the caller is allowed to see.
+   *
+   * 5xx messages are built from raw D1 errors and provider response bodies, so
+   * passing them through verbatim handed API clients internal detail (table and
+   * column names, and whatever the provider echoed back). 4xx messages are
+   * authored for the caller and are returned as-is, after redaction as a
+   * backstop. The unsanitized text still reaches the log above.
+   */
+  private clientFacingMessage(error: ServiceError): string {
+    if (error.getErrorCode() >= 500) {
+      return DefaultInternalServerError.getErrorMessage();
+    }
+    return ErrorSanitizationUtil.sanitizeMessage(error.getErrorMessage());
   }
 }
 
@@ -94,7 +108,7 @@ interface IEnv {}
 interface ExtendedResponse<TResponse extends IResponse> {
   body?: TResponse;
   rawBody?: BodyInit | null;
-  statusCode?: StatusCode;
+  statusCode?: ContentfulStatusCode;
   headers?: Record<string, string>;
 }
 

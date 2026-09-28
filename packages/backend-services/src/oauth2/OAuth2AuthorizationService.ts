@@ -61,13 +61,23 @@ class OAuth2AuthorizationService {
     if (!application) {
       throw new NotFoundError('Connected application was not found.');
     }
+
+    // Claim the session BEFORE exchanging the code. Exchanging first and
+    // consuming afterwards left a replay window: two callbacks carrying the same
+    // `state` both passed getActive, and the loser's consume() reported success
+    // even though its UPDATE matched zero rows. Burning the session first is
+    // safe because the authorization code is single-use at the provider too, so
+    // a failed exchange just means restarting the flow.
+    if (!(await sessionDAO.consume(session.sessionId))) {
+      throw new BadRequestError('OAuth2 authorization session is invalid or expired.');
+    }
+
     await new OAuth2AccessTokenService(this.env as unknown as OAuth2AccessTokenServiceEnv).completeAuthorization({
       applicationId: input.applicationId,
       redirectUri: session.redirectUri,
       code: input.code,
       codeVerifier: session.codeVerifier,
     });
-    await sessionDAO.consume(session.sessionId);
   }
 }
 

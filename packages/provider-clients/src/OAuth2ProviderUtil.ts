@@ -1,6 +1,8 @@
 import { PROVIDER_GOOGLE_GMAIL, PROVIDER_MICROSOFT_OUTLOOK } from '@mail-meow/shared/constants';
-import { BadRequestError, InternalServerError } from '@mail-meow/backend-errors';
+import { BadRequestError } from '@mail-meow/backend-errors';
 import type { OAuth2Credentials } from '@mail-meow/shared/model';
+import { providerFetchJson } from './BaseProviderHttp';
+import type { ProviderRequest } from './BaseProviderHttp';
 
 interface OAuth2AuthorizationInput {
   providerId: string;
@@ -29,22 +31,42 @@ interface OAuth2TokenResult {
   expiresIn?: number;
 }
 
-const ProviderConfig = {
+interface ProviderOAuth2Config {
+  authorizationEndpoint: string;
+  tokenEndpoint: string;
+  scope: string;
+  /**
+   * Extra authorization-query parameters. `access_type=offline` is what makes
+   * Google issue a refresh token at all; `response_mode=query` keeps the
+   * Microsoft callback on the query string where `state` is read from.
+   */
+  extraAuthorizationParams: Record<string, string>;
+  /**
+   * Extra token-request form values. Microsoft expects the tenant in scope.
+   */
+  extraTokenParams: Record<string, string>;
+}
+
+const ProviderConfig: Record<string, ProviderOAuth2Config> = {
   [PROVIDER_GOOGLE_GMAIL]: {
     authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenEndpoint: 'https://oauth2.googleapis.com/token',
     scope: 'https://www.googleapis.com/auth/gmail.send',
+    extraAuthorizationParams: { access_type: 'offline', prompt: 'consent' },
+    extraTokenParams: {},
   },
   [PROVIDER_MICROSOFT_OUTLOOK]: {
     authorizationEndpoint: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize',
     tokenEndpoint: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
     scope: 'https://graph.microsoft.com/Mail.Send offline_access',
+    extraAuthorizationParams: { response_mode: 'query' },
+    extraTokenParams: { scope: 'https://graph.microsoft.com/Mail.Send offline_access' },
   },
-} as const;
+};
 
 class OAuth2ProviderUtil {
   public static buildAuthorizationUrl(input: OAuth2AuthorizationInput): string {
-    const config = this.getProviderConfig(input.providerId);
+    const config: ProviderOAuth2Config = this.getProviderConfig(input.providerId);
     const url: URL = new URL(config.authorizationEndpoint);
     url.searchParams.set('client_id', input.clientId);
     url.searchParams.set('redirect_uri', input.redirectUri);
@@ -53,18 +75,15 @@ class OAuth2ProviderUtil {
     url.searchParams.set('state', input.state);
     url.searchParams.set('code_challenge', input.codeChallenge);
     url.searchParams.set('code_challenge_method', 'S256');
-    if (input.providerId === PROVIDER_GOOGLE_GMAIL) {
-      url.searchParams.set('access_type', 'offline');
-      url.searchParams.set('prompt', 'consent');
-    } else if (input.providerId === PROVIDER_MICROSOFT_OUTLOOK) {
-      url.searchParams.set('response_mode', 'query');
+    for (const [key, value] of Object.entries(config.extraAuthorizationParams)) {
+      url.searchParams.set(key, value);
     }
     return url.href;
   }
 
   public static async exchangeCode(input: OAuth2TokenExchangeInput): Promise<OAuth2TokenResult> {
-    const config = this.getProviderConfig(input.providerId);
-    const data = await this.postTokenRequest(config.tokenEndpoint, {
+    const config: ProviderOAuth2Config = this.getProviderConfig(input.providerId);
+    const data: OAuth2TokenResponse = await this.postTokenRequest(input.providerId, config, {
       client_id: input.credentials.clientId,
       client_secret: input.credentials.clientSecret,
       code: input.code,
@@ -78,7 +97,7 @@ class OAuth2ProviderUtil {
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
-      expiresIn: this.parseExpiresIn(data.expires_in),
+      expiresIn: parseExpiresIn(data.expires_in),
     };
   }
 
@@ -86,8 +105,8 @@ class OAuth2ProviderUtil {
     if (!input.credentials.refreshToken) {
       throw new BadRequestError('Connected application is not fully authorized.');
     }
-    const config = this.getProviderConfig(input.providerId);
-    const data = await this.postTokenRequest(config.tokenEndpoint, {
+    const config: ProviderOAuth2Config = this.getProviderConfig(input.providerId);
+    const data: OAuth2TokenResponse = await this.postTokenRequest(input.providerId, config, {
       client_id: input.credentials.clientId,
       client_secret: input.credentials.clientSecret,
       grant_type: 'refresh_token',
@@ -95,8 +114,9 @@ class OAuth2ProviderUtil {
     });
     return {
       accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresIn: this.parseExpiresIn(data.expires_in),
+      // A refresh response may omit refresh_token, meaning "keep using the old one".
+      refreshToken: data.refresh_token ?? input.credentials.refreshToken,
+      expiresIn: parseExpiresIn(data.expires_in),
     };
   }
 
@@ -104,36 +124,55 @@ class OAuth2ProviderUtil {
     return tokenResult.expiresIn && tokenResult.expiresIn > 0 ? tokenResult.expiresIn : fallbackTtlSeconds;
   }
 
-  private static parseExpiresIn(expiresIn: number | string | undefined): number | undefined {
-    if (typeof expiresIn === 'number') return Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : undefined;
-    if (typeof expiresIn === 'string') {
-      const parsed: number = Number(expiresIn);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-    }
-    return undefined;
-  }
-
-  private static getProviderConfig(providerId: string) {
-    const config = (ProviderConfig as Record<string, (typeof ProviderConfig)[keyof typeof ProviderConfig]>)[providerId];
+  private static getProviderConfig(providerId: string): ProviderOAuth2Config {
+    const config: ProviderOAuth2Config | undefined = ProviderConfig[providerId];
     if (!config) {
       throw new BadRequestError(`Unsupported OAuth2 provider: ${providerId}`);
     }
     return config;
   }
 
-  private static async postTokenRequest(tokenEndpoint: string, values: Record<string, string>): Promise<OAuth2TokenResponse> {
-    const body: URLSearchParams = new URLSearchParams(values);
-    const response: Response = await fetch(tokenEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
-    const data = JSON.parse(await response.text()) as OAuth2TokenResponse;
-    if (!response.ok || !data.access_token) {
-      throw new InternalServerError(`OAuth2 token request failed: ${data.error_description || data.error || response.statusText}`);
+  private static async postTokenRequest(
+    providerId: string,
+    config: ProviderOAuth2Config,
+    values: Record<string, string>,
+  ): Promise<OAuth2TokenResponse> {
+    // Token requests are unauthenticated, so no bearer token is attached — but
+    // they still go through the shared client for the timeout and the
+    // status-before-parse ordering.
+    const request: ProviderRequest = { providerName: 'OAuth2 token endpoint', operation: `exchange code (${providerId})` };
+    const data: OAuth2TokenResponse | undefined = await providerFetchJson<OAuth2TokenResponse>(
+      config.tokenEndpoint,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ ...config.extraTokenParams, ...values }),
+      },
+      request,
+    );
+    if (!data?.access_token) {
+      // Reached only when the provider returned 2xx without a token, which is a
+      // contract violation rather than a transport problem.
+      throw new BadRequestError('OAuth2 token endpoint returned a response without an access token.');
     }
     return data;
   }
+}
+
+/**
+ * Providers report `expires_in` as either a number or a numeric string. Returns
+ * `undefined` for anything that is not a finite positive number so callers fall
+ * back to their configured TTL rather than caching a token for zero seconds.
+ */
+function parseExpiresIn(expiresIn: number | string | undefined): number | undefined {
+  if (typeof expiresIn === 'number') {
+    return Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : undefined;
+  }
+  if (typeof expiresIn === 'string') {
+    const parsed: number = Number(expiresIn);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  }
+  return undefined;
 }
 
 interface OAuth2TokenResponse {
@@ -144,5 +183,5 @@ interface OAuth2TokenResponse {
   error_description?: string;
 }
 
-export { OAuth2ProviderUtil };
-export type { OAuth2TokenResult };
+export { OAuth2ProviderUtil, parseExpiresIn };
+export type { OAuth2TokenResult, ProviderOAuth2Config };

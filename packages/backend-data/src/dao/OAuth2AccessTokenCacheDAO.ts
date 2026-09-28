@@ -33,11 +33,20 @@ class OAuth2AccessTokenCacheDAO extends IKeyValueDAO {
       return undefined;
     }
 
-    return {
-      applicationId,
-      accessToken: await decryptData(cached.encryptedAccessToken, cached.iv, this.masterKey),
-      expiresAt: cached.expiresAt,
-    };
+    let accessToken: string;
+    try {
+      accessToken = await decryptData(cached.encryptedAccessToken, cached.iv, this.masterKey);
+    } catch (error: unknown) {
+      // A value that will not authenticate is unusable: the key was rotated or
+      // the entry was corrupted. Letting this throw made every token fetch fail
+      // while the poisoned entry stayed in KV indefinitely, so evict it and let
+      // the caller refresh.
+      await this.delete(applicationId);
+      console.warn(`Discarding undecryptable cached access token for application ${applicationId}:`, error);
+      return undefined;
+    }
+
+    return { applicationId, accessToken, expiresAt: cached.expiresAt };
   }
 
   public async storeAccessToken(applicationId: string, accessToken: string, expiresAt: number): Promise<void> {
@@ -50,6 +59,7 @@ class OAuth2AccessTokenCacheDAO extends IKeyValueDAO {
       iv: encrypted.iv,
       expiresAt,
     };
+    // KV rejects a TTL below its floor, so clamp rather than reject the write.
     const expirationTtl: number = Math.max(expiresAt - now, KV_MINIMUM_TIME_TO_LIVE_SECONDS);
     await this.put(applicationId, data, { expirationTtl });
   }

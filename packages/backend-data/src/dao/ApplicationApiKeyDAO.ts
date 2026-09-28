@@ -1,7 +1,9 @@
 import { DatabaseError } from '@mail-meow/backend-errors';
-import type { ApplicationApiKeyMetadata, ApplicationApiKeyInternal } from '@mail-meow/shared/model';
+import type { ApplicationApiKeyInternal, ApplicationApiKeyMetadata } from '@mail-meow/shared/model';
 import { TimestampUtil, UUIDUtil } from '@mail-meow/shared/utils';
 import { BaseDAO } from './BaseDAO';
+
+const KEY_COLUMNS = 'api_key_id, application_id, key_hash, name, key_prefix, key_last_four, created_at, expires_at, last_used_at';
 
 class ApplicationApiKeyDAO extends BaseDAO {
   public async create(
@@ -14,19 +16,20 @@ class ApplicationApiKeyDAO extends BaseDAO {
   ): Promise<ApplicationApiKeyMetadata> {
     const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
     const apiKeyId: string = UUIDUtil.getRandomUUID();
-    const result: D1Result = await this.database
-      .prepare(
-        `
-          INSERT INTO application_api_keys
-            (api_key_id, application_id, key_hash, name, key_prefix, key_last_four, created_at, expires_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-      )
-      .bind(apiKeyId, applicationId, keyHash, name, keyPrefix, keyLastFour, now, expiresAt)
-      .run();
-    if (!result.success) {
-      throw new DatabaseError(`Failed to create API key: ${result.error}`);
-    }
+    await this.runWithRetry(
+      (): Promise<D1Result> =>
+        this.database
+          .prepare(
+            `
+              INSERT INTO application_api_keys
+                (api_key_id, application_id, key_hash, name, key_prefix, key_last_four, created_at, expires_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+          )
+          .bind(apiKeyId, applicationId, keyHash, name, keyPrefix, keyLastFour, now, expiresAt)
+          .run(),
+      'create API key',
+    );
     const key: ApplicationApiKeyMetadata | undefined = await this.getById(apiKeyId);
     if (!key) {
       throw new DatabaseError('Failed to load API key after create.');
@@ -36,12 +39,13 @@ class ApplicationApiKeyDAO extends BaseDAO {
 
   public async getByHash(keyHash: string, activeOnly: boolean): Promise<ApplicationApiKeyMetadata | undefined> {
     const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
+    // The filter and its binding are built together so the two can never drift.
     const activeFilter: string = activeOnly ? ' AND expires_at > ?' : '';
     const bindings: unknown[] = activeOnly ? [keyHash, now] : [keyHash];
     const row: ApplicationApiKeyInternal | null = await this.database
       .prepare(
         `
-          SELECT api_key_id, application_id, key_hash, name, key_prefix, key_last_four, created_at, expires_at, last_used_at
+          SELECT ${KEY_COLUMNS}
           FROM application_api_keys
           WHERE key_hash = ?${activeFilter}
           LIMIT 1
@@ -56,7 +60,7 @@ class ApplicationApiKeyDAO extends BaseDAO {
     const row: ApplicationApiKeyInternal | null = await this.database
       .prepare(
         `
-          SELECT api_key_id, application_id, key_hash, name, key_prefix, key_last_four, created_at, expires_at, last_used_at
+          SELECT ${KEY_COLUMNS}
           FROM application_api_keys
           WHERE api_key_id = ?
           LIMIT 1
@@ -71,7 +75,7 @@ class ApplicationApiKeyDAO extends BaseDAO {
     const rows: ApplicationApiKeyInternal[] = await this.database
       .prepare(
         `
-          SELECT api_key_id, application_id, key_hash, name, key_prefix, key_last_four, created_at, expires_at, last_used_at
+          SELECT ${KEY_COLUMNS}
           FROM application_api_keys
           WHERE application_id = ?
           ORDER BY created_at DESC
@@ -93,23 +97,22 @@ class ApplicationApiKeyDAO extends BaseDAO {
 
   public async updateLastUsed(apiKeyId: string): Promise<void> {
     const lastUsedAt: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
-    const result: D1Result = await this.database
-      .prepare('UPDATE application_api_keys SET last_used_at = ? WHERE api_key_id = ?')
-      .bind(lastUsedAt, apiKeyId)
-      .run();
-    if (!result.success) {
-      throw new DatabaseError(`Failed to update API key last-used timestamp: ${result.error}`);
-    }
+    await this.runWithRetry(
+      (): Promise<D1Result> =>
+        this.database.prepare('UPDATE application_api_keys SET last_used_at = ? WHERE api_key_id = ?').bind(lastUsedAt, apiKeyId).run(),
+      'update API key last-used timestamp',
+    );
   }
 
   public async deleteForApplication(apiKeyId: string, applicationId: string): Promise<void> {
-    const result: D1Result = await this.database
-      .prepare('DELETE FROM application_api_keys WHERE api_key_id = ? AND application_id = ?')
-      .bind(apiKeyId, applicationId)
-      .run();
-    if (!result.success) {
-      throw new DatabaseError(`Failed to delete API key: ${result.error}`);
-    }
+    await this.runWithRetry(
+      (): Promise<D1Result> =>
+        this.database
+          .prepare('DELETE FROM application_api_keys WHERE api_key_id = ? AND application_id = ?')
+          .bind(apiKeyId, applicationId)
+          .run(),
+      'delete API key',
+    );
   }
 
   private toMetadata(row: ApplicationApiKeyInternal): ApplicationApiKeyMetadata {
