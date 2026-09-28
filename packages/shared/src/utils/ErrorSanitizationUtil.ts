@@ -2,11 +2,11 @@
 // because `unicorn/no-unsafe-string-replacement` requires literal replacements,
 // and CodeQL models `.replaceAll(regex, literal)` with a wildcard `.` in the
 // pattern as a masking barrier for js/clear-text-logging.
-const BEARER_PATTERN = /\bearer\s+.\S*/gi;
-const BASIC_PATTERN = /\basic\s+.\S*/gi;
-const TOKEN_KV_PATTERN = /((?:access|refresh|id)[_-]?token\s*[:=]\s*).\S*/gi;
-const SECRET_KV_PATTERN = /((?:client[_-]?secret|auth[_-]?code|code[_-]?verifier)\s*[:=]\s*).\S*/gi;
-const TOKEN_QUERY_PATTERN = /([?&](?:access_token|refresh_token|code|client_secret)=).[^&\s;}]*/gi;
+const BEARER_PATTERN = /\bbearer\s+\S+/gi;
+const BASIC_PATTERN = /\bbasic\s+\S+/gi;
+const TOKEN_KV_PATTERN = /((?:access|refresh|id)[_-]?token\s*[:=]\s*)\S*/gi;
+const SECRET_KV_PATTERN = /((?:client[_-]?secret|client[_-]?id|auth[_-]?code|code[_-]?verifier|\bcode)\s*[:=]\s*)\S*/gi;
+const TOKEN_QUERY_PATTERN = /([?&](?:access_token|refresh_token|code|client_secret)=)[^&\s;}]*/gi;
 const JWT_PATTERN = /eyJ[\w-].+[\w-].+[\w./+=~-]/g;
 const GOOGLE_TOKEN_PATTERN = /ya29..[\w.-]+/g;
 

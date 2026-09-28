@@ -28,7 +28,7 @@ export default function SpaApp() {
   const [view, setView] = useState<SpaView>('mailboxes');
   const [isBusy, setIsBusy] = useState(false);
   const { notice, setNotice, showNotice } = useNotice();
-  const { user, setUser, authorized, setAuthorized, loadCurrentUser } = useCurrentUser();
+  const { user, setUser, authorized, loadCurrentUser } = useCurrentUser();
   const mailboxes = useMailboxes({ setIsBusy, showNotice });
   const {
     applications,
@@ -55,18 +55,25 @@ export default function SpaApp() {
         if (!me) return;
         try {
           await loadApplications();
-        } catch {
-          setAuthorized(false);
+        } catch (error: unknown) {
+          // A failure listing applications is not an authentication failure. This
+          // used to call setAuthorized(false), bouncing an already-authenticated
+          // user to the Unauthorized screen with no error shown at all.
+          showNotice('error', error instanceof Error ? error.message : t('notice.loadFailed', 'Load Failed'));
         }
       })
       .catch(() => undefined);
-  }, [loadCurrentUser, loadApplications, setAuthorized]);
+  }, [loadCurrentUser, loadApplications, showNotice, t]);
 
   useEffect(() => {
-    loadApiKeys(selectedApplicationId).catch((error: unknown) =>
+    // `t` is deliberately not a dependency: its identity changes on every locale
+    // switch, which refetched the whole API-key list each time the user changed
+    // language.
+    void loadApiKeys(selectedApplicationId).catch((error: unknown) =>
       showNotice('error', error instanceof Error ? error.message : t('notice.loadFailed', 'Load Failed')),
     );
-  }, [loadApiKeys, selectedApplicationId, showNotice, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, [loadApiKeys, selectedApplicationId, showNotice]);
 
   const saveApplication = useCallback(async () => {
     setIsBusy(true);
