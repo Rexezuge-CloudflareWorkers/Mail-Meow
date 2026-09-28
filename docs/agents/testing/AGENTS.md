@@ -111,5 +111,6 @@ then creates a table referencing it fails with `foreign key mismatch` (see
 ## Still uncovered
 
 `apps/background` Durable Objects end to end (`CronTasksWorker`, `OAuth2TokenRefreshWorker`),
-the PruningTask subclasses against real D1, the OpenAPI YAML route, and most of
-`SpaApp`'s composition. Backfill order: background DOs → SpaApp → remaining routes.
+the OpenAPI YAML route, and most of `SpaApp`'s composition. Backfill order: background DOs →
+SpaApp → remaining routes. (`OAuth2AccessTokenRefreshTask` and `BackgroundTaskRunPruningTask`
+are covered in `test/runtime/backgroundTasks.test.ts`.)
