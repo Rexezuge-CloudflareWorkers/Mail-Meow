@@ -1,73 +1,34 @@
+/**
+ * The single outbound HTTP transport for every provider client.
+ *
+ * Everything with a network hop goes through an `IHttpClient` so tests can
+ * substitute the transport instead of intercepting globals, and so timeout
+ * handling lives in exactly one place.
+ */
 interface IHttpClient {
-  fetchJson(url: string, init?: RequestInit): Promise<unknown>;
+  /**
+  Performs the request and returns the raw `Response`, body unread.
+  */
+  fetchRaw(url: string, init: RequestInit, timeoutMs?: number): Promise<Response>;
 }
 
-type StubHttpHandler = (url: string, init?: RequestInit) => unknown;
-
-class HttpFetchError extends Error {
-  public readonly status: number;
-  public readonly statusText: string;
-  public readonly body: string;
-
-  constructor(status: number, statusText: string, body: string) {
-    super(`HTTP request failed (${status.toString()}): ${body || statusText}`);
-    this.name = 'HttpFetchError';
-    this.status = status;
-    this.statusText = statusText;
-    this.body = body;
-  }
-}
+/**
+ * Long enough to absorb a slow provider, short enough to fail inside the
+ * request budget a caller is willing to wait for.
+ */
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
 class FetchHttpClient implements IHttpClient {
-  public async fetchJson(url: string, init: RequestInit = {}): Promise<unknown> {
-    const response: Response = await fetch(url, init);
-    const text: string = await response.text();
-    if (!response.ok) {
-      throw new HttpFetchError(response.status, response.statusText, text);
-    }
-    return text ? (JSON.parse(text) as unknown) : {};
+  constructor(private readonly defaultTimeoutMs: number = DEFAULT_REQUEST_TIMEOUT_MS) {}
+
+  public async fetchRaw(url: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
+    // Workers have no subrequest kill switch: without a deadline a hung provider
+    // holds the isolate until the platform limit, discarding the D1/KV work
+    // already done and consuming the subrequest budget.
+    const signal: AbortSignal = init.signal ?? AbortSignal.timeout(timeoutMs ?? this.defaultTimeoutMs);
+    return fetch(url, { ...init, signal });
   }
 }
 
-class StubHttpClient implements IHttpClient {
-  public readonly calls: Array<{ url: string; init?: RequestInit }> = [];
-  private handler?: StubHttpHandler;
-  private readonly queue: Array<{ kind: 'value'; value: unknown } | { kind: 'error'; error: Error }> = [];
-
-  constructor(handler?: StubHttpHandler) {
-    this.handler = handler;
-  }
-
-  public queueJson(value: unknown): this {
-    this.queue.push({ kind: 'value', value });
-    return this;
-  }
-
-  public queueError(error: Error): this {
-    this.queue.push({ kind: 'error', error });
-    return this;
-  }
-
-  public setHandler(handler: StubHttpHandler): this {
-    this.handler = handler;
-    return this;
-  }
-
-  public fetchJson(url: string, init?: RequestInit): Promise<unknown> {
-    this.calls.push({ url, init });
-    if (this.handler) {
-      return Promise.resolve(this.handler(url, init));
-    }
-    const next = this.queue.shift();
-    if (!next) {
-      return Promise.reject(new Error(`StubHttpClient has no queued response for ${url}`));
-    }
-    if (next.kind === 'error') {
-      return Promise.reject(next.error);
-    }
-    return Promise.resolve(next.value);
-  }
-}
-
-export { FetchHttpClient, HttpFetchError, StubHttpClient };
-export type { IHttpClient, StubHttpHandler };
+export { DEFAULT_REQUEST_TIMEOUT_MS, FetchHttpClient };
+export type { IHttpClient };

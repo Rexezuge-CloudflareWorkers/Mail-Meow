@@ -1,11 +1,13 @@
 import { convert } from 'html-to-text';
 import { PROVIDER_GOOGLE_GMAIL, PROVIDER_MICROSOFT_OUTLOOK } from '@mail-meow/shared/constants';
-import { BadRequestError, InternalServerError } from '@mail-meow/backend-errors';
+import { BadRequestError, ProviderApiNonRetryableError } from '@mail-meow/backend-errors';
+import { providerFetchJson, providerFetchOk } from './BaseProviderHttp';
+import { EmailMimeBuilder } from './EmailMimeBuilder';
+import type { EmailBody } from './EmailMimeBuilder';
 
-interface EmailBody {
-  text?: string;
-  html?: string;
-}
+const GMAIL_MESSAGES_URL = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send';
+const GMAIL_MESSAGES_BY_ID_URL = 'https://gmail.googleapis.com/gmail/v1/users/me/messages';
+const GRAPH_SEND_MAIL_URL = 'https://graph.microsoft.com/v1.0/me/sendMail';
 
 class MailDeliveryUtil {
   public static async sendEmail(
@@ -28,105 +30,65 @@ class MailDeliveryUtil {
   }
 
   private static async sendGmail(from: string, to: string, subject: string, body: EmailBody, accessToken: string): Promise<void> {
-    const response: Response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    // Gmail requires the whole RFC 5322 message as base64url in `raw`.
+    const message: { id: string } | undefined = await providerFetchJson<{ id: string }>(
+      GMAIL_MESSAGES_URL,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: this.createEmail(from, to, subject, body) }),
       },
-      body: JSON.stringify({ raw: this.createEmail(from, to, subject, body) }),
-    });
-    if (!response.ok) {
-      throw new InternalServerError(`Gmail API error: ${await response.text()}`);
+      { providerName: 'Gmail', operation: 'send message', accessToken },
+    );
+    if (!message?.id) {
+      throw new ProviderApiNonRetryableError('Gmail API did not return a message id for the sent message.');
     }
-    const message = JSON.parse(await response.text()) as { id: string };
     await this.trashGmailMessage(message.id, accessToken);
   }
 
   private static async trashGmailMessage(messageId: string, accessToken: string): Promise<void> {
-    const response: Response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/trash`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    if (!response.ok) {
-      console.error(`Failed to trash Gmail message ${messageId}: ${await response.text()}`);
+    try {
+      // The message was already accepted by Gmail, so a failure here is
+      // best-effort cleanup: logged, not thrown, but not swallowed silently.
+      await providerFetchOk(
+        // messageId is provider-controlled, so encode it before it becomes a path segment.
+        `${GMAIL_MESSAGES_BY_ID_URL}/${encodeURIComponent(messageId)}/trash`,
+        { method: 'POST' },
+        { providerName: 'Gmail', operation: 'trash message', accessToken },
+      );
+    } catch (error: unknown) {
+      console.error(`Failed to trash Gmail message ${messageId}:`, error);
     }
   }
 
   private static async sendMicrosoftOutlook(to: string, subject: string, body: EmailBody, accessToken: string): Promise<void> {
+    // Graph sendMail takes structured JSON and scopes the sender to the mailbox
+    // behind the access token, so there is no `from` to pass through.
     const messageBody = body.html ? { contentType: 'HTML', content: body.html } : { contentType: 'Text', content: body.text ?? '' };
-    const response: Response = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+    await providerFetchOk(
+      GRAPH_SEND_MAIL_URL,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: {
+            subject,
+            body: messageBody,
+            toRecipients: [{ emailAddress: { address: to } }],
+          },
+          saveToSentItems: false,
+        }),
       },
-      body: JSON.stringify({
-        message: {
-          subject,
-          body: messageBody,
-          toRecipients: [{ emailAddress: { address: to } }],
-        },
-        saveToSentItems: false,
-      }),
-    });
-    if (!response.ok) {
-      throw new InternalServerError(`Microsoft Graph API error: ${await response.text()}`);
-    }
+      { providerName: 'Microsoft Graph', operation: 'send message', accessToken },
+    );
   }
 
   private static createEmail(sender: string, recipient: string, subject: string, body: EmailBody): string {
     if (!body.html) {
-      const email: string = [
-        `From: ${sender}`,
-        `To: ${recipient}`,
-        `Subject: ${subject}`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/plain; charset=utf-8',
-        '',
-        body.text ?? '',
-      ].join('\r\n');
-      return this.base64UrlEncodeString(email);
+      return this.base64UrlEncodeString(EmailMimeBuilder.buildTextEmail(sender, recipient, subject, body.text ?? ''));
     }
     const textBody: string = body.text ?? this.stripHtml(body.html);
-    const boundary: string = this.createMimeBoundary();
-    const email: string = [
-      `From: ${sender}`,
-      `To: ${recipient}`,
-      `Subject: ${subject}`,
-      'MIME-Version: 1.0',
-      `Content-Type: multipart/alternative; boundary="${boundary}"`,
-      '',
-      this.buildAlternativeMimeBody(textBody, body.html, boundary),
-    ].join('\r\n');
-    return this.base64UrlEncodeString(email);
-  }
-
-  private static createMimeBoundary(): string {
-    return `mail-meow-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-  }
-
-  private static toCrlf(value: string): string {
-    return value.replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\n', '\r\n');
-  }
-
-  private static buildAlternativeMimeBody(textBody: string, htmlBody: string, boundary: string): string {
-    return [
-      `--${boundary}`,
-      'Content-Type: text/plain; charset=utf-8',
-      'Content-Transfer-Encoding: 8bit',
-      '',
-      this.toCrlf(textBody),
-      `--${boundary}`,
-      'Content-Type: text/html; charset=utf-8',
-      'Content-Transfer-Encoding: 8bit',
-      '',
-      this.toCrlf(htmlBody),
-      `--${boundary}--`,
-      '',
-    ].join('\r\n');
+    return this.base64UrlEncodeString(EmailMimeBuilder.buildAlternativeEmail(sender, recipient, subject, textBody, body.html));
   }
 
   private static stripHtml(value: string): string {
@@ -144,9 +106,11 @@ class MailDeliveryUtil {
   private static base64UrlEncodeString(value: string): string {
     const bytes: Uint8Array = new TextEncoder().encode(value);
     let binary = '';
-    bytes.forEach((byte: number): void => {
+    // Accumulated in a loop rather than via spread: a large body would exceed
+    // the engine's argument-count ceiling on String.fromCodePoint(...bytes).
+    for (const byte of bytes) {
       binary += String.fromCodePoint(byte);
-    });
+    }
     return btoa(binary)
       .replaceAll('+', '-')
       .replaceAll('/', '_')
@@ -155,4 +119,5 @@ class MailDeliveryUtil {
 }
 
 export { MailDeliveryUtil };
-export type { EmailBody };
+
+export { type EmailBody } from './EmailMimeBuilder';

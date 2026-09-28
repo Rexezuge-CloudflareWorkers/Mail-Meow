@@ -19,9 +19,9 @@ class UserService {
     private readonly env: UserServiceEnv,
     deps: UserServiceDeps = {},
   ) {
-    const db = env.DB;
+    const db: D1Queryable = env.DB;
     this.deps = {
-      userDAO: () => Promise.resolve(new UserDAO(db as unknown as D1Database)),
+      userDAO: () => Promise.resolve(new UserDAO(db)),
       ...deps,
     };
   }
@@ -31,14 +31,17 @@ class UserService {
     await userDAO.upsertByEmail(email);
   }
 
+  /**
+   * Returns the stored language, or `null` when none is set.
+   *
+   * A D1 failure propagates. This previously caught everything and returned
+   * `null`, which made a database outage indistinguishable from "no language
+   * chosen" — every `GET /user/me` silently reported a default.
+   */
   async getPreferredLanguage(userEmail: string): Promise<string | null> {
-    try {
-      const userDAO = await this.deps.userDAO();
-      const user = await userDAO.getByEmail(userEmail);
-      return user?.preferredLanguage ? LocaleUtil.normalize(user.preferredLanguage) : null;
-    } catch {
-      return null;
-    }
+    const userDAO = await this.deps.userDAO();
+    const user = await userDAO.getByEmail(userEmail);
+    return user?.preferredLanguage ? LocaleUtil.normalize(user.preferredLanguage) : null;
   }
 
   async getCurrentUserSummary(
@@ -54,9 +57,8 @@ class UserService {
   }
 
   async updatePreferredLanguage(userEmail: string, preferredLanguage: string): Promise<string> {
-    const normalized = LocaleUtil.normalize(preferredLanguage);
+    const normalized: string = LocaleUtil.normalize(preferredLanguage);
     const userDAO = await this.deps.userDAO();
-    await userDAO.upsertByEmail(userEmail);
     await userDAO.updatePreferredLanguage(userEmail, normalized);
     return normalized;
   }

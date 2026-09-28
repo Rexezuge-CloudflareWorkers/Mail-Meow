@@ -9,7 +9,8 @@ import { ConnectedApplicationDAO, OAuth2AccessTokenCacheDAO, OAuth2AccessTokenRe
 import { createD1SessionEnv } from '@mail-meow/backend-data/utils';
 import type { ConnectedApplication, OAuth2Credentials } from '@mail-meow/shared/model';
 import { TimestampUtil } from '@mail-meow/shared/utils';
-import { BadRequestError, NotFoundError, ProviderApiNonRetryableError } from '@mail-meow/backend-errors';
+import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
+import { BadRequestError, DefaultInternalServerError, NotFoundError, ProviderApiNonRetryableError } from '@mail-meow/backend-errors';
 import { ConfigurationManager } from '@mail-meow/backend-runtime/config';
 import { GmailProviderUtil } from '@mail-meow/provider-clients/gmail';
 import { OAuth2ProviderUtil } from '@mail-meow/provider-clients/oauth2';
@@ -64,8 +65,11 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
           : error instanceof BadRequestError || error instanceof ProviderApiNonRetryableError
             ? 400
             : 500;
-      const message: string = error instanceof Error ? error.message : String(error);
       if (status >= 500) console.error('OAuth2 token operation failed:', error);
+      // 5xx detail is redacted before it leaves the Durable Object; the
+      // unsanitized error is already in the log above.
+      const message: string =
+        status >= 500 ? DefaultInternalServerError.getErrorMessage() : ErrorSanitizationUtil.sanitizeErrorForLogging(error);
       return Response.json({ error: message }, { status });
     }
   }
@@ -224,7 +228,10 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
   }
 
   private formatError(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
+    // This value is persisted to oauth2_access_token_refresh_status.last_error and
+    // read back through the task-run API, so it must be redacted: a provider or
+    // D1 error message can carry tokens, tokens-in-URLs, or client secrets.
+    return ErrorSanitizationUtil.sanitizeErrorForLogging(error);
   }
 }
 

@@ -7,11 +7,13 @@ interface PruningTaskEnv extends IEnv {
   DB: D1Database;
 }
 
-// Template Method for retention-based pruning cron tasks.
-// Subclasses supply the retention window (in days) and a single-batch delete step;
-// this base computes the unix cutoff, drains via pruneInBatches, and returns a TaskRunSummary.
-// pruneBatch receives the task env (some phases, e.g. EmailAction, need secrets from env),
-// the session DB, the precomputed cutoff, and the batch size.
+/**
+ * Template Method for retention-based pruning cron tasks.
+ *
+ * Subclasses supply the retention window (in days) and a single-batch delete
+ * step; this base computes the unix cutoff, drains via the bounded
+ * `pruneInBatches`, and returns a `TaskRunSummary`.
+ */
 abstract class AbstractPruningTask<TEnv extends PruningTaskEnv> extends IScheduledTask<TEnv> {
   protected abstract getRetentionDays(env: TEnv): number;
 
@@ -21,9 +23,15 @@ abstract class AbstractPruningTask<TEnv extends PruningTaskEnv> extends ISchedul
     const retentionDays: number = this.getRetentionDays(env);
     const cutoff: number = computeUnixCutoffSeconds(retentionDays);
     const sessionEnv = createD1SessionEnv(env);
-    const total: number = await pruneInBatches((batchSize: number) => this.pruneBatch(env, sessionEnv.DB, cutoff, batchSize));
-    console.log(`[${this.constructor.name}] deleted ${total} rows`);
-    return { itemsProcessed: total, itemsFailed: 0, summary: `Deleted ${total} rows` };
+    const { deleted, exhausted } = await pruneInBatches((batchSize: number) => this.pruneBatch(env, sessionEnv.DB, cutoff, batchSize));
+    console.log(`[${this.constructor.name}] deleted ${deleted} rows`);
+    return {
+      itemsProcessed: deleted,
+      itemsFailed: 0,
+      summary: exhausted
+        ? `Deleted ${deleted} rows`
+        : `Deleted ${deleted} rows; batch cap reached, remaining rows are pruned on the next run`,
+    };
   }
 }
 
