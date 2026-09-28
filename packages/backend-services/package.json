@@ -34,7 +34,7 @@
     "@mail-meow/backend-runtime": "workspace:*",
     "@mail-meow/provider-clients": "workspace:*",
     "@mail-meow/shared": "workspace:*",
-    "jose": "6.2.10"
+    "jose": "6.2.12"
   },
   "devDependencies": {
     "@types/node": "26.6.1",
