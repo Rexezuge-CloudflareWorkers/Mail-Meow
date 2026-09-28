@@ -14,7 +14,7 @@
     "@mail-meow/background": "workspace:*",
     "@mail-meow/shared": "workspace:*",
     "chanfana": "3.4.0",
-    "hono": "4.13.8"
+    "hono": "4.13.9"
   },
   "devDependencies": {
     "@types/node": "26.6.1",
