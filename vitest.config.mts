@@ -11,9 +11,7 @@ const backendRuntimeSrcPath = fileURLToPath(new URL('packages/backend-runtime/sr
 const providerClientsSrcPath = fileURLToPath(new URL('packages/provider-clients/src', import.meta.url));
 const sharedSrcPath = fileURLToPath(new URL('packages/shared/src', import.meta.url));
 const backendServicesSrcPath = fileURLToPath(new URL('packages/backend-services/src', import.meta.url));
-const cloudflareSocketsMockPath = fileURLToPath(new URL('test/mocks/cloudflare-sockets.ts', import.meta.url));
 const cloudflareWorkersMockPath = fileURLToPath(new URL('test/mocks/cloudflare-workers.ts', import.meta.url));
-const cloudflareWorkflowsMockPath = fileURLToPath(new URL('test/mocks/cloudflare-workflows.ts', import.meta.url));
 // `jose` is a dependency of `backend-services`, so under pnpm's isolated
 // node_modules it only resolves from that package. A test file at the repo root
 // resolving `jose` would therefore load a *different* module instance than the
@@ -36,9 +34,7 @@ const workspaceAliases = [
   { find: '@mail-meow/backend-services', replacement: backendServicesSrcPath },
   { find: '@mail-meow/provider-clients', replacement: providerClientsSrcPath },
   { find: '@mail-meow/shared', replacement: sharedSrcPath },
-  { find: 'cloudflare:sockets', replacement: cloudflareSocketsMockPath },
   { find: 'cloudflare:workers', replacement: cloudflareWorkersMockPath },
-  { find: 'cloudflare:workflows', replacement: cloudflareWorkflowsMockPath },
   { find: /^jose$/, replacement: josePath },
   { find: /^@\//, replacement: `${apiSrcPath}/` },
 ];
@@ -83,7 +79,12 @@ export default defineConfig({
       reporter: ['text', 'lcov', 'html'],
       reportsDirectory: './coverage',
       include: ['apps/api/src/**/*.ts', 'apps/background/src/**/*.ts', 'apps/web/src/**/*.{ts,tsx}', 'packages/**/src/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/*.test.tsx', '**/*.d.ts', '**/index.ts', '**/types.d.ts', '**/model/**', '**/generated/**'],
+      // `**/index.ts` is deliberately NOT excluded. Four root barrels sat at
+      // 0% coverage precisely because they were excluded, and all four turned
+      // out to be imported by nothing at all — every consumer uses a deep path
+      // like `@mail-meow/shared/utils`. Excluding them is what made four dead
+      // files invisible. A barrel with no importer now shows up as uncovered.
+      exclude: ['**/*.test.ts', '**/*.test.tsx', '**/*.d.ts', '**/types.d.ts', '**/model/**', '**/generated/**'],
       thresholds: {
         // Raised from the 19/8/28/20 floor after the dead-code removal and the
         // composition-root refactor. See docs/agents/testing/AGENTS.md.

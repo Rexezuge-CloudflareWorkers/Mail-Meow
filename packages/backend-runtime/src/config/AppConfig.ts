@@ -189,7 +189,7 @@ const KNOWN_NON_SETTING_ENV_KEYS: ReadonlySet<string> = new Set([
 /**
  * Reads and validates configuration from a Workers `env` object.
  *
- * Usage: `AppConfig.fromEnv(env).maxApplicationsPerUser`.
+ * Usage: `AppConfigReader.fromEnv(env).maxApplicationsPerUser`.
  */
 class AppConfigReader {
   private constructor(private readonly config: AppConfig) {}
