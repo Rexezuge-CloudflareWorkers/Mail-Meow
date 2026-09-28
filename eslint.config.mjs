@@ -8,7 +8,19 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 import prettier from 'eslint-plugin-prettier';
 
 export default tseslint.config(
-  { ignores: ['eslint.config.mjs', 'scripts/**', 'worker-configuration.d.ts', 'app/dist/**', 'apps/web/dist/**', 'src/generated/**', 'apps/api/src/generated/**', 'coverage/**', 'node_modules/**', 'test/**'] },
+  {
+    ignores: [
+      'eslint.config.mjs',
+      'worker-configuration.d.ts',
+      'apps/*/dist/**',
+      'src/generated/**',
+      'apps/api/src/generated/**',
+      'coverage/**',
+      'coverage-integration/**',
+      'node_modules/**',
+      'test/**',
+    ],
+  },
 
   // Base: globals for all JS/TS source files
   {
@@ -148,12 +160,12 @@ export default tseslint.config(
   // --- Regexp: static analysis for regular expressions ---
   pluginRegexp.configs['flat/recommended'],
 
-  // --- Prettier: report formatting drift as lint warnings; disable conflicting stylistic rules ---
+  // --- Prettier: formatting drift is a hard error; the repo ships no separate format gate ---
   eslintConfigPrettier,
   {
     plugins: { prettier },
     rules: {
-      'prettier/prettier': 'warn',
+      'prettier/prettier': 'error',
     },
   },
 
@@ -162,91 +174,161 @@ export default tseslint.config(
   {
     files: ['packages/shared/**/*.{ts,js}'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['@mail-meow/*'], message: 'shared must not import from other @mail-meow packages — it is a zero-dependency base layer' },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@mail-meow/*'],
+              message: 'shared must not import from other @mail-meow packages — it is a zero-dependency base layer',
+            },
+          ],
+        },
+      ],
     },
   },
   // Layer 0: backend-errors — zero @mail-meow/* deps
   {
     files: ['packages/backend-errors/**/*.{ts,js}'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['@mail-meow/*'], message: 'backend-errors must not import from other @mail-meow packages — it is a zero-dependency base layer' },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@mail-meow/*'],
+              message: 'backend-errors must not import from other @mail-meow packages — it is a zero-dependency base layer',
+            },
+          ],
+        },
+      ],
     },
   },
   // Layer 1: backend-runtime — only shared and backend-errors
   {
     files: ['packages/backend-runtime/**/*.{ts,js}'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['@mail-meow/backend-data', '@mail-meow/backend-data/*'], message: 'backend-runtime must not import from backend-data (higher layer)' },
-          { group: ['@mail-meow/provider-clients', '@mail-meow/provider-clients/*'], message: 'backend-runtime must not import from provider-clients (higher layer)' },
-          { group: ['@mail-meow/backend-services', '@mail-meow/backend-services/*'], message: 'backend-runtime must not import from backend-services (higher layer)' },
-          { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'backend-runtime must not import from apps/api' },
-          { group: ['@mail-meow/background', '@mail-meow/background/*'], message: 'backend-runtime must not import from apps/background' },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@mail-meow/backend-data', '@mail-meow/backend-data/*'],
+              message: 'backend-runtime must not import from backend-data (higher layer)',
+            },
+            {
+              group: ['@mail-meow/provider-clients', '@mail-meow/provider-clients/*'],
+              message: 'backend-runtime must not import from provider-clients (higher layer)',
+            },
+            {
+              group: ['@mail-meow/backend-services', '@mail-meow/backend-services/*'],
+              message: 'backend-runtime must not import from backend-services (higher layer)',
+            },
+            { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'backend-runtime must not import from apps/api' },
+            {
+              group: ['@mail-meow/background', '@mail-meow/background/*'],
+              message: 'backend-runtime must not import from apps/background',
+            },
+          ],
+        },
+      ],
     },
   },
   // Layer 2: backend-data — only shared and backend-errors
   {
     files: ['packages/backend-data/**/*.{ts,js}'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['@mail-meow/backend-runtime', '@mail-meow/backend-runtime/*'], message: 'backend-data must not import from backend-runtime' },
-          { group: ['@mail-meow/provider-clients', '@mail-meow/provider-clients/*'], message: 'backend-data must not import from provider-clients' },
-          { group: ['@mail-meow/backend-services', '@mail-meow/backend-services/*'], message: 'backend-data must not import services (higher layer)' },
-          { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'backend-data must not import from apps/api' },
-          { group: ['@mail-meow/background', '@mail-meow/background/*'], message: 'backend-data must not import from apps/background' },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@mail-meow/backend-runtime', '@mail-meow/backend-runtime/*'],
+              message: 'backend-data must not import from backend-runtime',
+            },
+            {
+              group: ['@mail-meow/provider-clients', '@mail-meow/provider-clients/*'],
+              message: 'backend-data must not import from provider-clients',
+            },
+            {
+              group: ['@mail-meow/backend-services', '@mail-meow/backend-services/*'],
+              message: 'backend-data must not import services (higher layer)',
+            },
+            { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'backend-data must not import from apps/api' },
+            { group: ['@mail-meow/background', '@mail-meow/background/*'], message: 'backend-data must not import from apps/background' },
+          ],
+        },
+      ],
     },
   },
   // Layer 2: provider-clients — only shared and backend-errors
   {
     files: ['packages/provider-clients/**/*.{ts,js}'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['@mail-meow/backend-data', '@mail-meow/backend-data/*'], message: 'provider-clients must not import DAOs from backend-data' },
-          { group: ['@mail-meow/backend-runtime', '@mail-meow/backend-runtime/*'], message: 'provider-clients must not import from backend-runtime' },
-          { group: ['@mail-meow/backend-services', '@mail-meow/backend-services/*'], message: 'provider-clients must not import from backend-services (higher layer)' },
-          { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'provider-clients must not import from apps/api' },
-          { group: ['@mail-meow/background', '@mail-meow/background/*'], message: 'provider-clients must not import from apps/background' },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@mail-meow/backend-data', '@mail-meow/backend-data/*'],
+              message: 'provider-clients must not import DAOs from backend-data',
+            },
+            {
+              group: ['@mail-meow/backend-runtime', '@mail-meow/backend-runtime/*'],
+              message: 'provider-clients must not import from backend-runtime',
+            },
+            {
+              group: ['@mail-meow/backend-services', '@mail-meow/backend-services/*'],
+              message: 'provider-clients must not import from backend-services (higher layer)',
+            },
+            { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'provider-clients must not import from apps/api' },
+            {
+              group: ['@mail-meow/background', '@mail-meow/background/*'],
+              message: 'provider-clients must not import from apps/background',
+            },
+          ],
+        },
+      ],
     },
   },
   // Layer 3: backend-services — cannot import apps
   {
     files: ['packages/backend-services/**/*.{ts,js}'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'backend-services must not import from apps/api' },
-          { group: ['@mail-meow/background', '@mail-meow/background/*'], message: 'backend-services must not import from apps/background' },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'backend-services must not import from apps/api' },
+            {
+              group: ['@mail-meow/background', '@mail-meow/background/*'],
+              message: 'backend-services must not import from apps/background',
+            },
+          ],
+        },
+      ],
     },
   },
   // Layer 5: apps/api — route through backend-services, not directly to provider-clients
   {
     files: ['apps/api/**/*.{ts,js}'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          { group: ['@mail-meow/provider-clients', '@mail-meow/provider-clients/*'], message: 'apps/api must not import provider-clients directly; use @mail-meow/backend-services instead' },
-          { group: ['@mail-meow/backend-data/dao', '@mail-meow/backend-data/dao/*'], message: 'apps/api must not import DAOs directly; use @mail-meow/backend-services instead (type-only imports are allowed)', allowTypeImports: true },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@mail-meow/provider-clients', '@mail-meow/provider-clients/*'],
+              message: 'apps/api must not import provider-clients directly; use @mail-meow/backend-services instead',
+            },
+            {
+              group: ['@mail-meow/backend-data/dao', '@mail-meow/backend-data/dao/*'],
+              message: 'apps/api must not import DAOs directly; use @mail-meow/backend-services instead (type-only imports are allowed)',
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
     },
   },
 

@@ -131,7 +131,9 @@ class MailMeowWorker extends AbstractEntrypointWorker {
 
   // eslint-disable-next-line @typescript-eslint/require-await -- forwards via ctx.waitUntil, no direct await
   protected async onScheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    const cronTasksId: DurableObjectId = (env as unknown as { CRON_TASKS: DurableObjectNamespace }).CRON_TASKS.idFromName(DURABLE_OBJECT_NAMESPACE_GLOBAL);
+    const cronTasksId: DurableObjectId = (env as unknown as { CRON_TASKS: DurableObjectNamespace }).CRON_TASKS.idFromName(
+      DURABLE_OBJECT_NAMESPACE_GLOBAL,
+    );
     const cronTasksStub = (env as unknown as { CRON_TASKS: DurableObjectNamespace }).CRON_TASKS.get(cronTasksId);
     const cronTasksRequest: Request = new Request(DURABLE_OBJECT_CRON_TASKS_RUN_URL, {
       method: 'POST',

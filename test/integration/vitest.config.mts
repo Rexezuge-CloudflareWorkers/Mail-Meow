@@ -14,8 +14,25 @@ const backendServicesSrcPath = fileURLToPath(new URL('../../packages/backend-ser
 const sharedSrcPath = fileURLToPath(new URL('../../packages/shared/src', import.meta.url));
 
 const migrationsDir = resolve(fileURLToPath(new URL('../../migrations', import.meta.url)));
-const migrationFiles = readdirSync(migrationsDir).filter(f => f.endsWith('.sql') && f >= '0007').sort();
-const migrationSql = migrationFiles.map(f => readFileSync(resolve(migrationsDir, f), 'utf-8')).join('\n\n');
+// Only the v3-onward chain is exercised: `0007_v3_reset_schema.sql` drops every table
+// created by `0001`-`0006`, so replaying the pre-v3 migrations is wasted setup that
+// only obscures the schema under test. Compare parsed numeric prefixes rather than
+// raw filenames so `0011_...` sorts after `0009_...` instead of after `0010_...`.
+const V3_MIGRATION_FLOOR = 7;
+const migrationFiles = readdirSync(migrationsDir)
+  .filter((file) => file.endsWith('.sql'))
+  .map((file) => ({ file, order: Number.parseInt(file, 10) }))
+  .filter(({ order }) => Number.isSafeInteger(order) && order >= V3_MIGRATION_FLOOR)
+  .sort((a, b) => a.order - b.order)
+  .map(({ file }) => file);
+
+if (migrationFiles.length === 0) {
+  throw new Error(
+    `No migrations at or after ${V3_MIGRATION_FLOOR} were found in ${migrationsDir}. ` +
+      'Integration tests would run against an empty schema and fail with confusing "no such table" errors.',
+  );
+}
+const migrationSql = migrationFiles.map((file) => readFileSync(resolve(migrationsDir, file), 'utf-8')).join('\n\n');
 
 export default defineConfig({
   define: {
@@ -35,18 +52,8 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       reportsDirectory: './coverage-integration',
-      include: [
-        'apps/api/src/**/*.ts',
-        'apps/background/src/**/*.ts',
-        'packages/**/src/**/*.ts',
-      ],
-      exclude: [
-        '**/*.test.ts',
-        '**/*.int.test.ts',
-        '**/*.d.ts',
-        '**/index.ts',
-        '**/types.d.ts',
-      ],
+      include: ['apps/api/src/**/*.ts', 'apps/background/src/**/*.ts', 'packages/**/src/**/*.ts'],
+      exclude: ['**/*.test.ts', '**/*.int.test.ts', '**/*.d.ts', '**/index.ts', '**/types.d.ts'],
       // NOTE: V8 coverage instrumentation is not functional with @cloudflare/vitest-pool-workers
       // because the Cloudflare Workers sandbox does not expose node:inspector/promises.
       // Run `pnpm run test:integration` (without --coverage) for integration testing.
@@ -59,11 +66,7 @@ export default defineConfig({
     }),
   },
   ssr: {
-    noExternal: [
-      'hono',
-      'chanfana',
-      '@mail-meow',
-    ],
+    noExternal: ['hono', 'chanfana', '@mail-meow'],
   },
   resolve: {
     alias: [

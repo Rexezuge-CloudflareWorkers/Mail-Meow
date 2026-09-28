@@ -3,7 +3,6 @@ import { Tokens, createRequestScope } from '@mail-meow/backend-services/composit
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 
-
 class DeleteApplicationApiKeyRoute extends IUserRoute<
   DeleteApplicationApiKeyRequest,
   DeleteApplicationApiKeyResponse,
@@ -153,9 +152,7 @@ class DeleteApplicationApiKeyRoute extends IUserRoute<
     cxt: RouteContext<DeleteApplicationApiKeyEnv>,
   ): Promise<DeleteApplicationApiKeyResponse> {
     const scope = createRequestScope(env);
-    await scope
-      .get(Tokens.ApiKeyService)
-      .deleteApiKey(request.apiKeyId, request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
+    await scope.get(Tokens.ApiKeyService).deleteApiKey(request.apiKeyId, request.applicationId, this.getAuthenticatedUserEmailAddress(cxt));
     return { success: true };
   }
 }

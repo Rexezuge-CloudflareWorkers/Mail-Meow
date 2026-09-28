@@ -25,7 +25,11 @@ export async function listApiKeys(applicationId: string): Promise<{ apiKeys: App
   return apiGet<{ apiKeys: ApplicationApiKey[] }>('/user/application/api-keys', { applicationId });
 }
 
-export async function createApiKey(applicationId: string, name: string, expiresInDays?: number): Promise<{ apiKey: string; metadata: ApplicationApiKey }> {
+export async function createApiKey(
+  applicationId: string,
+  name: string,
+  expiresInDays?: number,
+): Promise<{ apiKey: string; metadata: ApplicationApiKey }> {
   return apiPost<{ apiKey: string; metadata: ApplicationApiKey }>('/user/application/api-key', { applicationId, name, expiresInDays });
 }
 

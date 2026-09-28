@@ -3,7 +3,11 @@ import { createRequestScope, Tokens } from '@mail-meow/backend-services/composit
 
 function makeEnv() {
   return {
-    DB: { prepare: () => ({ bind: () => ({ run: async () => ({ success: true }), first: async () => null, all: async () => ({ results: [] }) }) }) } as unknown as D1Database,
+    DB: {
+      prepare: () => ({
+        bind: () => ({ run: async () => ({ success: true }), first: async () => null, all: async () => ({ results: [] }) }),
+      }),
+    } as unknown as D1Database,
     AES_ENCRYPTION_KEY_SECRET: { get: async () => 'test-master-key-32-bytes-long!!' },
   };
 }

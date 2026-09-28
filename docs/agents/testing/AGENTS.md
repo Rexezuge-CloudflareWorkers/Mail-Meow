@@ -9,6 +9,7 @@ Current thresholds (`vitest.config.mts`): **statements 19 / branches 8 / functio
 **Still uncovered** (0% or near-0%): most DAOs (`ConnectedApplication`, `ApplicationApiKey`, `OAuth2Session`, `BackgroundTaskRun`, `OAuth2RefreshStatus`), services (`ApplicationService`, `ApiKeyService`, `OAuth2Authorization/AccessToken`, `Mail/SnsDelivery`, `UserService`, `ProcessingService`), background workers/tasks (`CronTasksWorker`, `OAuth2TokenRefreshWorker`, `OAuth2AccessTokenRefreshTask`), most routes (happy + validation/error paths), `D1Utils`, `IServiceError`, `VoidUtil`. Backfill order: services → DAOs → routes → background → utils.
 
 **Mock patterns**:
+
 - DAO tests: `createMockDb()` returning `prepare().bind().run/first/all` chain with shared `vi.fn()` refs.
 - Services with DAOs: `vi.mock('@mail-meow/backend-data/dao')`.
 - Crypto: `vi.mock('@mail-meow/backend-data/crypto')`.

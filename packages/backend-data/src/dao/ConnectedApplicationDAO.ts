@@ -16,7 +16,6 @@ import { TimestampUtil, UUIDUtil } from '@mail-meow/shared/utils';
 import { EncryptedDAO } from './BaseDAO';
 
 class ConnectedApplicationDAO extends EncryptedDAO {
-
   public async create(
     userEmail: string,
     displayName: string,

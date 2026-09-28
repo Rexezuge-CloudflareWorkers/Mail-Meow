@@ -32,12 +32,22 @@ Plain `pnpm` is canonical (CI uses `pnpm/action-setup@v4` + `setup-node node 24`
 ```bash
 pnpm install
 pnpm -r typecheck && pnpm run lint && pnpm run test:coverage && pnpm run test:integration
+pnpm run lint:check      # report-only, no --fix
+pnpm run prettier        # format; prettier:check verifies
 pnpm --filter @mail-meow/web build   # only web has a build script
 pnpm --filter @mail-meow/web dev     # vite dev server
 pnpm run typegen   # after changing wrangler bindings
 pnpm exec wrangler dev
 pnpm exec wrangler deploy
 ```
+
+`pnpm run lint` sets `NODE_OPTIONS=--max-old-space-size=6144`; type-aware ESLint on this
+repo exceeds the default V8 heap on memory-constrained machines and would otherwise abort
+with `FATAL ERROR: ... JavaScript heap out of memory` and leave `core.*` dumps behind.
+
+`pnpm run lint` does **not** pass `--quiet`. Warnings are surfaced on purpose — a silent
+warning backlog is how `prettier/prettier` drift and unsafe-`any` regressions accumulate.
+`prettier/prettier` is an error, so formatting is gated by lint.
 
 ## Import Direction
 
@@ -55,21 +65,22 @@ Enforced by ESLint `no-restricted-imports` in `eslint.config.mjs` (Layer 5 curre
 
 ## Index
 
-| Area | Guide |
-|---|---|
-| API worker, auth, routes | `apps/api/AGENTS.md` |
-| Background worker, cron phases, task visibility | `apps/background/AGENTS.md` |
-| Web SPA, frontend i18n, UI text conventions | `apps/web/AGENTS.md` |
-| Provider clients, naming | `packages/provider-clients/AGENTS.md` |
-| D1/DAO layer | `packages/backend-data/AGENTS.md` |
-| Business logic, service domain map | `packages/backend-services/AGENTS.md` |
-| Bindings, wrangler, env vars | `docs/agents/runtime/AGENTS.md` |
-| Tests, thresholds, mock patterns | `docs/agents/testing/AGENTS.md` |
-| Email delivery | `docs/agents/features/email-delivery/AGENTS.md` |
+| Area                                            | Guide                                           |
+| ----------------------------------------------- | ----------------------------------------------- |
+| API worker, auth, routes                        | `apps/api/AGENTS.md`                            |
+| Background worker, cron phases, task visibility | `apps/background/AGENTS.md`                     |
+| Web SPA, frontend i18n, UI text conventions     | `apps/web/AGENTS.md`                            |
+| Provider clients, naming                        | `packages/provider-clients/AGENTS.md`           |
+| D1/DAO layer                                    | `packages/backend-data/AGENTS.md`               |
+| Business logic, service domain map              | `packages/backend-services/AGENTS.md`           |
+| Bindings, wrangler, env vars                    | `docs/agents/runtime/AGENTS.md`                 |
+| Tests, thresholds, mock patterns                | `docs/agents/testing/AGENTS.md`                 |
+| Email delivery                                  | `docs/agents/features/email-delivery/AGENTS.md` |
 
 ## Keeping AGENTS.md Current
 
 Update the scoped sub-guide (not this index) as part of any change that adds, removes, or renames:
+
 - Routes → `apps/api/AGENTS.md`
 - Cron tasks/phases → `apps/background/AGENTS.md`
 - Web UI, locales, text conventions → `apps/web/AGENTS.md`

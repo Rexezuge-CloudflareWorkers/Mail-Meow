@@ -58,9 +58,9 @@ describe('Request input schemas', () => {
   it('accepts text-only email sends for backward compatibility', async () => {
     const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
 
-    await expect(
-      validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello', text: 'Body' }),
-    ).resolves.toMatchObject({ success: true });
+    await expect(validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello', text: 'Body' })).resolves.toMatchObject({
+      success: true,
+    });
   });
 
   it('accepts html-only email sends', async () => {
@@ -87,9 +87,10 @@ describe('Request input schemas', () => {
   it('rejects email sends without text and html', async () => {
     const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
 
-    await expect(
-      validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello' }),
-    ).resolves.toMatchObject({ success: false, scope: 'body' });
+    await expect(validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello' })).resolves.toMatchObject({
+      success: false,
+      scope: 'body',
+    });
   });
 
   it('rejects email sends with blank text and html', async () => {

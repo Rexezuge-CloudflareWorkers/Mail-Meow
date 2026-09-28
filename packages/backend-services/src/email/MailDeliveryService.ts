@@ -20,10 +20,7 @@ class MailDeliveryService {
     subject: string,
     body: { text?: string; html?: string },
   ): Promise<void> {
-    if (
-      application.connectionMethod !== CONNECTION_METHOD_OAUTH2 ||
-      application.status !== CONNECTED_APPLICATION_STATUS_CONNECTED
-    ) {
+    if (application.connectionMethod !== CONNECTION_METHOD_OAUTH2 || application.status !== CONNECTED_APPLICATION_STATUS_CONNECTED) {
       throw new BadRequestError('The API key is not connected to an authorized OAuth2 email application.');
     }
     const credentials: OAuth2Credentials = application.credentials as OAuth2Credentials;
@@ -36,14 +33,7 @@ class MailDeliveryService {
       const applicationDAO = new ConnectedApplicationDAO(this.env.DB, masterKey);
       await applicationDAO.updateOAuth2RefreshToken(application.applicationId, tokenResult.refreshToken);
     }
-    await MailDeliveryUtil.sendEmail(
-      application.providerId,
-      application.userEmail,
-      to,
-      subject,
-      body,
-      tokenResult.accessToken,
-    );
+    await MailDeliveryUtil.sendEmail(application.providerId, application.userEmail, to, subject, body, tokenResult.accessToken);
   }
 }
 

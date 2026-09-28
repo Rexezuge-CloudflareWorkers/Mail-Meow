@@ -4,7 +4,6 @@ import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IUserEnv, IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 import type { ConnectedApplicationMetadata } from '@mail-meow/shared/model';
 
-
 class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListApplicationsResponse, ListApplicationsEnv> {
   schema = {
     tags: ['Applications'],
@@ -25,7 +24,17 @@ class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListAppl
                   description: 'Connected applications owned by the authenticated user',
                   items: {
                     type: 'object' as const,
-                    required: ['applicationId', 'userEmail', 'displayName', 'providerId', 'connectionMethod', 'status', 'createdAt', 'updatedAt', 'oauth2RedirectUri'],
+                    required: [
+                      'applicationId',
+                      'userEmail',
+                      'displayName',
+                      'providerId',
+                      'connectionMethod',
+                      'status',
+                      'createdAt',
+                      'updatedAt',
+                      'oauth2RedirectUri',
+                    ],
                     properties: {
                       applicationId: {
                         type: 'string' as const,

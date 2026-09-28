@@ -27,13 +27,7 @@ class MailDeliveryUtil {
     throw new BadRequestError('The connected application does not support email delivery.');
   }
 
-  private static async sendGmail(
-    from: string,
-    to: string,
-    subject: string,
-    body: EmailBody,
-    accessToken: string,
-  ): Promise<void> {
+  private static async sendGmail(from: string, to: string, subject: string, body: EmailBody, accessToken: string): Promise<void> {
     const response: Response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: {
@@ -61,15 +55,8 @@ class MailDeliveryUtil {
     }
   }
 
-  private static async sendMicrosoftOutlook(
-    to: string,
-    subject: string,
-    body: EmailBody,
-    accessToken: string,
-  ): Promise<void> {
-    const messageBody = body.html
-      ? { contentType: 'HTML', content: body.html }
-      : { contentType: 'Text', content: body.text ?? '' };
+  private static async sendMicrosoftOutlook(to: string, subject: string, body: EmailBody, accessToken: string): Promise<void> {
+    const messageBody = body.html ? { contentType: 'HTML', content: body.html } : { contentType: 'Text', content: body.text ?? '' };
     const response: Response = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
       method: 'POST',
       headers: {
@@ -160,7 +147,10 @@ class MailDeliveryUtil {
     bytes.forEach((byte: number): void => {
       binary += String.fromCodePoint(byte);
     });
-    return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/={0,2}$/, '');
+    return btoa(binary)
+      .replaceAll('+', '-')
+      .replaceAll('/', '_')
+      .replace(/={0,2}$/, '');
   }
 }
 

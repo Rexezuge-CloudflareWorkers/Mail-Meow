@@ -31,13 +31,17 @@ export default function SpaApp() {
   const { user, setUser, authorized, setAuthorized, loadCurrentUser } = useCurrentUser();
   const mailboxes = useMailboxes({ setIsBusy, showNotice });
   const {
-    applications, selectedApplicationId, setSelectedApplicationId, selectedApplication,
-    applicationForm, setApplicationForm, loadApplications, resetForm, editApplication,
+    applications,
+    selectedApplicationId,
+    setSelectedApplicationId,
+    selectedApplication,
+    applicationForm,
+    setApplicationForm,
+    loadApplications,
+    resetForm,
+    editApplication,
   } = mailboxes;
-  const {
-    apiKeys, keyName, setKeyName, keyExpiryDays, setKeyExpiryDays,
-    createdApiKey, setCreatedApiKey, loadApiKeys,
-  } = useApiKeys();
+  const { apiKeys, keyName, setKeyName, keyExpiryDays, setKeyExpiryDays, createdApiKey, setCreatedApiKey, loadApiKeys } = useApiKeys();
   const { language, languageStatus, languagePending, handleLanguageChange } = useSpaLanguage({ user, showNotice, setUser });
 
   useEffect(() => {
@@ -87,10 +91,13 @@ export default function SpaApp() {
               secretAccessKey: applicationForm.secretAccessKey,
               topicArn: applicationForm.topicArn,
             };
-      const data = applicationForm.applicationId
-        ? await appSvc.updateApplication(payload)
-        : await appSvc.createApplication(payload);
-      showNotice('success', applicationForm.applicationId ? t('notice.applicationUpdated', 'Application Updated.') : t('notice.applicationCreated', 'Application Created.'));
+      const data = applicationForm.applicationId ? await appSvc.updateApplication(payload) : await appSvc.createApplication(payload);
+      showNotice(
+        'success',
+        applicationForm.applicationId
+          ? t('notice.applicationUpdated', 'Application Updated.')
+          : t('notice.applicationCreated', 'Application Created.'),
+      );
       resetForm();
       await loadApplications();
       setSelectedApplicationId(data.application.applicationId);
@@ -149,11 +156,7 @@ export default function SpaApp() {
     if (!selectedApplicationId) return;
     setIsBusy(true);
     try {
-      const data = await appSvc.createApiKey(
-        selectedApplicationId,
-        keyName,
-        keyExpiryDays ? Number(keyExpiryDays) : undefined,
-      );
+      const data = await appSvc.createApiKey(selectedApplicationId, keyName, keyExpiryDays ? Number(keyExpiryDays) : undefined);
       setCreatedApiKey(data.apiKey);
       setKeyName('');
       setKeyExpiryDays('');
@@ -182,8 +185,6 @@ export default function SpaApp() {
     },
     [selectedApplicationId, loadApiKeys, showNotice, t],
   );
-
-
 
   if (authorized === null) {
     return (

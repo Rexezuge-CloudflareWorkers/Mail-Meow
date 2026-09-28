@@ -23,18 +23,8 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       reportsDirectory: './coverage',
-      include: [
-        'apps/api/src/**/*.ts',
-        'apps/background/src/**/*.ts',
-        'packages/**/src/**/*.ts',
-      ],
-      exclude: [
-        '**/*.test.ts',
-        '**/*.d.ts',
-        '**/index.ts',
-        '**/types.d.ts',
-        '**/model/**',
-      ],
+      include: ['apps/api/src/**/*.ts', 'apps/background/src/**/*.ts', 'packages/**/src/**/*.ts'],
+      exclude: ['**/*.test.ts', '**/*.d.ts', '**/index.ts', '**/types.d.ts', '**/model/**'],
       thresholds: {
         // Baseline after Otter-pattern refactor; target Otter parity 88.5/76.5/90.5/89.5
         // as service/DAO/route/background coverage is backfilled (see docs/agents/testing/AGENTS.md).

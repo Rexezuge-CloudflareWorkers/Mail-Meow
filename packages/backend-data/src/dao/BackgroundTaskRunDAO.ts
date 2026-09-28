@@ -232,10 +232,7 @@ class BackgroundTaskRunDAO extends BaseDAO {
     const pageRows = rows.slice(0, limit);
     return {
       runs: pageRows.map((r) => BackgroundTaskRunDAO.toRun(r)),
-      nextCursor:
-        rows.length > limit
-          ? BackgroundTaskRunDAO.encodeCursor(pageRows.at(-1)!.started_at, pageRows.at(-1)!.run_id)
-          : undefined,
+      nextCursor: rows.length > limit ? BackgroundTaskRunDAO.encodeCursor(pageRows.at(-1)!.started_at, pageRows.at(-1)!.run_id) : undefined,
     };
   }
 

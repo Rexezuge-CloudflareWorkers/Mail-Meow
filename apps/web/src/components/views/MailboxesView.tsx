@@ -35,11 +35,29 @@ interface MailboxesViewProps {
 export default function MailboxesView(props: MailboxesViewProps) {
   const { t } = useTranslation();
   const {
-    user, applications, selectedApplicationId, onSelectApplication, selectedApplication,
-    applicationForm, setApplicationForm, onSaveApplication, onResetForm, onEditApplication,
-    onDeleteApplication, onStartOAuth2, onCopyRedirectUri,
-    apiKeys, keyName, setKeyName, keyExpiryDays, setKeyExpiryDays, createdApiKey,
-    onCreateApiKey, onDeleteApiKey, isBusy, lng,
+    user,
+    applications,
+    selectedApplicationId,
+    onSelectApplication,
+    selectedApplication,
+    applicationForm,
+    setApplicationForm,
+    onSaveApplication,
+    onResetForm,
+    onEditApplication,
+    onDeleteApplication,
+    onStartOAuth2,
+    onCopyRedirectUri,
+    apiKeys,
+    keyName,
+    setKeyName,
+    keyExpiryDays,
+    setKeyExpiryDays,
+    createdApiKey,
+    onCreateApiKey,
+    onDeleteApiKey,
+    isBusy,
+    lng,
   } = props;
 
   return (
@@ -81,7 +99,13 @@ export default function MailboxesView(props: MailboxesViewProps) {
           )}
         </div>
 
-        <ApplicationForm form={applicationForm} setForm={setApplicationForm} onSave={onSaveApplication} onCancel={onResetForm} busy={isBusy} />
+        <ApplicationForm
+          form={applicationForm}
+          setForm={setApplicationForm}
+          onSave={onSaveApplication}
+          onCancel={onResetForm}
+          busy={isBusy}
+        />
       </section>
 
       <section className="space-y-6">
@@ -100,7 +124,10 @@ export default function MailboxesView(props: MailboxesViewProps) {
                   <div className="text-xs text-[#7d8896] mt-2">{formatTimestamp(selectedApplication.updatedAt, lng)}</div>
                 </div>
                 <div className="flex gap-2">
-                  <button className="px-3 py-2 rounded-md bg-[#2d3745] hover:bg-[#3b4655]" onClick={() => onEditApplication(selectedApplication)}>
+                  <button
+                    className="px-3 py-2 rounded-md bg-[#2d3745] hover:bg-[#3b4655]"
+                    onClick={() => onEditApplication(selectedApplication)}
+                  >
                     {t('mailboxes.edit', 'Edit')}
                   </button>
                   <button
@@ -179,7 +206,11 @@ export default function MailboxesView(props: MailboxesViewProps) {
               {createdApiKey && (
                 <div className="mb-4 rounded-md border border-[#6ee7b7] bg-[#10231f] p-4">
                   <div className="text-sm text-[#6ee7b7] mb-2">New API key</div>
-                  <input readOnly value={createdApiKey} className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white" />
+                  <input
+                    readOnly
+                    value={createdApiKey}
+                    className="w-full px-3 py-2 rounded-md bg-[#0d1118] border border-[#2d3745] text-white"
+                  />
                 </div>
               )}
 

@@ -1,24 +1,34 @@
 #!/usr/bin/env tsx
 
-import { execFileSync } from 'child_process';
-import { copyFileSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { applyEdits, modify, parse } from 'jsonc-parser';
 
-const CONFIG_PATH = join(process.cwd(), 'wrangler.jsonc');
-const TEMPLATE_PATH = join(process.cwd(), 'apps/api/wrangler.template.jsonc');
+const CONFIG_PATH = path.join(process.cwd(), 'wrangler.jsonc');
+const TEMPLATE_PATH = path.join(process.cwd(), 'apps/api/wrangler.template.jsonc');
 const DEFAULT_UUID = '00000000-0000-0000-0000-000000000000';
 const DEFAULT_HEX_ID = '00000000000000000000000000000000';
 const DEFAULT_SECRET_STORE_NAME = 'default';
 const DEFAULT_KV_NAMESPACE_NAMES: Record<string, string> = {
   OAUTH2_TOKEN_CACHE: 'mail-meow-oauth2-token-cache',
 };
-const TABLE_COLUMN_SEPARATOR = String.fromCharCode(0x2502);
-const TABLE_RULE_CHARACTER = String.fromCharCode(0x2500);
+const TABLE_COLUMN_SEPARATOR = String.fromCodePoint(0x25_02);
+const TABLE_RULE_CHARACTER = String.fromCodePoint(0x25_00);
+const SECRETS_STORE_ID_PATTERN = /ID:\s*([a-f0-9]{32})/i;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 interface WranglerConfig {
   name?: string;
-  vars?: Record<string, unknown>;
+  /**
+   * Left as `unknown` on purpose: this is JSONC parsed at runtime, so the
+   * declared member types are only a convenience for the happy path. `vars`
+   * is validated by {@link isPlainObject} before use.
+   */
+  vars?: unknown;
   d1_databases?: Array<{
     binding?: string;
     database_id?: string;
@@ -55,6 +65,9 @@ interface SecretStore {
 
 function runWrangler(args: string[]): string {
   try {
+    // `pnpm` is intentionally resolved from PATH. Arguments are passed as an argv
+    // array, never interpolated into a shell string, so argument injection is not possible.
+    // eslint-disable-next-line sonarjs/no-os-command-from-path
     return execFileSync('pnpm', ['exec', 'wrangler', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (error: unknown) {
     const maybeProcessError = error as { stdout?: string | Buffer; stderr?: string | Buffer; message?: string };
@@ -97,7 +110,7 @@ function parseVarsPatch(): Record<string, string> | undefined {
       throw new Error('WRANGLER_VARS_PATCH_JSON contains an empty variable name.');
     }
     if (typeof value !== 'string') {
-      throw new Error(`WRANGLER_VARS_PATCH_JSON value for ${key} must be a string.`);
+      throw new TypeError(`WRANGLER_VARS_PATCH_JSON value for ${key} must be a string.`);
     }
     patch[key] = value;
   }
@@ -127,7 +140,7 @@ function applyVarsPatch(): void {
   const preparedConfig = readConfig();
   let content = preparedConfig.content;
   const { config } = preparedConfig;
-  if (config.vars !== undefined && (config.vars === null || typeof config.vars !== 'object' || Array.isArray(config.vars))) {
+  if (config.vars !== undefined && !isPlainObject(config.vars)) {
     throw new Error('wrangler.jsonc vars must be an object before applying WRANGLER_VARS_PATCH_JSON.');
   }
 
@@ -246,7 +259,7 @@ function ensureSecretStore(): string {
 
   console.log(`Creating Secrets Store: ${DEFAULT_SECRET_STORE_NAME}`);
   const output = runWrangler(['secrets-store', 'store', 'create', DEFAULT_SECRET_STORE_NAME, '--remote']);
-  const createdStoreId = output.match(/ID:\s*([a-f0-9]{32})/i)?.[1];
+  const createdStoreId = SECRETS_STORE_ID_PATTERN.exec(output)?.[1];
   if (createdStoreId) {
     return createdStoreId;
   }
@@ -261,8 +274,9 @@ function ensureSecretStore(): string {
 
 function provisionWranglerResources(): void {
   let { content, config } = readConfig();
+  const databases = config.d1_databases ?? [];
 
-  for (const [index, database] of config.d1_databases?.entries() ?? []) {
+  for (const [index, database] of databases.entries()) {
     if (database.database_id !== DEFAULT_UUID) {
       continue;
     }
@@ -276,7 +290,8 @@ function provisionWranglerResources(): void {
   }
 
   config = parse(content) as WranglerConfig;
-  for (const [index, namespace] of config.kv_namespaces?.entries() ?? []) {
+  const namespaces = config.kv_namespaces ?? [];
+  for (const [index, namespace] of namespaces.entries()) {
     if (namespace.id !== DEFAULT_HEX_ID) {
       continue;
     }

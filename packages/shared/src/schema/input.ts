@@ -43,10 +43,7 @@ const SendEmailBodySchema = z
     text: nonEmptyStringSchema('text', 20_000).optional(),
     html: nonEmptyStringSchema('html', 20_000).optional(),
   })
-  .refine(
-    (input): boolean => Boolean(input.text?.trim() || input.html?.trim()),
-    'Either text or html is required.',
-  );
+  .refine((input): boolean => Boolean(input.text?.trim() || input.html?.trim()), 'Either text or html is required.');
 
 const SendSNSBodySchema = z.object({
   subject: nonEmptyStringSchema('subject', 100).optional(),
