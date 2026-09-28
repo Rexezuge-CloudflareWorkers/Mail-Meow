@@ -1,7 +1,49 @@
 # Mail-Meow — Backend Services (Business Logic)
 
-Scope: `packages/backend-services/**`. Parent index: `../../AGENTS.md`. Feature details: `../../docs/agents/features/*/AGENTS.md`.
+Scope: `packages/backend-services/**`. Parent index: `../../AGENTS.md`.
+Feature details: `../../docs/agents/features/*/AGENTS.md`.
 
-Business logic by domain: `activity/` (`ActivityService`), `action/` (`ActionService`, `IActionService`, `ActionCreationService`, `ActionExecutionService` (dispatches via `handlers/ActionHandlerRegistry` Command map, `IActionHandler`), `ActionSchedulingService`, `ActionMaintenanceService`, `ActionRenderService`, `ActionServiceUtils`, `PackageTrackingService`, `FlightTrackingService`), `ai/` (`AiClient` Adapter for embeddings/usage/quota), `analytics/` (`AnalyticsService`), `application/` (`ApplicationService`, `ApplicationResponseUtil`, `FolderService`), `auth/` (`EmailValidationUtil`), `chat/` (`ChatService`), `digest/` (`DigestConfigService`, `DigestEmailUtil` facade over `DigestEmailBuilder`, `DigestService` (registry-first `sendDigestEmail`, throws for unsupported), `ActionStatusSyncUtil`, `CalendarEventSyncUtil` (registry-first `listCalendarEvents`)), `drive/` (`AbstractDriveIngestionService` Template Method `ingestForApplicationTemplate` + `GoogleDriveIngestionService`, `OneDriveIngestionService`, `DriveDocumentUtil`), `email/` (`EmailProcessingUtil` (generate/send delegate to `EmailPipelineOrchestrator` built via `EmailPipelineFactory` + `sendSummaryTemplate`), `EmailPipeline`, `EmailProcessingAuditLogger`, `EmailSummaryOrchestrator`, `EmailSummaryUtil`, `EmailContextUtil`, `EmailRulesUtil`, `EmailRuleSuggestionUtil`, `ContextService`, `AiUsageUtil`, `AttachmentAnalysisUtil`, `SenderFilterUtil`, `ProviderOrganizationService`, `WorkersAiErrorUtil`, `WorkersAiResponseUtil`), `integration/` (`IntegrationService` (Observer dispatch via `observers/IntegrationObserverRegistry`; payloads via `NotificationPayloadBuilder`), `oauth2/` (`OAuth2AuthorizationService`, `OAuth2AccessTokenService`, `OAuth2StateUtil`), `processing/` (`ProcessingService`), `provider/` (`EmailProviderRegistry` (`createEmailProviderRegistry`/`resolveEmailProvider` factory, injectable) + `InjectableEmailProviderRegistry` (non-static, constructor-injected; prefer in new code) + `IEmailProvider` (optional `sendDigestEmail`/`listCalendarEvents`; label ops in `ILabelProvider`) + `AbstractOAuthEmailProvider` base, `ConfigurableImapEmailProvider` + `ImapEmailProviderBase` bases, `GmailEmailProvider`, `GmailImapEmailProvider`, `OutlookEmailProvider`, `OutlookImapEmailProvider`, `FastmailEmailProvider`, `FastmailImapEmailProvider`, `YahooEmailProvider`, `CustomImapEmailProvider`, `AppleICloudEmailProvider` — registry wires 9 providers), `subscription/` (`WatchService`, `SubscriptionRenewalUtil`), `user/` (`UserService`), `webhook/` (`BaseWebhookService` (`handleNotificationTemplate`), `GmailWebhookService`, `OutlookWebhookService` (extends base), `FastmailWebhookService`), `composition/` (`Tokens` + `createRequestScope(env)` per-request DI scope with memoized secrets/DAOs; all `apps/api` routes and `apps/background` tasks resolve services from it — never `new XService(env)` in new code). DI tokens also cover `ActionService/ChatService/ProcessingService/DigestService/AiService/ActionHandlerRegistry/IntegrationObserverRegistry/AppConfig` (see `composition/tokens.ts` + `requestScope.ts`). New injectables: `ai/AiService` (instance usage accounting; `AiClient` remains a thin static facade), `action/handlers/InjectableActionHandlerRegistry`, `integration/observers/InjectableIntegrationObserverRegistry`, `provider/ImapConnectionFactory` (single source of IMAP host/port defaults; workflow delegates). God-file splits: `email/processing/` (`EmailApplicationResolver`, `Gmail|Outlook|Jmap|ImapMessageProcessor`, `SummaryDeliveryService`; `EmailProcessingUtil` is now a thin deprecated facade), `application/ApplicationCrudService|ApplicationRulesService|ApplicationIntegrationService` (facade `ApplicationService`), `digest/DigestSectionBuilder` (pure date/filter helpers). God-file guard: `scripts/check-god-files.mjs` (soft 300 / hard 400 LOC; CI warn-only).. Core services (`ApplicationService`, `ContextService`, `WatchService`, `IntegrationService`, `UserService`, `DigestService`, `DigestConfigService`) take optional async-factory `deps` (constructor injection, defaults preserve standalone use). New provider behavior → `EmailProviderRegistry`/`IEmailProvider`, not branch on provider id.
+Layer 3. May import layers 0–2 (`shared`, `backend-errors`, `backend-runtime`, `backend-data`,
+`provider-clients`). Must not import `apps/*` (enforced by `no-restricted-imports`).
 
-Related packages: `shared/` (constants, models + behavior helpers `ConnectedApplicationHelpers`/`EmailActionHelpers`, schemas, utils `TimeZoneUtil`, `TimestampUtil`, `UUIDUtil`, `BaseUrlUtil`, `CryptoUtil`, `LocaleUtil`, `VoidUtil`, `Result`, `Cursor`; `i18n/` with `BackendStrings` types + `formatBackendString`, `locales/<tag>` dictionaries, `getBackendStrings`, `AI_LANGUAGE_NAMES`), `backend-errors/` (`BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError` (use for missing resources — was `BadRequestError`), `MethodNotAllowedError`, `InternalServerError`, `DatabaseError`, `EmailProcessingError`, `RetryableError`, `NonRetryableError`, `IServiceError`), `backend-runtime/` (`ConfigurationManager` + defaults in `ConfigurationDefaults.ts`; `tracking` namespace owns `PACKAGE/FLIGHT_TRACKING_API_KEY`; `ServiceEnv`; abstract worker bases `AbstractEntrypointWorker`, `AbstractWorkflowWorker`, `AbstractDurableObjectWorker`, `AbstractQueueWorker`; DO naming constants).
+## Domains
+
+- `apikey/ApiKeyService.ts` — issue/list/revoke API keys; hash before storage
+  (`ApiKeyUtil.hashApiKey`, only `keyPrefix`/`keyLastFour` stored in plaintext);
+  `resolveApplication` backs the `/api/:api_key/*` routes.
+- `application/ApplicationService.ts` — connected-application CRUD + quota enforcement.
+  `ApplicationResponseUtil.withRedirectUri` adds `oauth2RedirectUri` to list responses.
+- `auth/EmailValidationUtil.ts` — Cloudflare Access JWT verification via `jose`
+  (`cf-access-jwt-assertion` header, `{TEAM_DOMAIN}/cdn-cgi/access/certs`, audience
+  `POLICY_AUD`). `DEV_AUTH_EMAIL` is local-only and has no default.
+- `email/MailDeliveryService.ts` — resolve application + access token, then `MailDeliveryUtil`.
+- `sns/SnsDeliveryService.ts` — resolve application + credentials, then `SnsDeliveryUtil`.
+- `oauth2/OAuth2AuthorizationService.ts` — PKCE + one-time `state` sessions.
+  `OAuth2AccessTokenService.ts` — token acquisition with KV cache and per-application DO
+  fan-out. `OAuth2StateUtil.ts` — state/verifier generation and hashing.
+- `processing/ProcessingService.ts` — task-run queries and manual `oauth2_refresh` trigger.
+- `user/UserService.ts` — user upsert and `preferred_language` read/update.
+- `composition/` — `createRequestScope(env)`, the per-request composition root. See below.
+
+## Composition Root
+
+`createRequestScope(env)` builds every service for one request. Routes and background tasks
+resolve services from it. Never `new XService(env)` in new code.
+
+Each service exposes a `*Deps` constructor-injection seam (async factory functions for its
+DAOs) so unit tests can pass fakes. The composition root constructs each DAO **once** and
+wires it in; a service must never construct a DAO from `env` itself.
+
+Adding a service to the composition root means: create the service, add a `*Deps` interface,
+add it to the returned services object, and register it in `composition/index.ts`.
+
+## Error Handling
+
+- Throw `ServiceError` subclasses from `@mail-meow/backend-errors`; the route layer maps them
+  to status codes. Never throw a bare `Error` for an expected failure — it bypasses the mapper
+  and is masked as a generic 500.
+- `NotFoundError` for a missing resource, `BadRequestError` for bad input,
+  `ProviderApi*Error` for provider-side failures, `DatabaseError` for D1.
+- Do not swallow exceptions. If a failure is genuinely tolerable, catch it **and** log it with
+  enough detail to act on. `UserService.getPreferredLanguage` swallowing every D1 error (so a
+  D1 outage looked like "no language set") is the pattern to avoid.

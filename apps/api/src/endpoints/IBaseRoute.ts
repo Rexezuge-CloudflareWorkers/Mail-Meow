@@ -19,7 +19,7 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
       }
       const validatedBody: unknown = validationResult.data;
       const request: TRequest = { ...(validatedBody as TRequest), raw: c.req.raw };
-      const response: TResponse | ExtendedResponse<TResponse> = await this.handleRequest(request, c.env as TEnv, c);
+      const response: TResponse | ExtendedResponse<TResponse> = await this.handleRequest(request, c.env, c);
       return this.toResponse(response, c);
     } catch (error: unknown) {
       return this.toErrorResponse(error, c);

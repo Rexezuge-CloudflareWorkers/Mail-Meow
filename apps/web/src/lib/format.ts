@@ -30,24 +30,3 @@ export function formatExpiryTimestamp(timestampSeconds: number | null | undefine
   if (diffDays < 30) return `Expires in ${diffDays}d`;
   return `Expires ${date.toLocaleDateString(resolveLocale(lng))}`;
 }
-
-export function formatFutureDuration(timestampSeconds: number, lng?: string | null): string {
-  const date = new Date(timestampSeconds * 1000);
-  const now = new Date();
-  const diffMs = date.getTime() - now.getTime();
-  const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 60) return `${diffMins}m`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d`;
-  return date.toLocaleDateString(resolveLocale(lng));
-}
-
-export function formatDuration(startedAt: number, completedAt: number | null): string {
-  if (!completedAt) return '—';
-  const ms = (completedAt - startedAt) * 1000;
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1000)}s`;
-}

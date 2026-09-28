@@ -2,46 +2,48 @@
 
 Scope: `packages/provider-clients/**`. Parent index: `../../AGENTS.md`.
 
-Utilities organized by provider subdir (`gmail/`, `outlook/`, `fastmail/`, `oauth2/`, `google-drive/`, `onedrive/`, `yahoo/`, `imap/`, `email-content/`, `http/`): `GmailProviderUtil`, `OutlookProviderUtil`, `OAuth2ProviderUtil` (+ `OAuth2Strategy.ts` map `getOAuth2Strategy()` — no `switch` on provider id), `fastmail/FastmailProviderUtil`, `GoogleDriveProviderUtil`, `OneDriveProviderUtil`, `yahoo/YahooProviderUtil`, `WebhookSecurityUtil`, `EmailContentUtil` (+ `email-content/HtmlContentUtil`, `MimeContentUtil`, `GmailContentUtil`, `TextContentUtil`, `imap/ImapClient`, `BaseProviderHttp` (delegates to injectable `http/HttpClient.ts` `IHttpClient`/`FetchHttpClient`/`StubHttpClient`), `AttachmentTypes`, `ProviderInputs` (`CalendarEventInput`/`DraftReplyInput`/`SummarySendInput`, `ImageAttachmentFilter` + `filterImageAttachments`, `isProviderNotFoundError` — use instead of per-provider copies)).
+Layer 2. Depends only on `@mail-meow/shared` and `@mail-meow/backend-errors`. No
+`@mail-meow/backend-data` (no DAOs), no `backend-runtime`, no `backend-services`, no `apps/*`
+(enforced by `no-restricted-imports`).
+
+## Layout
+
+- `http/HttpClient.ts` — `IHttpClient` interface + `FetchHttpClient`. The single outbound HTTP
+  seam. Inject it rather than calling `fetch` directly so tests can substitute a client.
+- `BaseProviderHttp.ts` — bearer-token JSON helpers built on `HttpClient`; maps non-OK responses
+  to `ProviderApiRetryableError` / `ProviderApiNonRetryableError` via `isRetryableHttpStatus`.
+- `MailDeliveryUtil.ts` — `sendEmail` dispatch plus MIME construction (`createEmail`,
+  `buildAlternativeMimeBody`, `stripHtml`, `base64UrlEncodeString`).
+- `SnsDeliveryUtil.ts` — AWS SNS publish via `aws4fetch`, signature-v4 signing.
+- `OAuth2ProviderUtil.ts` — provider OAuth2 config table, `buildAuthorizationUrl`,
+  `exchangeCode`, `refreshAccessToken`.
+- `gmail/GmailProviderUtil.ts` — Gmail profile lookup.
+- `outlook/OutlookProviderUtil.ts` — Microsoft Graph profile lookup (this one **does** validate
+  the response shape; keep it that way).
 
 ## Provider Naming
 
-- `google-gmail` / `oauth2` (+ `imap-password`)
-- `microsoft-outlook` / `oauth2` (+ `imap-password`)
-- `fastmail-jmap` / `oauth2` or `imap-password`
-- `yahoo-mail` / `oauth2`
-- `custom-imap` / `oauth2` or `imap-password`
-- `apple-icloud` / `imap-password`
+- `google-gmail` / `oauth2`
+- `microsoft-outlook` / `oauth2`
+- `amazon-sns` / `access-keys`
 
-Connection-method matrix: `PROVIDER_SUPPORTED_CONNECTION_METHODS` in `packages/shared/src/constants/Providers.ts`. `IMAP_PROVIDERS` = `yahoo-mail`, `custom-imap`, `apple-icloud`.
+`SUPPORTED_PROVIDER_CONNECTIONS` in `packages/shared/src/constants/Providers.ts` is the single
+source of truth; `ProviderId` and `ConnectionMethod` derive from it.
 
 Do not reintroduce password signup or user-managed refresh-token paste flows.
 
-## Microsoft Graph: `internetMessageHeaders` Cannot Be Filtered
+## Rules
 
-`$filter=internetMessageHeaders/any(...)` → 400. Workaround in `OutlookProviderUtil.findSummaryMessageInFolder`: embed a hex marker in the reply subject and filter on `startswith(subject, '[<marker>]')` (`$filter` on `subject` IS supported).
-
-Rules when modifying `sendSelfSummaryReply` / message-finding logic:
-
-- Marker = `deriveMessageMarker` (SHA-256 of message ID, first 8 bytes as hex).
-- Send subject: `[${marker}] Re: ${originalSubject}`; filter: `startswith(subject, '[${marker}]')`.
-- `X-Mail-Meow-Summary` header still set on outgoing messages for reads via `$select`, not for filtering.
-
-## Outlook Summary Email Sink Flow
-
-`sendSelfSummaryReply` uses a **sink-to-inbox pattern**:
-
-1. Send reply to `{mailboxAddress}+sink@{domain}` (avoids Sent Items noise; plus-addressing supported by M365).
-2. Copy the sent message from Sent Items into Inbox (`POST /me/messages/{id}/copy`, `destinationId: inbox`) — inherits `conversationId`, appears in correct thread.
-3. Delete from Sent Items (always; `DISABLE_DELETE_AFTER_SEND` was removed).
-
-Sequence: `createReply(sink addr)` → `send` → `copy to inbox` → `delete from Sent Items`. Sink derivation is internal to `sendSelfSummaryReply`.
-
-## Attachment Fetching per Provider
-
-Attachment fetching lives in Layer 3 (`EmailProcessingUtil` in `backend-services`), calling into these clients:
-
-- Gmail: `GmailProviderUtil.getImageAttachments()` — walks `payload.parts`, fetches via Attachments API, base64url → base64.
-- Outlook: `OutlookProviderUtil.getImageAttachments()` — `GET .../messages/{id}/attachments?$select=...`.
-- Fastmail: `FastmailProviderUtil.downloadImageAttachments()` — JMAP `Email/get` attachments + download endpoint.
-- IMAP: **not supported**.
+- **One HTTP path.** Everything goes through `HttpClient`. A raw `fetch` skips status
+  classification and turns a retryable provider `429`/`503` into a non-retryable 500.
+- **Check `response.ok` before `JSON.parse`.** A non-JSON error body (HTML from an edge proxy,
+  an empty 503) otherwise throws a bare `SyntaxError` that is not a `ServiceError`, so it is
+  masked as an opaque 500 and the real cause is lost.
+- **Bound every request** with `AbortSignal.timeout(...)`. Workers have no subrequest kill
+  switch; a hung provider call holds the isolate to the platform limit.
+- **Never build a `fetch` URL from an unencoded value.** `encodeURIComponent` any interpolated
+  path segment (e.g. a Gmail message ID).
+- **Sanitize provider error bodies** before they reach a log, a D1 column, or an HTTP response.
+  Provider text can echo back request material.
+- Do not branch on `providerId` with `if`/`switch` ladders in new code; extend the config table
+  in `OAuth2ProviderUtil` or dispatch in `MailDeliveryUtil.sendEmail`.
