@@ -27,7 +27,7 @@ abstract class IPublicApplicationRoute<
       const scope = createRequestScope(c.env);
       const application: ConnectedApplication = await scope.get(Tokens.ApiKeyService).resolveApplication(apiKey);
       const request: TRequest = { ...(validatedBody as TRequest), raw: c.req.raw, application };
-      const response: TResponse | ExtendedResponse<TResponse> = await this.handleRequest(request, c.env as TEnv, c);
+      const response: TResponse | ExtendedResponse<TResponse> = await this.handleRequest(request, c.env, c);
       return this.toResponse(response, c);
     } catch (error: unknown) {
       return this.toErrorResponse(error, c);
@@ -47,4 +47,4 @@ interface IPublicApplicationEnv extends IEnv {
 export { IPublicApplicationRoute };
 export type { IPublicApplicationEnv, IPublicApplicationRequest };
 
-export { type ExtendedResponse, type IResponse, type RouteContext } from './IBaseRoute';
+export { type IResponse, type RouteContext } from './IBaseRoute';

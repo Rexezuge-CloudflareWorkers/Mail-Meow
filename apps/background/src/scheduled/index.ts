@@ -1,5 +1,5 @@
 export { IScheduledTask } from './IScheduledTask';
-export type { IEnv, TaskRunSummary, ApplicationRunHandle } from './IScheduledTask';
+export type { IEnv, TaskRunSummary } from './IScheduledTask';
 export { AbstractPruningTask } from './AbstractPruningTask';
 export type { PruningTaskEnv } from './AbstractPruningTask';
 export { BackgroundTaskRunPruningTask } from './BackgroundTaskRunPruningTask';

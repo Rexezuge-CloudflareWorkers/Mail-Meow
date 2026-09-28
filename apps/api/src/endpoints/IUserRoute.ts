@@ -22,4 +22,4 @@ interface IUserEnv extends IEnv {
 export { IUserRoute };
 export type { IUserEnv };
 
-export { type ExtendedResponse, type IRequest, type IResponse, type RouteContext } from './IBaseRoute';
+export { type IRequest, type IResponse, type RouteContext } from './IBaseRoute';

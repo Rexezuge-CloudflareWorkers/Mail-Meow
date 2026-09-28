@@ -8,18 +8,9 @@ interface TaskRunSummary {
   details?: unknown;
 }
 
-// Handle returned by createApplicationRun() — Builder pattern.
-// Lets per-application tasks track sub-runs cleanly without coupling to the DAO directly.
-interface ApplicationRunHandle {
-  succeed(result: TaskRunSummary): Promise<void>;
-  fail(errorMessage: string, partial?: Partial<TaskRunSummary>): Promise<void>;
-  skip(reason?: string): Promise<void>;
-}
-
 abstract class IScheduledTask<TEnv extends IEnv> {
   // Override to opt into automatic global run tracking via the Template Method.
-  // Per-application tasks should NOT override this — use createApplicationRun() instead
-  // to avoid creating a redundant global record alongside per-app records.
+  // Returning null (the default) runs the task without a global run record.
   protected getTaskType(): string | null {
     return null;
   }
@@ -34,61 +25,29 @@ abstract class IScheduledTask<TEnv extends IEnv> {
     const taskType = this.getTaskType();
     const db: D1Queryable | undefined = 'DB' in tEnv ? (tEnv as unknown as { DB: D1Queryable }).DB : undefined;
 
-    let runId: string | undefined;
-    if (taskType && db) {
-      const dao = this.createTaskRunDAO(db);
-      runId = await dao.startRun({ taskType }).catch((error: unknown) => {
-        console.warn(`[${this.constructor.name}] Failed to start task run record:`, error);
-        return undefined;
-      });
-    }
+    // Resolve the DAO once: the three call sites below all need it, and
+    // re-instantiating per call re-runs the constructor for nothing.
+    const dao: BackgroundTaskRunDAO | undefined = taskType && db ? this.createTaskRunDAO(db) : undefined;
+    const runId: string | undefined = await dao?.startRun({ taskType: taskType as string }).catch((error: unknown) => {
+      console.warn(`[${this.constructor.name}] Failed to start task run record:`, error);
+      return undefined;
+    });
 
     try {
       const result = await this.handleScheduledTask(event, tEnv, ctx);
-      if (runId && db) {
-        const dao = this.createTaskRunDAO(db);
+      if (dao && runId) {
         await dao.succeedRun(runId, result ?? { itemsProcessed: 0, itemsFailed: 0 }).catch((error: unknown) => {
           console.warn(`[${this.constructor.name}] Failed to mark task run succeeded:`, error);
         });
       }
     } catch (error: unknown) {
-      console.error(`[${this.constructor.name}] Uncaught error`);
-      if (runId && db) {
-        const dao = this.createTaskRunDAO(db);
+      console.error(`[${this.constructor.name}] Uncaught error:`, error);
+      if (dao && runId) {
         await dao.failRun(runId, String(error)).catch((recordError: unknown) => {
           console.warn(`[${this.constructor.name}] Failed to mark task run failed:`, recordError);
         });
       }
     }
-  }
-
-  // Creates a per-application run record and returns a handle to complete it.
-  // Call inside per-application loops in tasks that process multiple mailboxes.
-  protected async createApplicationRun(taskType: string, applicationId: string, db: D1Queryable): Promise<ApplicationRunHandle> {
-    const dao = this.createTaskRunDAO(db);
-    const runId = await dao.startRun({ taskType, applicationId });
-    const warn =
-      (op: string) =>
-      (error: unknown): void => {
-        console.warn(`[${this.constructor.name}] Failed to mark application run ${op}:`, error);
-      };
-    return {
-      succeed: (result: TaskRunSummary): Promise<void> =>
-        dao
-          .succeedRun(runId, result)
-          .catch(warn('succeeded'))
-          .then(() => undefined),
-      fail: (errorMessage: string, partial?: Partial<TaskRunSummary>): Promise<void> =>
-        dao
-          .failRun(runId, errorMessage, partial)
-          .catch(warn('failed'))
-          .then(() => undefined),
-      skip: (reason?: string): Promise<void> =>
-        dao
-          .skipRun(runId, reason)
-          .catch(warn('skipped'))
-          .then(() => undefined),
-    };
   }
 
   // Return type is widened to TaskRunSummary | void for backward compatibility.
@@ -101,4 +60,4 @@ abstract class IScheduledTask<TEnv extends IEnv> {
 interface IEnv {}
 
 export { IScheduledTask };
-export type { IEnv, TaskRunSummary, ApplicationRunHandle };
+export type { IEnv, TaskRunSummary };

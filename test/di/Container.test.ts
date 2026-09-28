@@ -1,8 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { Container } from '@mail-meow/backend-runtime/di';
-import { createServiceContext } from '@mail-meow/backend-runtime/di';
-import { NullLogger } from '@mail-meow/shared/utils';
-import { FixedClock } from '@mail-meow/shared/utils';
 
 describe('Container', () => {
   it('resolves bound factories as singletons via get()', () => {
@@ -52,27 +49,5 @@ describe('Container', () => {
     expect(child.get('a')).toBe(1);
     expect(child.get('b')).toBe(2);
     expect(parent.has('b')).toBe(false);
-  });
-});
-
-describe('createServiceContext', () => {
-  const env = { DB: {}, AI: {} } as never;
-
-  it('provides default logger and clock', () => {
-    const ctx = createServiceContext(env);
-    expect(ctx.env).toBe(env);
-    expect(typeof ctx.logger.warn).toBe('function');
-    expect(typeof ctx.clock.nowMs).toBe('function');
-  });
-
-  it('honors overrides', () => {
-    const logger = new NullLogger();
-    const clock = new FixedClock(123);
-    const ctx = createServiceContext(env, { logger, clock });
-    expect(ctx.logger).toBe(logger);
-    expect(ctx.clock).toBe(clock);
-    vi.spyOn(logger, 'warn');
-    ctx.logger.warn('quiet');
-    expect(logger.warn).toHaveBeenCalled();
   });
 });

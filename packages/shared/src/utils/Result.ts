@@ -14,14 +14,5 @@ function isOk<T, E>(result: Result<T, E>): result is Ok<T> {
   return result.ok;
 }
 
-function mapResult<T, U, E>(result: Result<T, E>, map: (value: T) => U): Result<U, E> {
-  return result.ok ? ok(map(result.value)) : result;
-}
-
-function getOrThrow<T>(result: Result<T, Error>): T {
-  if (!result.ok) throw result.error;
-  return result.value;
-}
-
-export { err, getOrThrow, isOk, mapResult, ok };
+export { err, isOk, ok };
 export type { Err, Ok, Result };
