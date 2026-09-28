@@ -1,6 +1,7 @@
 export * from './ApiKeyUtil';
 export * from './BaseUrlUtil';
 export * from './CryptoUtil';
+export * from './EmailUtil';
 export * from './ErrorSanitizationUtil';
 export * from './LocaleUtil';
 export * from './TimestampUtil';

@@ -1,4 +1,5 @@
 import { convert } from 'html-to-text';
+import { CryptoUtil } from '@mail-meow/shared/utils';
 
 interface EmailBody {
   text?: string;
@@ -96,17 +97,9 @@ class EmailMimeBuilder {
   }
 
   public static base64UrlEncode(value: string): string {
-    const bytes: Uint8Array = new TextEncoder().encode(value);
-    let binary = '';
-    // Accumulated in a loop rather than via spread: a large body would exceed
-    // the engine's argument-count ceiling on String.fromCodePoint(...bytes).
-    for (const byte of bytes) {
-      binary += String.fromCodePoint(byte);
-    }
-    return btoa(binary)
-      .replaceAll('+', '-')
-      .replaceAll('/', '_')
-      .replace(/={0,2}$/, '');
+    // Delegates to the shared encoder. This was a second implementation of the
+    // same transform; it is the same encoding, so it must not drift.
+    return CryptoUtil.base64UrlEncode(value);
   }
 
   /**

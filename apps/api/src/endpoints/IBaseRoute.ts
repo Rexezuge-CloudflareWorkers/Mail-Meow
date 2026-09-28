@@ -1,9 +1,9 @@
 import { OpenAPIRoute } from 'chanfana';
 import { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import { BadRequestError, DefaultInternalServerError, ServiceError } from '@mail-meow/backend-errors';
+import { BadRequestError } from '@mail-meow/backend-errors';
 import { validateRequestInput } from '@mail-meow/shared/schema';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
+import { toErrorResponse } from '@/errors/errorResponse';
 
 /**
  * Hono context for every route.
@@ -100,41 +100,28 @@ abstract class IBaseRoute<TRequest extends IRequest, TResponse extends IResponse
   }
 
   protected toErrorResponse(error: unknown, c: RouteContext) {
-    // Typed service errors (including NotFoundError/DatabaseError and 5xx domain
-    // errors) map to their own status/type/message. Untyped errors are masked.
-    if (error instanceof ServiceError) {
-      const log = error.getErrorCode() < 500 ? console.warn : console.error;
-      log(`Responding with ${error.getErrorType()}`);
-      return c.json({ Exception: { Type: error.getErrorType(), Message: IBaseRoute.clientFacingMessage(error) } }, error.getErrorCode());
+    // The disclosure decision lives in one place (`toErrorResponse` in
+    // backend-errors) and is shared with the auth middleware. It used to be
+    // written twice, and the two copies had already diverged: the middleware
+    // skipped the 5xx message substitution and the untyped-error masking, so
+    // the same failure returned different bodies depending on which layer
+    // caught it.
+    //
+    // This layer always answers rather than rethrowing. The entrypoint's
+    // catch-all returns a bare `Internal Error` *text* body, so rethrowing here
+    // would replace the documented `{ Exception: … }` envelope with an
+    // unparseable 500. `shouldRethrow` is for the auth middleware, which is not
+    // inside a route and has no envelope of its own to fall back on.
+    const response = toErrorResponse(error);
+    if (response.logDetail === null) {
+      const log = response.status < 500 ? console.warn : console.error;
+      log(`Responding with ${response.body.Exception.Type}`);
+    } else {
+      // An untyped error can carry a provider response body or an Authorization
+      // header, so it is redacted before it reaches the log.
+      console.error('Caught an untyped error during execution:', response.logDetail);
     }
-    // An untyped error from a route can carry a provider response body or an
-    // Authorization header, so it is redacted before logging.
-    console.error('Caught an untyped error during execution:', ErrorSanitizationUtil.sanitizeErrorForLogging(error));
-    return c.json(
-      {
-        Exception: {
-          Type: DefaultInternalServerError.getErrorType(),
-          Message: DefaultInternalServerError.getErrorMessage(),
-        },
-      },
-      DefaultInternalServerError.getErrorCode(),
-    );
-  }
-
-  /**
-   * Decides what the caller is allowed to see.
-   *
-   * 5xx messages are built from raw D1 errors and provider response bodies, so
-   * passing them through verbatim handed API clients internal detail (table and
-   * column names, and whatever the provider echoed back). 4xx messages are
-   * authored for the caller and returned as-is, after redaction as a backstop.
-   * Both the log and the response are redacted, so neither leaks the raw text.
-   */
-  private static clientFacingMessage(error: ServiceError): string {
-    if (error.getErrorCode() >= 500) {
-      return DefaultInternalServerError.getErrorMessage();
-    }
-    return ErrorSanitizationUtil.sanitizeMessage(error.getErrorMessage());
+    return c.json(response.body, response.status);
   }
 }
 

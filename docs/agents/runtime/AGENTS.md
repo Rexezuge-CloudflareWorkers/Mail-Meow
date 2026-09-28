@@ -41,6 +41,13 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
 | Retention | `BACKGROUND_TASK_RUN_RETENTION_DAYS` (`30`)                                                                                                                                                                                               |
 | Misc      | `DEBUG_MODE` (`false`), `PROVIDER_REQUEST_TIMEOUT_MS` (`15000`)                                                                                                                                                                           |
 
+`PROVIDER_REQUEST_TIMEOUT_MS` reaches every outbound provider call: it is passed as
+`ProviderRequest.timeoutMs` into `IHttpClient.fetchRaw`, and `SnsDeliveryUtil.publish` takes it
+as its own argument because `aws4fetch` owns a separate signing client. It was previously parsed,
+validated, documented, and read by nothing — a setting that silently did nothing. If you add a new
+outbound call, thread `scope.config.providerRequestTimeoutMs` into it rather than adding another
+hardcoded deadline.
+
 Add new env vars as one entry in `SETTING_DESCRIPTORS` (`backend-runtime/src/config/AppConfig.ts`),
 not inline. Each descriptor carries the key, a typed parser, and a numeric default, and
 drives both parsing and the documented table above. Cross-setting invariants go in

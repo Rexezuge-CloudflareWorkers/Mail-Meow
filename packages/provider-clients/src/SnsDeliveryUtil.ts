@@ -22,6 +22,9 @@ class SnsDeliveryUtil {
     topicArn: string,
     message: string,
     subject?: string,
+    // Normally `AppConfigReader.providerRequestTimeoutMs`. Separate from the
+    // shared `IHttpClient` because `aws4fetch` owns its own signing client.
+    timeoutMs: number = PUBLISH_TIMEOUT_MS,
   ): Promise<string> {
     const region: string | undefined = topicArn.split(':', 4)[3];
     if (!region) {
@@ -50,7 +53,7 @@ class SnsDeliveryUtil {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: params.toString(),
-      signal: AbortSignal.timeout(PUBLISH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) {
       const body: string = await response.text();

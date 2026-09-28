@@ -1,7 +1,7 @@
 import type { UserDAO, UserEmailDAO } from '@mail-meow/backend-data/dao';
 import { BadRequestError, ConflictError } from '@mail-meow/backend-errors';
 import type { AccountIdentity } from '@mail-meow/shared/model';
-import { TimestampUtil } from '@mail-meow/shared/utils';
+import { normalizeEmail, TimestampUtil } from '@mail-meow/shared/utils';
 import { resolveAccount } from '../user/accountLookup';
 
 interface UserIdentityDeps {
@@ -29,7 +29,7 @@ class UserIdentityService {
    * company address would inherit the previous holder's account.
    */
   public async resolveAccount(email: string): Promise<AccountIdentity | null> {
-    const key: string = email.trim().toLowerCase();
+    const key: string = normalizeEmail(email);
     if (!key) return null;
     const cached: AccountIdentity | null | undefined = this.byEmail.get(key);
     if (cached !== undefined) return cached;
@@ -83,13 +83,13 @@ class UserIdentityService {
     newEmail: string,
     now: number = TimestampUtil.getCurrentUnixTimestampInSeconds(),
   ): Promise<AccountIdentity> {
-    const email: string = newEmail.trim().toLowerCase();
+    const email: string = normalizeEmail(newEmail);
     if (!email) throw new BadRequestError('Invalid email address');
     const userDAO: UserDAO = await this.deps.userDAO();
     const emailDAO: UserEmailDAO = await this.deps.userEmailDAO();
     const row = await userDAO.getById(userId);
     if (!row?.id) throw new BadRequestError('User not found');
-    const current: string = (row.current_email ?? row.email).toLowerCase();
+    const current: string = normalizeEmail(row.current_email ?? row.email);
     if (current === email) {
       return { id: row.id, email, anchorEmail: row.email };
     }
@@ -119,7 +119,7 @@ class UserIdentityService {
     email: string,
     now: number = TimestampUtil.getCurrentUnixTimestampInSeconds(),
   ): Promise<void> {
-    const address: string = email.trim().toLowerCase();
+    const address: string = normalizeEmail(email);
     if (!address) throw new BadRequestError('Invalid email address');
     const dao: UserEmailDAO = await this.deps.userEmailDAO();
     const outcome: 'claimed' | 'already-claimed' = await dao.register({ email: address, userId, isVerified: true, now });

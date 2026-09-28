@@ -29,6 +29,7 @@ Layer 3. May import layers 0–2 (`shared`, `backend-errors`, `backend-runtime`,
   - The write path is guarded the same way: a failed `createUser` or a failed address claim propagates instead of being treated as a lost race. The opaque-anchor retry exists for a lost race, not for error recovery.
   - `test/data/accountLookup.test.ts` is the regression suite for this. Its "does not re-resolve a revoked address when the registry read fails" case is the one that must never be deleted.
 - `identity/UserIdentityService.ts` — `resolveAccount`/`resolveUserId` (memoized per request scope) and the address-change path: `setPrimaryEmail` claims → moves → revokes, in that order, and never touches the frozen anchor; `linkVerifiedEmail` is the ops path. **Not routed**: Access is the sole authenticator, so a self-service address change needs a proof-of-control confirm step first (`scripts/change-email.ts` is the ops route).
+- Address normalization is `normalizeEmail` in `@mail-meow/shared/utils` and nothing else. It used to be re-implemented in four places and the copies disagreed — the service layer trimmed, the DAOs lowercased only — so a padded address was the same account to `resolveAccount` and a different one to the DAO, and a registry row written with padding could never resolve its own account. Never inline `trim().toLowerCase()` for an address.
 - `composition/` — `createRequestScope(env)`, the per-request composition root. See below.
 
 ## Composition Root
