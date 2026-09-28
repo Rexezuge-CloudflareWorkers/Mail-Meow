@@ -1,5 +1,6 @@
 import { BadRequestError, ProviderApiNonRetryableError } from '@mail-meow/backend-errors';
 import { PROVIDER_GOOGLE_GMAIL, PROVIDER_MICROSOFT_OUTLOOK } from '@mail-meow/shared/constants';
+import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
 import { providerFetchJson, providerFetchOk } from './BaseProviderHttp';
 import type { ProviderRequest } from './BaseProviderHttp';
 import { EmailMimeBuilder } from './EmailMimeBuilder';
@@ -58,7 +59,7 @@ async function trashGmailDraft(messageId: string, accessToken: string, request?:
   } catch (error: unknown) {
     // The message was already accepted, so this is best-effort cleanup:
     // logged rather than thrown, but not swallowed silently.
-    console.error(`Failed to trash Gmail message ${messageId}:`, error);
+    console.error(`Failed to trash Gmail message ${messageId}:`, ErrorSanitizationUtil.sanitizeErrorForLogging(error));
   }
 }
 

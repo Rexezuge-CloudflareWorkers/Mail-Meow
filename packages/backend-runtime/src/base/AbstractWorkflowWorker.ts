@@ -1,5 +1,6 @@
 import { WorkflowEntrypoint } from 'cloudflare:workers';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
+import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
 
 abstract class AbstractWorkflowWorker<
   TPayload extends Rpc.Serializable<TPayload>,
@@ -9,7 +10,7 @@ abstract class AbstractWorkflowWorker<
     try {
       return await this.onWorkflow(event, step);
     } catch (err: unknown) {
-      console.error('Unhandled error in workflow run():', err);
+      console.error('Unhandled error in workflow run():', ErrorSanitizationUtil.sanitizeErrorForLogging(err));
       throw err;
     }
   }

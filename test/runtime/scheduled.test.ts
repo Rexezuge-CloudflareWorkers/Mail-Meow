@@ -159,6 +159,33 @@ describe('IScheduledTask', () => {
     errorSpy.mockRestore();
   });
 
+  it('redacts a secret before persisting it as the run failure', async () => {
+    // last_error is served back through GET /user/processing/task-runs, so an
+    // unsanitized message would put a provider bearer token in front of a user.
+    const failRun = vi.fn().mockResolvedValue(undefined);
+    class LeakyFailure extends IScheduledTask<Record<string, never>> {
+      protected override getTaskType(): string {
+        return 'leaky';
+      }
+      protected createTaskRunDAO(): never {
+        return { startRun: vi.fn().mockResolvedValue('run-10'), succeedRun: vi.fn(), failRun, skipRun: vi.fn() } as never;
+      }
+      protected async handleScheduledTask(): Promise<void> {
+        throw new Error('provider said 401 Authorization: Bearer super.secret.token');
+      }
+    }
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await new LeakyFailure().handle(EVENT, ENV, CTX);
+
+    const [, recorded] = failRun.mock.calls[0] as [string, string];
+    expect(recorded).toContain('Bearer [REDACTED]');
+    expect(recorded).not.toContain('super.secret.token');
+    // The error class is preserved, so triage still distinguishes the failure.
+    expect(recorded).toContain('Error:');
+    errorSpy.mockRestore();
+  });
+
   it('runs even when the run log cannot be written', async () => {
     // Losing visibility of a run must not stop the work.
     class Unloggable extends IScheduledTask<Record<string, never>> {
