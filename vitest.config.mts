@@ -14,6 +14,12 @@ const backendServicesSrcPath = fileURLToPath(new URL('packages/backend-services/
 const cloudflareSocketsMockPath = fileURLToPath(new URL('test/mocks/cloudflare-sockets.ts', import.meta.url));
 const cloudflareWorkersMockPath = fileURLToPath(new URL('test/mocks/cloudflare-workers.ts', import.meta.url));
 const cloudflareWorkflowsMockPath = fileURLToPath(new URL('test/mocks/cloudflare-workflows.ts', import.meta.url));
+// `jose` is a dependency of `backend-services`, so under pnpm's isolated
+// node_modules it only resolves from that package. A test file at the repo root
+// resolving `jose` would therefore load a *different* module instance than the
+// service under test, and `vi.mock('jose')` would silently not apply. Pinning
+// both to one path is what makes the mock in `test/auth/` work.
+const josePath = fileURLToPath(new URL('packages/backend-services/node_modules/jose', import.meta.url));
 
 /**
  * Shared by both projects.
@@ -33,6 +39,7 @@ const workspaceAliases = [
   { find: 'cloudflare:sockets', replacement: cloudflareSocketsMockPath },
   { find: 'cloudflare:workers', replacement: cloudflareWorkersMockPath },
   { find: 'cloudflare:workflows', replacement: cloudflareWorkflowsMockPath },
+  { find: /^jose$/, replacement: josePath },
   { find: /^@\//, replacement: `${apiSrcPath}/` },
 ];
 
