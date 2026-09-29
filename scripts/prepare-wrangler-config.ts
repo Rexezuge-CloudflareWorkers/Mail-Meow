@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { applyEdits, modify, parse } from 'jsonc-parser';
+import { parseWranglerTableRows } from './wrangler-table';
 
 const CONFIG_PATH = path.join(process.cwd(), 'wrangler.jsonc');
 const TEMPLATE_PATH = path.join(process.cwd(), 'apps/api/wrangler.template.jsonc');
@@ -13,8 +14,6 @@ const DEFAULT_SECRET_STORE_NAME = 'default';
 const DEFAULT_KV_NAMESPACE_NAMES: Record<string, string> = {
   OAUTH2_TOKEN_CACHE: 'mail-meow-oauth2-token-cache',
 };
-const TABLE_COLUMN_SEPARATOR = String.fromCodePoint(0x25_02);
-const TABLE_RULE_CHARACTER = String.fromCodePoint(0x25_00);
 const SECRETS_STORE_ID_PATTERN = /ID:\s*([a-f0-9]{32})/i;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -220,21 +219,8 @@ function ensureKVNamespace(config: WranglerConfig, binding: string): string {
 
 function parseSecretStoresTable(output: string): SecretStore[] {
   const stores: SecretStore[] = [];
-  for (const line of output.split('\n')) {
-    if (!line.includes(TABLE_COLUMN_SEPARATOR)) {
-      continue;
-    }
-
-    const cells = line
-      .split(TABLE_COLUMN_SEPARATOR)
-      .map((cell) => cell.trim())
-      .filter(Boolean);
-    if (cells.length < 2 || cells[0] === 'Name' || cells[0].includes(TABLE_RULE_CHARACTER)) {
-      continue;
-    }
-
-    const [name, id] = cells;
-    if (/^[a-f0-9]{32}$/i.test(id)) {
+  for (const [name, id] of parseWranglerTableRows(output)) {
+    if (id && /^[a-f0-9]{32}$/i.test(id)) {
       stores.push({ name, id });
     }
   }
