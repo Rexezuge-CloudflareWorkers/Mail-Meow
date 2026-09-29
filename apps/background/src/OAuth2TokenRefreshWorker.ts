@@ -36,6 +36,17 @@ interface OAuth2TokenWorkerResponse {
 
 class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
   private currentOperation: Promise<unknown> | undefined;
+  /**
+   * Resolved once per isolate. `fromEnv` re-parses and re-validates every
+   * setting, and warned about any unrecognized key it saw, so calling it per
+   * request would re-emit those warnings on every call.
+   */
+  private config: AppConfigReader | undefined;
+
+  private getConfig(): AppConfigReader {
+    this.config ??= AppConfigReader.fromEnv(this.env);
+    return this.config;
+  }
 
   protected async onRequest(request: Request): Promise<Response> {
     const url: URL = new URL(request.url);
@@ -91,10 +102,7 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
   private async refreshAccessToken(payload: OAuth2TokenRefreshRequest): Promise<OAuth2TokenWorkerResponse> {
     const applicationId: string = this.readRequiredString(payload.applicationId, 'applicationId');
     const forceRefresh: boolean = payload.forceRefresh === true;
-    const minValidSeconds: number = this.readPositiveNumber(
-      payload.minValidSeconds,
-      AppConfigReader.fromEnv(this.env).oauth2AccessTokenMinValidSeconds,
-    );
+    const minValidSeconds: number = this.readPositiveNumber(payload.minValidSeconds, this.getConfig().oauth2AccessTokenMinValidSeconds);
     const masterKey: string = await this.env.AES_ENCRYPTION_KEY_SECRET.get();
     const cacheDAO = new OAuth2AccessTokenCacheDAO(this.env.OAUTH2_TOKEN_CACHE, masterKey);
     if (!forceRefresh) {
@@ -116,6 +124,7 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
       const tokenResult: OAuth2TokenResult = await OAuth2ProviderUtil.refreshAccessToken({
         providerId: application.providerId,
         credentials: application.credentials as OAuth2Credentials,
+        timeoutMs: this.getConfig().providerRequestTimeoutMs,
       });
       if (tokenResult.refreshToken) {
         await applicationDAO.updateOAuth2RefreshToken(application.applicationId, tokenResult.refreshToken);
@@ -149,6 +158,7 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
         redirectUri,
         code,
         codeVerifier,
+        timeoutMs: this.getConfig().providerRequestTimeoutMs,
       });
       const providerEmail: string = await this.getProviderEmail(application, tokenResult.accessToken);
       await applicationDAO.markOAuth2Connected(applicationId, tokenResult.refreshToken!, providerEmail);
@@ -184,7 +194,7 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
       return application.userEmail;
     }
     try {
-      return await strategy.resolveProfileEmail(accessToken);
+      return await strategy.resolveProfileEmail(accessToken, { timeoutMs: this.getConfig().providerRequestTimeoutMs });
     } catch (error: unknown) {
       console.warn(
         `Could not resolve provider mailbox for application ${application.applicationId}:`,
@@ -203,7 +213,7 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
   ): Promise<OAuth2TokenWorkerResponse> {
     const expiresInSeconds: number = OAuth2ProviderUtil.getExpiresInSeconds(
       tokenResult,
-      AppConfigReader.fromEnv(this.env).oauth2AccessTokenFallbackTtlSeconds,
+      this.getConfig().oauth2AccessTokenFallbackTtlSeconds,
     );
     const expiresAt: number = TimestampUtil.getCurrentUnixTimestampInSeconds() + expiresInSeconds;
     await cacheDAO.storeAccessToken(applicationId, tokenResult.accessToken, expiresAt);

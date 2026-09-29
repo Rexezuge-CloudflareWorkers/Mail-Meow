@@ -3,21 +3,11 @@ import type { UserEmailDAO, UserEmailRow } from '@mail-meow/backend-data/dao';
 import { isD1ErrorRetryable, isMissingTableError } from '@mail-meow/backend-data/utils';
 import { DatabaseError } from '@mail-meow/backend-errors';
 import type { AccountIdentity, UserInternal } from '@mail-meow/shared/model';
-import { TimestampUtil } from '@mail-meow/shared/utils';
+import { normalizeEmail, TimestampUtil } from '@mail-meow/shared/utils';
 
 interface AccountLookupDeps {
   userDAO: () => Promise<UserDAO>;
   userEmailDAO: () => Promise<UserEmailDAO>;
-}
-
-/**
- * Normalize an address for registry lookups.
- *
- * The registry and `current_email` are both stored lowercased while Cloudflare
- * Access may deliver a mixed-case address, so every lookup is folded.
- */
-function normalize(email: string): string {
-  return email.trim().toLowerCase();
 }
 
 /**
@@ -32,7 +22,7 @@ function normalize(email: string): string {
  * query, and so the god-file guard has room.
  */
 async function resolveAccount(deps: AccountLookupDeps, email: string): Promise<AccountIdentity | null> {
-  const normalized: string = normalize(email);
+  const normalized: string = normalizeEmail(email);
   if (!normalized) return null;
   const userDAO: UserDAO = await deps.userDAO();
 
@@ -102,7 +92,7 @@ function asDatabaseError(error: unknown): DatabaseError {
 function toIdentity(row: UserInternal): AccountIdentity {
   return {
     id: row.id ?? '',
-    email: normalize(row.current_email ?? row.email),
+    email: normalizeEmail(row.current_email ?? row.email),
     anchorEmail: row.email,
   };
 }
@@ -124,7 +114,7 @@ async function registerAccount(
   loginEmail: string,
   now: number = TimestampUtil.getCurrentUnixTimestampInSeconds(),
 ): Promise<AccountIdentity | null> {
-  const normalized: string = normalize(loginEmail);
+  const normalized: string = normalizeEmail(loginEmail);
   if (!normalized) return null;
   const userDAO: UserDAO = await deps.userDAO();
 

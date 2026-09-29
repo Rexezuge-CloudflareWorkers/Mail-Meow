@@ -20,17 +20,34 @@ class CryptoUtility {
     return Array.from(bytes, (byte: number): string => byte.toString(16).padStart(2, '0')).join('');
   }
 
+  /**
+   * URL-safe base64, unpadded.
+   *
+   * `btoa` is used rather than `Uint8Array#toBase64` because the latter is not
+   * guaranteed across Workers runtimes. The bytes are accumulated in a loop
+   * instead of via `String.fromCodePoint(...bytes)`: a large MIME body would
+   * exceed the engine's argument-count ceiling on the spread form.
+   */
   public static toBase64Url(bytes: Uint8Array): string {
     let binary = '';
-    bytes.forEach((byte: number): void => {
+    for (const byte of bytes) {
       binary += String.fromCodePoint(byte);
-    });
-    // btoa + URL-safe transform; Uint8Array#toBase64 is not guaranteed in all Workers runtimes
-
+    }
     return btoa(binary)
       .replaceAll('+', '-')
       .replaceAll('/', '_')
       .replace(/={0,2}$/, '');
+  }
+
+  /**
+   * URL-safe base64 of a UTF-8 string.
+   *
+   * The same transform as {@link toBase64Url}, for callers holding text rather
+   * than bytes. This and `toBase64Url` used to be separate implementations in
+   * two packages; they are the same encoding and must not drift.
+   */
+  public static base64UrlEncode(value: string): string {
+    return this.toBase64Url(new TextEncoder().encode(value));
   }
 
   public static randomBase64Url(byteLength: number): string {

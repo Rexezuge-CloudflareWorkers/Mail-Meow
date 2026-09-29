@@ -18,11 +18,20 @@ interface OAuth2TokenExchangeInput {
   redirectUri: string;
   code: string;
   codeVerifier: string;
+  /**
+   * Outbound deadline, normally `AppConfigReader.providerRequestTimeoutMs`.
+   * Omitted means the transport's own default.
+   */
+  timeoutMs?: number;
 }
 
 interface OAuth2RefreshInput {
   providerId: string;
   credentials: OAuth2Credentials;
+  /**
+   * See {@link OAuth2TokenExchangeInput.timeoutMs}.
+   */
+  timeoutMs?: number;
 }
 
 interface OAuth2TokenResult {
@@ -83,14 +92,19 @@ class OAuth2ProviderUtil {
 
   public static async exchangeCode(input: OAuth2TokenExchangeInput): Promise<OAuth2TokenResult> {
     const config: ProviderOAuth2Config = this.getProviderConfig(input.providerId);
-    const data: OAuth2TokenResponse = await this.postTokenRequest(input.providerId, config, {
-      client_id: input.credentials.clientId,
-      client_secret: input.credentials.clientSecret,
-      code: input.code,
-      code_verifier: input.codeVerifier,
-      grant_type: 'authorization_code',
-      redirect_uri: input.redirectUri,
-    });
+    const data: OAuth2TokenResponse = await this.postTokenRequest(
+      input.providerId,
+      config,
+      {
+        client_id: input.credentials.clientId,
+        client_secret: input.credentials.clientSecret,
+        code: input.code,
+        code_verifier: input.codeVerifier,
+        grant_type: 'authorization_code',
+        redirect_uri: input.redirectUri,
+      },
+      input.timeoutMs,
+    );
     if (!data.refresh_token) {
       throw new BadRequestError('OAuth2 provider did not return a refresh token. Reconnect and approve offline access.');
     }
@@ -106,12 +120,17 @@ class OAuth2ProviderUtil {
       throw new BadRequestError('Connected application is not fully authorized.');
     }
     const config: ProviderOAuth2Config = this.getProviderConfig(input.providerId);
-    const data: OAuth2TokenResponse = await this.postTokenRequest(input.providerId, config, {
-      client_id: input.credentials.clientId,
-      client_secret: input.credentials.clientSecret,
-      grant_type: 'refresh_token',
-      refresh_token: input.credentials.refreshToken,
-    });
+    const data: OAuth2TokenResponse = await this.postTokenRequest(
+      input.providerId,
+      config,
+      {
+        client_id: input.credentials.clientId,
+        client_secret: input.credentials.clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: input.credentials.refreshToken,
+      },
+      input.timeoutMs,
+    );
     return {
       accessToken: data.access_token,
       // A refresh response may omit refresh_token, meaning "keep using the old one".
@@ -136,11 +155,19 @@ class OAuth2ProviderUtil {
     providerId: string,
     config: ProviderOAuth2Config,
     values: Record<string, string>,
+    timeoutMs: number | undefined,
   ): Promise<OAuth2TokenResponse> {
     // Token requests are unauthenticated, so no bearer token is attached — but
     // they still go through the shared client for the timeout and the
     // status-before-parse ordering.
-    const request: ProviderRequest = { providerName: 'OAuth2 token endpoint', operation: `exchange code (${providerId})` };
+    const request: ProviderRequest = {
+      providerName: 'OAuth2 token endpoint',
+      operation: `exchange code (${providerId})`,
+      // Passed through undefined rather than defaulted here, so the transport
+      // owns the fallback and `PROVIDER_REQUEST_TIMEOUT_MS` reaches every
+      // provider call through one path.
+      timeoutMs,
+    };
     const data: OAuth2TokenResponse | undefined = await providerFetchJson<OAuth2TokenResponse>(
       config.tokenEndpoint,
       {

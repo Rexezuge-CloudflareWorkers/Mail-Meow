@@ -1,6 +1,6 @@
 import { executeD1WithRetry } from '../utils';
 import type { AccountIdentity, User, UserInternal } from '@mail-meow/shared/model';
-import { TimestampUtil } from '@mail-meow/shared/utils';
+import { normalizeEmail, TimestampUtil } from '@mail-meow/shared/utils';
 import { BaseDAO } from './BaseDAO';
 
 const UPDATE_BY_ID = 'UPDATE users SET preferred_language = ?, updated_at = ? WHERE id = ?';
@@ -144,7 +144,7 @@ class UserDAO extends BaseDAO {
   public static toUser(row: UserInternal): User {
     return {
       id: row.id ?? '',
-      email: (row.current_email ?? row.email).toLowerCase(),
+      email: normalizeEmail(row.current_email ?? row.email),
       anchorEmail: row.email,
       preferredLanguage: row.preferred_language ?? null,
       createdAt: row.created_at,

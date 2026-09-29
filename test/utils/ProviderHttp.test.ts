@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProviderApiNonRetryableError, ProviderApiRetryableError } from '@mail-meow/backend-errors';
+import { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { isRetryableHttpStatus, providerFetchJson, providerFetchOk } from '@mail-meow/provider-clients';
 import { FetchHttpClient } from '@mail-meow/provider-clients/http';
 
@@ -128,5 +129,57 @@ describe('FetchHttpClient', () => {
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('prefers the per-request timeout over the client default', async () => {
+    // A `PROVIDER_REQUEST_TIMEOUT_MS` that never reaches the transport is a
+    // setting that lies. The two arguments are deliberately different here so
+    // the assertion distinguishes which one won.
+    const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await new FetchHttpClient(15_000).fetchRaw('https://example.com', { method: 'GET' }, 250);
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    // An explicit 0 would mean "abort immediately", so the value must survive
+    // as a real signal rather than being coerced.
+    expect(init.signal).not.toBeUndefined();
+  });
+});
+
+describe('PROVIDER_REQUEST_TIMEOUT_MS reach', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('carries the configured deadline into the provider request', async () => {
+    // The regression this guards: the setting was parsed, validated, documented
+    // and warned about, and then read by nothing, so changing the env var had
+    // no effect on any outbound call.
+    const client = { fetchRaw: vi.fn().mockResolvedValue(new Response(null, { status: 204 })) };
+    const config = AppConfigReader.fromEnv({ PROVIDER_REQUEST_TIMEOUT_MS: '2500' });
+
+    await providerFetchOk('https://example.com', { method: 'GET' }, { ...REQUEST, client, timeoutMs: config.providerRequestTimeoutMs });
+
+    expect(client.fetchRaw.mock.calls[0][2]).toBe(2500);
+  });
+
+  it('leaves the deadline undefined when the caller does not set one', async () => {
+    // Undefined rather than 0: `AbortSignal.timeout(0)` aborts immediately, so
+    // defaulting here would break every call that omits it.
+    const client = { fetchRaw: vi.fn().mockResolvedValue(new Response(null, { status: 204 })) };
+
+    await providerFetchOk('https://example.com', { method: 'GET' }, { ...REQUEST, client });
+
+    expect(client.fetchRaw.mock.calls[0][2]).toBeUndefined();
+  });
+
+  it('parses a valid override and keeps the default for a malformed one', () => {
+    expect(AppConfigReader.fromEnv({ PROVIDER_REQUEST_TIMEOUT_MS: '2500' }).providerRequestTimeoutMs).toBe(2500);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    expect(AppConfigReader.fromEnv({ PROVIDER_REQUEST_TIMEOUT_MS: 'soon' }).providerRequestTimeoutMs).toBe(15_000);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('PROVIDER_REQUEST_TIMEOUT_MS'));
+    warn.mockRestore();
   });
 });

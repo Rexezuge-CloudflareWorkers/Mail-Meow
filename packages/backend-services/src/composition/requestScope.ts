@@ -103,7 +103,7 @@ function createRequestScope(env: ServiceEnvironment): AppServices {
     apiKeys: new ApiKeyService({ applicationDAO, apiKeyDAO, config: readConfig }),
     applications: new ApplicationService({ applicationDAO, userDAO, userEmailDAO, config: readConfig }),
     identity,
-    mailDelivery: new MailDeliveryService({ applicationDAO }),
+    mailDelivery: new MailDeliveryService({ applicationDAO, config: readConfig }),
     oauth2AccessTokens: accessTokens,
     oauth2Authorization: new OAuth2AuthorizationService({
       applicationDAO,
@@ -112,8 +112,9 @@ function createRequestScope(env: ServiceEnvironment): AppServices {
       config: readConfig,
     }),
     processing: new ProcessingService({ taskRunDAO, applicationDAO, accessTokenService: (): OAuth2AccessTokenService => accessTokens }),
-    // SNS is credential-only: no DAO, no config, nothing to inject.
-    sns: new SnsDeliveryService(),
+    // SNS is credential-only: no DAO to inject, but the outbound deadline still
+    // comes from config rather than a constant in the provider client.
+    sns: new SnsDeliveryService({ config: readConfig }),
     users: new UserService({ userDAO, userEmailDAO, config: readConfig }),
   };
 }

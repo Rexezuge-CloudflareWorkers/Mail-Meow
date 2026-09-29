@@ -1,3 +1,4 @@
+import { normalizeEmail } from '@mail-meow/shared/utils';
 import { BaseDAO } from './BaseDAO';
 
 /**
@@ -40,7 +41,7 @@ class UserEmailDAO extends BaseDAO {
             `INSERT INTO user_emails (email, user_id, is_verified, created_at) VALUES (?, ?, ?, ?)
              ON CONFLICT(email) DO UPDATE SET user_id = excluded.user_id, is_verified = excluded.is_verified`,
           )
-          .bind(input.email.toLowerCase(), input.userId, input.isVerified ? 1 : 0, input.now)
+          .bind(normalizeEmail(input.email), input.userId, input.isVerified ? 1 : 0, input.now)
           .run(),
       'register user email',
     );
@@ -50,7 +51,7 @@ class UserEmailDAO extends BaseDAO {
   public async get(email: string): Promise<UserEmailRow | null> {
     return this.database
       .prepare('SELECT email, user_id, is_verified, created_at FROM user_emails WHERE email = ? LIMIT 1')
-      .bind(email.toLowerCase())
+      .bind(normalizeEmail(email))
       .first<UserEmailRow>();
   }
 
@@ -60,7 +61,7 @@ class UserEmailDAO extends BaseDAO {
   public async resolveVerified(email: string): Promise<UserEmailRow | null> {
     return this.database
       .prepare('SELECT email, user_id, is_verified, created_at FROM user_emails WHERE email = ? AND is_verified = 1 LIMIT 1')
-      .bind(email.toLowerCase())
+      .bind(normalizeEmail(email))
       .first<UserEmailRow>();
   }
 
@@ -83,7 +84,7 @@ class UserEmailDAO extends BaseDAO {
       (): Promise<D1Result> =>
         this.database
           .prepare('UPDATE user_emails SET is_verified = 0 WHERE user_id = ? AND email != ?')
-          .bind(userId, exceptEmail.toLowerCase())
+          .bind(userId, normalizeEmail(exceptEmail))
           .run(),
       'revoke verified user emails',
     );

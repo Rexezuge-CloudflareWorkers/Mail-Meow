@@ -35,7 +35,12 @@ Do not reintroduce password signup or user-managed refresh-token paste flows.
 ## Rules
 
 - **One HTTP path.** Everything goes through `HttpClient`. A raw `fetch` skips status
-  classification and turns a retryable provider `429`/`503` into a non-retryable 500.
+  classification and turns a retryable provider `429`/`503` into a non-retryable 500. `SnsDeliveryUtil`
+  is the exception: `aws4fetch` owns its own signing client, so it takes `timeoutMs` as a parameter
+  instead (`PROVIDER_REQUEST_TIMEOUT_MS`).
+- **Base64url lives in `CryptoUtil`** (`base64UrlEncode` / `toBase64Url`). `EmailMimeBuilder` delegates
+  to it. Never spread a large `Uint8Array` into `String.fromCodePoint(...)` — a 1 MB MIME body exceeds
+  the engine's argument limit.
 - **Check `response.ok` before `JSON.parse`.** A non-JSON error body (HTML from an edge proxy,
   an empty 503) otherwise throws a bare `SyntaxError` that is not a `ServiceError`, so it is
   masked as an opaque 500 and the real cause is lost.

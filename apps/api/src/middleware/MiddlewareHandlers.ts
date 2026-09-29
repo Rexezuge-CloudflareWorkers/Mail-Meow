@@ -1,8 +1,7 @@
-import { ServiceError } from '@mail-meow/backend-errors';
+import { toErrorResponse } from '@/errors/errorResponse';
 import { EmailValidationUtil } from '@mail-meow/backend-services/auth';
 import { Context, Next } from 'hono';
 import { createRequestScope } from '@mail-meow/backend-services/composition';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
 
 type UserContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId: string } }>;
 
@@ -30,15 +29,20 @@ class MiddlewareHandlers {
         c.set('AuthenticatedUserId', account?.id ?? '');
         await next();
       } catch (error: unknown) {
-        // Mirrors IBaseRoute.toErrorResponse: 4xx is the caller's problem and is
-        // returned; 5xx is rethrown so the entrypoint's catch-all reports it.
-        if (error instanceof ServiceError && error.getErrorCode() < 500) {
-          return c.json(
-            { Exception: { Type: error.getErrorType(), Message: ErrorSanitizationUtil.sanitizeMessage(error.getErrorMessage()) } },
-            error.getErrorCode(),
-          );
+        // The same disclosure decision `IBaseRoute` uses, so an authentication
+        // failure and a route failure cannot return different bodies for the
+        // same error. This copy previously skipped the 5xx message substitution
+        // and the untyped-error masking.
+        //
+        // 4xx is the caller's problem and is answered here. 5xx and untyped
+        // errors are rethrown: this middleware has no envelope to fall back on,
+        // and the entrypoint's catch-all is what logs them.
+        const response = toErrorResponse(error);
+        if (!response.isCallerError) {
+          throw error;
         }
-        throw error;
+        console.warn(`Responding with ${response.body.Exception.Type} during authentication`);
+        return c.json(response.body, response.status);
       }
     };
   }
