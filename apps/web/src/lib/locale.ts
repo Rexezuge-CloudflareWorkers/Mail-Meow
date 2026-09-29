@@ -15,16 +15,3 @@ export function resolveLocale(lng?: string | null): string {
   }
   return 'en';
 }
-
-export function formatDateLocale(date: Date, lng?: string | null, options?: Intl.DateTimeFormatOptions): string {
-  return date.toLocaleDateString(resolveLocale(lng), options);
-}
-
-export function formatTimeLocale(date: Date, lng?: string | null, options?: Intl.DateTimeFormatOptions): string {
-  return date.toLocaleTimeString(resolveLocale(lng), options);
-}
-
-export function formatNumberLocale(value: number, lng?: string | null, options?: Intl.NumberFormatOptions): string {
-  const tag = resolveLocale(lng);
-  return options === undefined ? value.toLocaleString(tag) : value.toLocaleString(tag, options);
-}

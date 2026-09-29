@@ -11,8 +11,6 @@ interface ApplicationFormProps {
   busy: boolean;
 }
 
-export const emptyFormExport = undefined;
-
 export default function ApplicationForm({ form, setForm, onSave, onCancel, busy }: ApplicationFormProps) {
   const { t } = useTranslation();
   const method = providerMethod[form.providerId];

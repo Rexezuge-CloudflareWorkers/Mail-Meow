@@ -135,6 +135,11 @@ describe('provider label tables', () => {
 });
 
 describe('cn', () => {
+  // `cn` currently has no production call site — the components use literal
+  // Tailwind strings — but it is a real, working helper rather than dead code,
+  // and these cases pin the falsy-dropping behaviour it exists to provide. Kept
+  // deliberately: deleting it would mean re-deriving conditional class merging
+  // the first time a component needs it.
   it('joins class names', () => {
     expect(cn('a', 'b')).toBe('a b');
   });

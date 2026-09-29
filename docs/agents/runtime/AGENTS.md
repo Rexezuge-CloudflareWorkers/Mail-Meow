@@ -69,7 +69,8 @@ The previous `Container` + `Tokens` pair was a service locator: seven of its bin
 never resolved, the memoized DAOs it exposed were bypassed (each service built its own from
 `env`), and hiding that required seven `as never` casts.
 
-- `AppConfiguration` (`backend-runtime/src/config/AppConfiguration.ts`) — injectable instance view over env parsing (captured env, one method per setting); `ConfigurationManager` statics remain as a thin backward-compatible facade. Prefer injecting `AppConfiguration` (or structural subsets) in new services; mock via constructor deps, not module mocks.
-
-- `Container` — minimal Factory + Singleton DI container (`bind`/`bindValue`/`get`/`resolve`/`createChild`). Composition roots (API/background workers, tests) wire dependencies once; services declare constructor deps on interfaces.
-- `createServiceContext(env, overrides?)` — single request-scoped `{ env, logger, clock }` replacing bespoke `*Env` subsets. Prefer extending/deriving from `ServiceContext` over new `*Env` interfaces; never reintroduce `as` env casts in new code.
+`AppConfigReader` (`backend-runtime/src/config/AppConfig.ts`) is the only configuration
+surface. There is no `AppConfiguration`, no `ConfigurationManager`, and no
+`createServiceContext` — all three were removed along with the container, and the
+`@mail-meow/backend-runtime` `exports` map no longer lists the deleted `./di` paths. A
+reference to any of them is stale.

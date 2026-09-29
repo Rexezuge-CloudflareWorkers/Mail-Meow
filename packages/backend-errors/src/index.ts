@@ -23,4 +23,3 @@ export {
   ProviderApiRetryableError,
   RetryableError,
 } from './OutcomeError';
-export type { ErrorResponse } from './model/ErrorResponse';

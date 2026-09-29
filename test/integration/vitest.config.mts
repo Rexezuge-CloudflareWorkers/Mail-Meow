@@ -60,7 +60,7 @@ export default defineConfig({
       reporter: ['text', 'lcov', 'html'],
       reportsDirectory: './coverage-integration',
       include: ['apps/api/src/**/*.ts', 'apps/background/src/**/*.ts', 'packages/**/src/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/*.int.test.ts', '**/*.d.ts', '**/index.ts', '**/types.d.ts'],
+      exclude: ['**/*.test.ts', '**/*.int.test.ts', '**/*.d.ts', '**/types.d.ts'],
       // NOTE: V8 coverage instrumentation is not functional with @cloudflare/vitest-pool-workers
       // because the Cloudflare Workers sandbox does not expose node:inspector/promises.
       // Run `pnpm run test:integration` (without --coverage) for integration testing.

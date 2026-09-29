@@ -3,6 +3,5 @@ export * from './BaseUrlUtil';
 export * from './CryptoUtil';
 export * from './ErrorSanitizationUtil';
 export * from './LocaleUtil';
-export * from './Result';
 export * from './TimestampUtil';
 export * from './UUIDUtil';
