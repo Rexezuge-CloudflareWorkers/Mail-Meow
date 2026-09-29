@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'jsonc-parser';
+import { isEmptySecretsStoreListing, parseWranglerTableRows } from './wrangler-table';
 
 interface WranglerConfig {
   secrets_store_secrets?: Array<{
@@ -47,27 +48,30 @@ function parseWranglerConfig(): WranglerConfig {
  *
  * Returns `undefined` when the listing itself failed, which is deliberately
  * distinct from an empty list: a transient CLI failure must not be read as
- * "the secret is missing" and cause a duplicate insert.
+ * "the secret is missing" and cause a duplicate insert. An empty store *is* a
+ * confirmed absence, so it maps to an empty set rather than `undefined`.
  */
 function listSecretNames(storeId: string): Set<string> | undefined {
+  let output: string;
   try {
-    const output: string = wrangler(['secrets-store', 'secret', 'list', storeId, '--remote']);
-    const names: Set<string> = new Set();
-    // `wrangler secrets-store secret list` prints a table; match the name
-    // column exactly so a prefix cannot make an absent secret look present.
-    for (const line of output.split('\n')) {
-      // Column layout is two-or-more spaces; \S+ cannot itself contain whitespace,
-      // so this is unambiguous and cannot backtrack.
-      const match: RegExpMatchArray | null = /^\s*(\S+)\s{2,}\S/.exec(line);
-      if (match) {
-        names.add(match[1]);
-      }
-    }
-    return names;
+    output = wrangler(['secrets-store', 'secret', 'list', storeId, '--remote']);
   } catch (error: unknown) {
+    if (isEmptySecretsStoreListing(error)) {
+      console.log(`Secrets Store ${storeId} is empty`);
+      return new Set();
+    }
     console.warn(`Unable to list secrets in store ${storeId}:`, error instanceof Error ? error.message : 'unknown error');
     return undefined;
   }
+
+  // The name is the first column, taken exactly: a substring match would let
+  // `mail-meow-aes-encryption-key-2` satisfy `mail-meow-aes-encryption-key`.
+  // Every returned row has at least two cells, so the name is always present.
+  const names: Set<string> = new Set();
+  for (const [name] of parseWranglerTableRows(output)) {
+    names.add(name);
+  }
+  return names;
 }
 
 async function generateAESGCMKey(): Promise<string> {
