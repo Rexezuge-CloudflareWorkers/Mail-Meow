@@ -22,6 +22,21 @@ render empty and every query fails.
 
 Run one project with `pnpm exec vitest run --project web`.
 
+**`pnpm run typegen` is a prerequisite for `pnpm -r typecheck`.** `worker-configuration.d.ts`
+is generated and gitignored. `pnpm install --ignore-scripts` skips the `postinstall` that
+generates it, and typecheck then reports ~8 phantom errors (`Cannot find module
+'cloudflare:workers'`, `Cannot find name 'ExecutionContext'`, and a cascade of
+`Property 'ctx' does not exist`) that look like real breakage but are not. Run
+`pnpm run typegen` before trusting a typecheck failure.
+
+**A dependency of a leaf package needs an explicit alias to be mockable from `test/`.**
+`jose` is declared by `backend-services`, so under pnpm's isolated `node_modules` it only
+resolves from that package. A test at the repo root that imports `jose` loads a _different_
+module instance than the service under test, and `vi.mock('jose')` then silently does
+nothing — the real verifier runs, the test fails with a confusing `Invalid Compact JWS`, and
+the mock looks like the bug. `vitest.config.mts` pins `jose` to one path for both. The same
+applies to any future leaf-only dependency a test needs to mock.
+
 ## Thresholds
 
 `vitest.config.mts`: **statements 60 / branches 45 / functions 60 / lines 60**.

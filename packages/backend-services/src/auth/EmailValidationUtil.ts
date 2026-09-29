@@ -1,4 +1,5 @@
 import { jwtVerify, createRemoteJWKSet } from 'jose';
+import type { JWTPayload } from 'jose';
 import { UnauthorizedError } from '@mail-meow/backend-errors';
 
 interface EmailValidationEnv {
@@ -40,21 +41,29 @@ class EmailValidationUtil {
       throw new UnauthorizedError('Multiple JWT audiences are not supported. Configure a single POLICY_AUD value.');
     }
 
+    let payload: JWTPayload;
     try {
       const JWKS = createRemoteJWKSet(new URL(`${normalizedTeamDomain}/cdn-cgi/access/certs`));
-      const { payload } = await jwtVerify(token, JWKS, {
+      ({ payload } = await jwtVerify(token, JWKS, {
         issuer: normalizedTeamDomain,
         audience: normalizedPolicyAud,
-      });
-
-      const email = payload.email as string;
-      if (!email) {
-        throw new UnauthorizedError('No email found in JWT token.');
-      }
-      return email;
+      }));
     } catch (error) {
+      // Only genuine verification failures reach here. The email-claim check
+      // used to sit inside this block, so its own error was caught and
+      // rewrapped as "JWT verification failed" — reporting a signature problem
+      // for a token that verified perfectly and simply carried no address.
       throw new UnauthorizedError(`JWT verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+
+    // Outside the try, and validated rather than cast. The claim is attacker-
+    // reachable input: a `null`, an object, or a number all pass a bare
+    // truthiness check, and the resulting value is used as the login address.
+    const email: unknown = payload.email;
+    if (typeof email !== 'string' || !email) {
+      throw new UnauthorizedError('No email found in JWT token.');
+    }
+    return email;
   }
 }
 
