@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import Unauthorized from './components/shared/Unauthorized';
 import Header from './components/shared/Header';
 import Notice from './components/shared/Notice';
+import type { NoticeData } from './components/shared/Notice';
 import SpaViewRouter from './components/layout/SpaViewRouter';
 import MailboxesView from './components/views/MailboxesView';
 import ProcessingView from './components/views/ProcessingView';
@@ -16,10 +18,22 @@ import type { SpaView } from './types';
 import { providerMethod } from './lib/providers';
 import * as appSvc from './services/applicationService';
 
-function getInitialNotice(): { type: 'success' | 'error'; text: string } | null {
+/**
+ * Reads the OAuth2 result the callback redirected back with.
+ *
+ * The message is translated via `t()`: these strings were hardcoded English
+ * while `notice.oauthConnected` / `notice.oauthFailed` sat translated in all
+ * twelve locale files and were never called, so the one notice a user sees
+ * immediately after connecting a mailbox was the only untranslated message in
+ * the app. The provider's own `message` is still passed through when present,
+ * since it is diagnostic text the provider chose to send.
+ */
+function getInitialNotice(t: TFunction): NoticeData | null {
   const params = new URLSearchParams(globalThis.location.search);
-  if (params.get('oauth2') === 'connected') return { type: 'success', text: 'OAuth2 connection completed.' };
-  if (params.get('oauth2') === 'error') return { type: 'error', text: params.get('message') || 'OAuth2 connection failed.' };
+  if (params.get('oauth2') === 'connected') return { type: 'success', text: t('notice.oauthConnected', 'OAuth2 Connection Completed.') };
+  if (params.get('oauth2') === 'error') {
+    return { type: 'error', text: params.get('message') || t('notice.oauthFailed', 'OAuth2 Connection Failed.') };
+  }
   return null;
 }
 
@@ -45,9 +59,9 @@ export default function SpaApp() {
   const { language, languageStatus, languagePending, handleLanguageChange } = useSpaLanguage({ user, showNotice, setUser });
 
   useEffect(() => {
-    const initial = getInitialNotice();
+    const initial = getInitialNotice(t);
     if (initial) setNotice(initial);
-  }, [setNotice]);
+  }, [setNotice, t]);
 
   useEffect(() => {
     loadCurrentUser()

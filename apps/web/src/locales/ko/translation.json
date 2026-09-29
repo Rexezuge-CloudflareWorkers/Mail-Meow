@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "연결된 이메일 및 SNS 발송",
-    "loading": "불러오는 중…",
     "unauthorizedTitle": "권한 없음",
     "unauthorizedBody": "Cloudflare Access로 로그인하여 애플리케이션을 관리하세요."
   },
@@ -10,8 +7,7 @@
     "language": "언어",
     "selectLanguage": "언어를 선택해 주세요",
     "unknownLanguage": "알 수 없음",
-    "docs": "문서",
-    "signOut": "로그아웃"
+    "menu": "메뉴"
   },
   "nav": {
     "mailboxes": "메일박스",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "연결된 애플리케이션",
     "empty": "연결된 애플리케이션이 아직 없습니다",
-    "emptyHint": "첫 애플리케이션을 만들어 이메일 또는 SNS 메시지 전송을 시작하세요.",
     "newApplication": "새 애플리케이션",
     "editApplication": "애플리케이션 편집",
     "displayName": "표시 이름",
-    "displayNamePlaceholder": "Gmail 발신자",
-    "provider": "제공자",
-    "connectionMethod": "연결 방법",
     "oauth2ClientId": "OAuth2 클라이언트 ID",
     "oauth2ClientSecret": "OAuth2 클라이언트 시크릿",
     "awsAccessKeyId": "AWS 액세스 키 ID",
@@ -37,27 +29,25 @@
     "cancel": "취소",
     "delete": "삭제",
     "edit": "편집",
-    "authorize": "제공자로 인증",
-    "copyRedirectUri": "OAuth2 리디렉션 URI 복사",
-    "statusDraft": "초안",
-    "statusConnected": "연결됨"
+    "copyRedirectUri": "OAuth2 리디렉션 URI 복사"
   },
   "apiKeys": {
     "title": "API 키",
     "empty": "API 키가 아직 없습니다",
-    "keyName": "키 이름",
-    "keyNamePlaceholder": "프로덕션 키",
-    "expiryDays": "만료 일수",
-    "create": "API 키 만들기",
-    "delete": "해지",
-    "createdHint": "이 키를 지금 복사하세요. 다시 표시되지 않습니다."
+    "keyName": "키 이름"
   },
   "processing": {
     "title": "백그라운드 작업 실행",
     "empty": "작업 실행이 아직 없습니다",
     "taskType": "작업 유형",
     "runNow": "지금 실행",
-    "status": "상태"
+    "status": "상태",
+    "loadFailed": "작업 실행 기록을 불러올 수 없습니다",
+    "loading": "불러오는 중…",
+    "started": "시작",
+    "summary": "요약",
+    "manual": "수동 새로 고침",
+    "triggerFailed": "새로 고침을 시작할 수 없습니다"
   },
   "help": {
     "title": "도움말",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "OAuth2를 시작할 수 없습니다.",
     "copyFailed": "URI를 복사할 수 없습니다.",
     "apiKeyCreateFailed": "API 키를 만들 수 없습니다.",
-    "apiKeyDeleteFailed": "API 키를 삭제할 수 없습니다."
+    "apiKeyDeleteFailed": "API 키를 삭제할 수 없습니다.",
+    "dismiss": "닫기"
   }
 }

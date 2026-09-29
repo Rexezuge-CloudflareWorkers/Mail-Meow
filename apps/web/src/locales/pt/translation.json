@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "Envio conectado de e-mail e SNS",
-    "loading": "Carregando…",
     "unauthorizedTitle": "Não autorizado",
     "unauthorizedBody": "Entre com Cloudflare Access para gerenciar aplicativos."
   },
@@ -10,8 +7,7 @@
     "language": "Idioma",
     "selectLanguage": "Selecionar idioma",
     "unknownLanguage": "Desconhecido",
-    "docs": "Docs",
-    "signOut": "Sair"
+    "menu": "Menu"
   },
   "nav": {
     "mailboxes": "Caixas de correio",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "Aplicativos conectados",
     "empty": "Nenhum aplicativo conectado ainda",
-    "emptyHint": "Crie seu primeiro aplicativo para enviar e-mails ou mensagens SNS.",
     "newApplication": "Novo aplicativo",
     "editApplication": "Editar aplicativo",
     "displayName": "Nome de exibição",
-    "displayNamePlaceholder": "Remetente do Gmail",
-    "provider": "Provedor",
-    "connectionMethod": "Método de conexão",
     "oauth2ClientId": "ID do cliente OAuth2",
     "oauth2ClientSecret": "Segredo do cliente OAuth2",
     "awsAccessKeyId": "ID da chave de acesso AWS",
@@ -37,27 +29,25 @@
     "cancel": "Cancelar",
     "delete": "Excluir",
     "edit": "Editar",
-    "authorize": "Autorizar com o provedor",
-    "copyRedirectUri": "Copiar URI de redirecionamento OAuth2",
-    "statusDraft": "Rascunho",
-    "statusConnected": "Conectado"
+    "copyRedirectUri": "Copiar URI de redirecionamento OAuth2"
   },
   "apiKeys": {
     "title": "Chaves API",
     "empty": "Nenhuma chave API ainda",
-    "keyName": "Nome da chave",
-    "keyNamePlaceholder": "Chave de produção",
-    "expiryDays": "Dias de expiração",
-    "create": "Criar chave API",
-    "delete": "Revogar",
-    "createdHint": "Copie esta chave agora. Ela não será mostrada novamente."
+    "keyName": "Nome da chave"
   },
   "processing": {
     "title": "Execuções de tarefas",
     "empty": "Nenhuma execução ainda",
     "taskType": "Tipo de tarefa",
     "runNow": "Executar agora",
-    "status": "Status"
+    "status": "Status",
+    "loadFailed": "Não foi possível carregar as execuções",
+    "loading": "A carregar…",
+    "started": "Iniciado",
+    "summary": "Resumo",
+    "manual": "Atualização manual",
+    "triggerFailed": "Não foi possível iniciar a atualização"
   },
   "help": {
     "title": "Ajuda",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "Não foi possível iniciar o OAuth2.",
     "copyFailed": "Não foi possível copiar a URI.",
     "apiKeyCreateFailed": "Não foi possível criar a chave API.",
-    "apiKeyDeleteFailed": "Não foi possível excluir a chave API."
+    "apiKeyDeleteFailed": "Não foi possível excluir a chave API.",
+    "dismiss": "Fechar"
   }
 }

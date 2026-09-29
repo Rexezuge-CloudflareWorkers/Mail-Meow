@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "Envoi d’e-mails et SNS connectés",
-    "loading": "Chargement…",
     "unauthorizedTitle": "Non autorisé",
     "unauthorizedBody": "Connectez-vous avec Cloudflare Access pour gérer les applications."
   },
@@ -10,8 +7,7 @@
     "language": "Langue",
     "selectLanguage": "Choisir la langue",
     "unknownLanguage": "Inconnu",
-    "docs": "Docs",
-    "signOut": "Se déconnecter"
+    "menu": "Menu"
   },
   "nav": {
     "mailboxes": "Boîtes mail",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "Applications connectées",
     "empty": "Aucune application connectée",
-    "emptyHint": "Créez votre première application pour envoyer des e-mails ou messages SNS.",
     "newApplication": "Nouvelle application",
     "editApplication": "Modifier l’application",
     "displayName": "Nom affiché",
-    "displayNamePlaceholder": "Expéditeur Gmail",
-    "provider": "Fournisseur",
-    "connectionMethod": "Méthode de connexion",
     "oauth2ClientId": "ID client OAuth2",
     "oauth2ClientSecret": "Secret client OAuth2",
     "awsAccessKeyId": "ID de clé d’accès AWS",
@@ -37,27 +29,25 @@
     "cancel": "Annuler",
     "delete": "Supprimer",
     "edit": "Modifier",
-    "authorize": "Autoriser auprès du fournisseur",
-    "copyRedirectUri": "Copier l’URI de redirection OAuth2",
-    "statusDraft": "Brouillon",
-    "statusConnected": "Connecté"
+    "copyRedirectUri": "Copier l’URI de redirection OAuth2"
   },
   "apiKeys": {
     "title": "Clés API",
     "empty": "Aucune clé API",
-    "keyName": "Nom de clé",
-    "keyNamePlaceholder": "Clé de production",
-    "expiryDays": "Jours d’expiration",
-    "create": "Créer une clé API",
-    "delete": "Révoquer",
-    "createdHint": "Copiez cette clé maintenant. Elle ne sera plus affichée."
+    "keyName": "Nom de clé"
   },
   "processing": {
     "title": "Exécutions des tâches",
     "empty": "Aucune exécution",
     "taskType": "Type de tâche",
     "runNow": "Exécuter",
-    "status": "Statut"
+    "status": "Statut",
+    "loadFailed": "Impossible de charger les exécutions",
+    "loading": "Chargement…",
+    "started": "Démarré",
+    "summary": "Résumé",
+    "manual": "Actualisation manuelle",
+    "triggerFailed": "Impossible de lancer l’actualisation"
   },
   "help": {
     "title": "Aide",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "Impossible de démarrer OAuth2.",
     "copyFailed": "Impossible de copier l’URI.",
     "apiKeyCreateFailed": "Impossible de créer la clé API.",
-    "apiKeyDeleteFailed": "Impossible de supprimer la clé API."
+    "apiKeyDeleteFailed": "Impossible de supprimer la clé API.",
+    "dismiss": "Fermer"
   }
 }

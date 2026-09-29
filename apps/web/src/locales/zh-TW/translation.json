@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "已連接的郵件與 SNS 傳送",
-    "loading": "載入中…",
     "unauthorizedTitle": "未授權",
     "unauthorizedBody": "使用 Cloudflare Access 登入以管理應用程式。"
   },
@@ -10,8 +7,7 @@
     "language": "語言",
     "selectLanguage": "選擇語言",
     "unknownLanguage": "未知",
-    "docs": "文件",
-    "signOut": "登出"
+    "menu": "選單"
   },
   "nav": {
     "mailboxes": "信箱",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "已連接應用程式",
     "empty": "尚無已連接應用程式",
-    "emptyHint": "建立第一個應用程式以開始傳送郵件或 SNS 訊息。",
     "newApplication": "新增應用程式",
     "editApplication": "編輯應用程式",
     "displayName": "顯示名稱",
-    "displayNamePlaceholder": "Gmail 寄件者",
-    "provider": "提供者",
-    "connectionMethod": "連接方式",
     "oauth2ClientId": "OAuth2 用戶端 ID",
     "oauth2ClientSecret": "OAuth2 用戶端密鑰",
     "awsAccessKeyId": "AWS 存取金鑰 ID",
@@ -37,27 +29,25 @@
     "cancel": "取消",
     "delete": "刪除",
     "edit": "編輯",
-    "authorize": "使用提供者授權",
-    "copyRedirectUri": "複製 OAuth2 回調 URI",
-    "statusDraft": "草稿",
-    "statusConnected": "已連接"
+    "copyRedirectUri": "複製 OAuth2 回調 URI"
   },
   "apiKeys": {
     "title": "API 金鑰",
     "empty": "尚無 API 金鑰",
-    "keyName": "金鑰名稱",
-    "keyNamePlaceholder": "正式金鑰",
-    "expiryDays": "有效天數",
-    "create": "建立 API 金鑰",
-    "delete": "撤銷",
-    "createdHint": "請立即複製此金鑰。它不會再次顯示。"
+    "keyName": "金鑰名稱"
   },
   "processing": {
     "title": "背景任務執行",
     "empty": "尚無任務執行",
     "taskType": "任務類型",
     "runNow": "立即執行",
-    "status": "狀態"
+    "status": "狀態",
+    "loadFailed": "無法載入執行記錄",
+    "loading": "載入中…",
+    "started": "開始",
+    "summary": "摘要",
+    "manual": "手動重新整理",
+    "triggerFailed": "無法觸發重新整理"
   },
   "help": {
     "title": "說明",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "無法啟動 OAuth2。",
     "copyFailed": "無法複製 URI。",
     "apiKeyCreateFailed": "無法建立 API 金鑰。",
-    "apiKeyDeleteFailed": "無法刪除 API 金鑰。"
+    "apiKeyDeleteFailed": "無法刪除 API 金鑰。",
+    "dismiss": "關閉"
   }
 }

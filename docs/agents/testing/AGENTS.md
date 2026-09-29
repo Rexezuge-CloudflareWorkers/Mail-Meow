@@ -39,15 +39,20 @@ applies to any future leaf-only dependency a test needs to mock.
 
 ## Thresholds
 
-`vitest.config.mts`: **statements 60 / branches 45 / functions 60 / lines 60**.
-Actual: 60.3 / 54.5 / 63.7 / 61.0.
+`vitest.config.mts`: **statements 66 / branches 59 / functions 68 / lines 67**.
+Actual: 66.59 / 59.94 / 68.24 / 67.24.
 
-Raised from the 19/8/28/20 floor this was sitting on, which the dead-code removal alone had
-made meaningless. This is an interim bar, not a destination — the long-term target is
+Raised from 60/45/60/60, which was itself raised from a 19/8/28/20 floor the dead-code removal
+had made meaningless. This is an interim bar, not a destination — the long-term target is
 88.5 / 76.5 / 90.5 / 89.5. Raise the numbers when you add tests, never lower them.
 
-Exclusions: `**/*.test.ts`, `**/*.d.ts`, `**/index.ts`, `**/types.d.ts`, `**/model/**`,
-`**/generated/**`.
+Exclusions: `**/*.test.ts`, `**/*.d.ts`, `**/types.d.ts`, `**/model/**`, `**/generated/**`.
+
+**`**/index.ts` is deliberately NOT excluded.** It used to be, which is how four root barrels
+(`shared`, `backend-data`, `backend-runtime`, `backend-services`) sat at 0% coverage while being
+imported by literally nothing — every consumer uses a deep path like `@mail-meow/shared/utils`.
+Excluding them is what made four dead files invisible. A barrel with no importer now shows up as
+uncovered. Removing the exclusion is worth about 4 points of statements on its own.
 
 **`@vitest/coverage-v8` must be pinned to the exact same version as `vitest`** (both
 `4.1.11`): the provider declares an exact `vitest` peer, and a major mismatch breaks
@@ -85,8 +90,17 @@ then creates a table referencing it fails with `foreign key mismatch` (see
 ## Other guards
 
 - `scripts/check-god-files.mjs` (soft 300 / hard 400 LOC).
-- `apps/web/scripts/validate_locales.py` (JSON-valid, key parity including no extra keys,
-  `{{placeholder}}` parity, no empty values; 12 locales).
+- `apps/web/scripts/validate_locales.py` — run in CI. Checks **parity** (JSON-valid, key parity
+  including no extra keys, `{{placeholder}}` parity, no empty values; 12 locales) **and usage**.
+  The usage check is the one that matters and the one that was missing: parity alone reported
+  `ALL OK` on a 29-key drift, because all twelve locales agreed with each other while disagreeing
+  with the code. Eight keys the UI called (`header.menu`, `notice.dismiss`, the four
+  `processing.*` column/loading keys) were defined in **no** locale, so they silently fell back
+  to English in every language; seventeen were defined in all twelve and called by nothing. The
+  script walks `apps/web/src` for `t('…')` calls, strips comments first, and keeps a
+  `DYNAMIC_KEYS` allow-list for template-literal keys (`nav.${view}` in `Header.tsx`) that
+  static extraction cannot see. **Extend that list when a component starts building key names**,
+  or the validator will report a false failure.
 
 ## Mock patterns
 

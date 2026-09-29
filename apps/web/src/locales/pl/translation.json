@@ -1,8 +1,5 @@
 {
   "app": {
-    "title": "Mail-Meow",
-    "subtitle": "Połączone wysyłanie e-maili i SNS",
-    "loading": "Ładowanie…",
     "unauthorizedTitle": "Brak autoryzacji",
     "unauthorizedBody": "Zaloguj się przez Cloudflare Access, aby zarządzać aplikacjami."
   },
@@ -10,8 +7,7 @@
     "language": "Język",
     "selectLanguage": "Wybierz język",
     "unknownLanguage": "Nieznany",
-    "docs": "Docs",
-    "signOut": "Wyloguj"
+    "menu": "Menu"
   },
   "nav": {
     "mailboxes": "Skrzynki",
@@ -21,13 +17,9 @@
   "mailboxes": {
     "title": "Połączone aplikacje",
     "empty": "Brak połączonych aplikacji",
-    "emptyHint": "Utwórz pierwszą aplikację, aby wysyłać e-maile lub wiadomości SNS.",
     "newApplication": "Nowa aplikacja",
     "editApplication": "Edytuj aplikację",
     "displayName": "Nazwa wyświetlana",
-    "displayNamePlaceholder": "Nadawca Gmail",
-    "provider": "Dostawca",
-    "connectionMethod": "Metoda połączenia",
     "oauth2ClientId": "ID klienta OAuth2",
     "oauth2ClientSecret": "Sekret klienta OAuth2",
     "awsAccessKeyId": "ID klucza dostępu AWS",
@@ -37,27 +29,25 @@
     "cancel": "Anuluj",
     "delete": "Usuń",
     "edit": "Edytuj",
-    "authorize": "Autoryzuj u dostawcy",
-    "copyRedirectUri": "Kopiuj URI przekierowania OAuth2",
-    "statusDraft": "Szkic",
-    "statusConnected": "Połączono"
+    "copyRedirectUri": "Kopiuj URI przekierowania OAuth2"
   },
   "apiKeys": {
     "title": "Klucze API",
     "empty": "Brak kluczy API",
-    "keyName": "Nazwa klucza",
-    "keyNamePlaceholder": "Klucz produkcyjny",
-    "expiryDays": "Dni ważności",
-    "create": "Utwórz klucz API",
-    "delete": "Unieważnij",
-    "createdHint": "Skopiuj ten klucz teraz. Nie zostanie pokazany ponownie."
+    "keyName": "Nazwa klucza"
   },
   "processing": {
     "title": "Uruchomienia zadań",
     "empty": "Brak uruchomień",
     "taskType": "Typ zadania",
     "runNow": "Uruchom teraz",
-    "status": "Status"
+    "status": "Status",
+    "loadFailed": "Nie można wczytać uruchomień",
+    "loading": "Wczytywanie…",
+    "started": "Rozpoczęto",
+    "summary": "Podsumowanie",
+    "manual": "Odśwież ręcznie",
+    "triggerFailed": "Nie można uruchomić odświeżania"
   },
   "help": {
     "title": "Pomoc",
@@ -79,6 +69,7 @@
     "oauthStartFailed": "Nie można uruchomić OAuth2.",
     "copyFailed": "Nie można skopiować URI.",
     "apiKeyCreateFailed": "Nie można utworzyć klucza API.",
-    "apiKeyDeleteFailed": "Nie można usunąć klucza API."
+    "apiKeyDeleteFailed": "Nie można usunąć klucza API.",
+    "dismiss": "Zamknij"
   }
 }
