@@ -16,8 +16,9 @@
  * from, so updating it would delete the user's applications, their API keys,
  * and their OAuth2 sessions. Those all key on the account id and are unaffected.
  *
- * Takes a D1 backup first, and refuses (rather than half-applying) when the new
- * address is already a live login for a different account.
+ * Takes a D1 backup first (unless `--no-backup`), and refuses (rather than
+ * half-applying) when the new address is already a live login for a different
+ * account.
  *
  * Usage:
  *   pnpm exec tsx scripts/change-email.ts --db mail-meow-db --account alice@example.com --to new@example.com
@@ -32,6 +33,7 @@
  *   --persist-to <dir>   local persistence directory (only with --local)
  *   --remote             run against the remote database (default: local)
  *   --dry-run            print the plan and the SQL, change nothing
+ *   --no-backup          skip the pre-write D1 export
  */
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -46,11 +48,12 @@ interface Args {
   persistTo?: string;
   remote: boolean;
   dryRun: boolean;
+  backup: boolean;
   help: boolean;
 }
 
 const USAGE = `Usage:
-  pnpm exec tsx scripts/change-email.ts --db <name> (--account <email> | --id <usr_id>) --to <new-email> [--remote] [--dry-run]
+  pnpm exec tsx scripts/change-email.ts --db <name> (--account <email> | --id <usr_id>) --to <new-email> [--remote] [--no-backup] [--dry-run]
 
 Flags:
   --db <name>       D1 database name or binding (required)
@@ -62,6 +65,9 @@ Flags:
                     the database was migrated, or you will hit a different DB)
   --remote          run against the remote database (default: local)
   --dry-run         print the plan and SQL without changing anything
+  --no-backup       skip the pre-write D1 export; safe because the address
+                    being changed from is kept in user_emails (is_verified=0),
+                    so a revert is this same command with --to swapped
 `;
 
 /**
@@ -102,6 +108,9 @@ const BOOLEAN_FLAGS: Record<string, (out: Args) => void> = {
   '--dry-run': (out) => {
     out.dryRun = true;
   },
+  '--no-backup': (out) => {
+    out.backup = false;
+  },
   '--help': (out) => {
     out.help = true;
   },
@@ -111,7 +120,7 @@ const BOOLEAN_FLAGS: Record<string, (out: Args) => void> = {
 };
 
 function parseArgs(argv: string[]): Args {
-  const out: Args = { config: './wrangler.jsonc', remote: false, dryRun: false, help: false };
+  const out: Args = { config: './wrangler.jsonc', remote: false, dryRun: false, backup: true, help: false };
   for (let i = 0; i < argv.length; i += 1) {
     // Under `noUncheckedIndexedAccess` the element is `string | undefined`; the
     // bound check makes it defined, and a bare `as string` would be erased by
@@ -218,8 +227,16 @@ interface AccountRow {
  * Take a D1 backup before the first write.
  *
  * The change is three statements and is not destructive on its own, but it
- * changes who can sign in, and there is no `undo` flag here. A backup turns a
- * mistake into a restore rather than a hand-written corrective SQL.
+ * changes who can sign in. A backup turns a mistake into a restore rather than
+ * a hand-written corrective SQL.
+ *
+ * `--no-backup` skips it, which is reasonable for a routine move between two
+ * addresses the same human controls: the address being changed from survives in
+ * `user_emails` at `is_verified = 0`, so a revert is this same command with
+ * `--to` and `--account` swapped. What a backup *would* additionally cover is
+ * the one genuinely irreversible step — statement 1 re-points `user_id` on an
+ * existing `user_emails` row — so skip the backup only after the plan output has
+ * shown you that the target address is not already held by another account.
  */
 function backup(args: Args): void {
   const stamp = new Date().toISOString().replaceAll(/[:.]/g, '-');
@@ -311,7 +328,7 @@ function main(): void {
     process.stdout.write('dry run — nothing was changed.\n');
     return;
   }
-  backup(args);
+  if (args.backup) backup(args);
   d1(args, statements.join(' '));
   const after = d1(
     args,

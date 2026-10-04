@@ -21,7 +21,8 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
 
 ## Ops
 
-- `scripts/change-email.ts` — change a user's sign-in address. Wraps `UserIdentityService.setPrimaryEmail`'s three statements in the same order, takes a `wrangler d1 export` backup first, and refuses (rather than half-applying) when the target address is already a live login for another account. Supports `--dry-run` and `--remote`; interpolates nothing outside a pattern allow-list.
+- `scripts/change-email.ts` — change a user's sign-in address. Wraps `UserIdentityService.setPrimaryEmail`'s three statements in the same order, takes a `wrangler d1 export` backup first (skippable with `--no-backup`), and refuses (rather than half-applying) when the target address is already a live login for another account. Supports `--dry-run` and `--remote`; interpolates nothing outside a pattern allow-list.
+  - `--config` is required in practice on a clean checkout: `wrangler.jsonc` is gitignored and per-deployer, and `wrangler.template.jsonc` cannot be substituted because its placeholder `database_id` takes precedence over the `--db` name (wrangler then 404s on `00000000-…`). For ops-only D1 work, write a minimal config with the real `database_id` to `.wrangler/` (gitignored) and pass `--config .wrangler/<name>.jsonc` — do **not** leave a half-populated `wrangler.jsonc` at the repo root, because `wrangler deploy` would then omit the DO/KV/Secrets Store bindings.
 
 ## Required vars (no defaults)
 
