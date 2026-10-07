@@ -92,29 +92,6 @@ Update the scoped sub-guide (not this index) as part of any change that adds, re
 - Tests, thresholds, mocks → `docs/agents/testing/AGENTS.md`
 - Top-level features → `docs/agents/features/*/AGENTS.md` + one-line Overview touch-up here
 
-## Commit Policy
-
-Always commit changes after completing work unless explicitly told not to.
-
-## Git Commit Messages
-
-Format: `<TYPE>[optional scope]: <description>`
-
-- Type in UPPERCASE: `FIX`, `FEAT`, `DOCS`, `STYLE`, `REFACTOR`, `TEST`, `BUILD`, `CHORE`, `CI`, `PERF`.
-- Scope in lowercase: `FEAT(runtime): Add Scheduled Job State`.
-- Description: Title Case words — `DOCS: Latest Agents Context Reflection`.
-- When committing from `main`, first create a branch: `type/description` or `type/scope/description` in kebab-case (e.g. `feat/bootstrap/bootstrap-jqanywhere-v0.1-framework`).
-- Always include a Markdown body separated from the subject by a blank line.
-- Breaking changes: `!` after type/scope, or `BREAKING CHANGE: <description>` footer.
-
-```text
-<TYPE>[optional scope]: <description>
-
-[Markdown body]
-
-[optional footers]
-```
-
 ## Provider Naming
 
 - `google-gmail` / `oauth2`
