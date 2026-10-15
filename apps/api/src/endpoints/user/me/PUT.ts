@@ -1,9 +1,9 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import { BadRequestError } from '@mail-meow/backend-errors';
-import { LocaleUtil } from '@mail-meow/shared/utils';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { BadRequestError } from '@rexezuge/errors';
+import { LocaleUtil } from '@rexezuge/shared';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 
 class UpdateCurrentUserRoute extends IUserRoute<UpdateCurrentUserRequest, UpdateCurrentUserResponse> {
   schema = {
@@ -43,9 +43,10 @@ class UpdateCurrentUserRoute extends IUserRoute<UpdateCurrentUserRequest, Update
     // Resolved rather than read off the context, so `email` reports the
     // account's current address and the write keys on the account id — a chosen
     // language then survives an address change.
-    const user = (await scope.users.upsertUser(this.getAuthenticatedUserEmailAddress(cxt))) ?? this.getAuthenticatedAccount(cxt);
-    const normalized = await scope.users.updatePreferredLanguage(user, request.preferredLanguage);
-    const config = scope.config;
+    const user =
+      (await scope.get(Tokens.UserService).upsertUser(this.getAuthenticatedUserEmailAddress(cxt))) ?? this.getAuthenticatedAccount(cxt);
+    const normalized = await scope.get(Tokens.UserService).updatePreferredLanguage(user, request.preferredLanguage);
+    const config = scope.get(Tokens.Config);
     return {
       id: user.id,
       email: user.email,

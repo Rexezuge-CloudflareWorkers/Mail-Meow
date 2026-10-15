@@ -16,11 +16,14 @@
   },
   "dependencies": {
     "@mail-meow/backend-data": "workspace:*",
-    "@mail-meow/backend-errors": "workspace:*",
     "@mail-meow/backend-runtime": "workspace:*",
     "@mail-meow/backend-services": "workspace:*",
     "@mail-meow/provider-clients": "workspace:*",
-    "@mail-meow/shared": "workspace:*"
+    "@mail-meow/shared": "workspace:*",
+    "@rexezuge/d1": "1.8.2",
+    "@rexezuge/errors": "1.8.2",
+    "@rexezuge/runtime": "1.8.2",
+    "@rexezuge/shared": "1.8.2"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

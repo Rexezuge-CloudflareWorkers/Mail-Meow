@@ -16,8 +16,6 @@
     "paths": {
       "@mail-meow/backend-data": ["../backend-data/src"],
       "@mail-meow/backend-data/*": ["../backend-data/src/*"],
-      "@mail-meow/backend-errors": ["../backend-errors/src"],
-      "@mail-meow/backend-errors/*": ["../backend-errors/src/*"],
       "@mail-meow/backend-runtime": ["../backend-runtime/src"],
       "@mail-meow/backend-runtime/*": ["../backend-runtime/src/*"],
       "@mail-meow/backend-services": ["./src"],

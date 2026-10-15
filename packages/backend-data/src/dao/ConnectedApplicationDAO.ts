@@ -4,8 +4,8 @@ import {
   CONNECTION_METHOD_OAUTH2,
 } from '@mail-meow/shared/constants';
 import type { ConnectedApplicationStatus } from '@mail-meow/shared/constants';
-import { decryptData, encryptData } from '@mail-meow/backend-data/crypto';
-import { DatabaseError } from '@mail-meow/backend-errors';
+import { decryptSecret, encryptSecret } from '@rexezuge/d1';
+import { DatabaseError } from '@rexezuge/errors';
 import type {
   AccountIdentity,
   ConnectedApplication,
@@ -14,7 +14,7 @@ import type {
   ConnectedApplicationMetadata,
   OAuth2Credentials,
 } from '@mail-meow/shared/model';
-import { TimestampUtil, UUIDUtil } from '@mail-meow/shared/utils';
+import { TimestampUtil, UUIDUtil } from '@rexezuge/shared';
 import { EncryptedDAO } from './BaseDAO';
 
 /**
@@ -43,8 +43,7 @@ const FROM_APPLICATION = 'FROM connected_applications ca LEFT JOIN users u ON u.
  * the fallback for rows written before migration 0011 (or whose backfill could
  * not resolve them), and must not be dropped: those rows are the caller's own
  * applications and would otherwise silently disappear from their listing.
- */
-/**
+ *
  * `prefix` is the table alias (or empty for a bare `UPDATE`), because SQLite
  * only accepts a qualified column name against an alias that the statement
  * itself introduces.
@@ -67,34 +66,28 @@ class ConnectedApplicationDAO extends EncryptedDAO {
   ): Promise<ConnectedApplicationMetadata> {
     const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
     const applicationId: string = UUIDUtil.getRandomUUID();
-    const encrypted = await encryptData(JSON.stringify(credentials), this.masterKey);
+    const envelope = await encryptSecret(JSON.stringify(credentials), this.masterKey);
     // `user_email` stores the frozen anchor, not the login address: it is the
     // foreign key target, and the anchor never moves.
-    await this.runWithRetry(
-      (): Promise<D1Result> =>
-        this.database
-          .prepare(
-            `
-              INSERT INTO connected_applications
-                (application_id, user_email, user_id, display_name, provider_id, connection_method, encrypted_credentials, credentials_iv, status, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `,
-          )
-          .bind(
-            applicationId,
-            user.anchorEmail,
-            user.id || null,
-            displayName,
-            providerId,
-            connectionMethod,
-            encrypted.encrypted,
-            encrypted.iv,
-            status,
-            now,
-            now,
-          )
-          .run(),
-      'create connected application',
+    await this.run(
+      `
+        INSERT INTO connected_applications
+          (application_id, user_email, user_id, display_name, provider_id, connection_method, encrypted_credentials, credentials_iv, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        applicationId,
+        user.anchorEmail,
+        user.id || null,
+        displayName,
+        providerId,
+        connectionMethod,
+        envelope.ciphertext,
+        envelope.iv,
+        status,
+        now,
+        now,
+      ],
     );
     const application: ConnectedApplicationMetadata | undefined = await this.getMetadataByIdForUser(applicationId, user);
     if (!application) {
@@ -105,28 +98,21 @@ class ConnectedApplicationDAO extends EncryptedDAO {
 
   public async listMetadataByUser(user: AccountIdentity): Promise<ConnectedApplicationMetadata[]> {
     const owner: { sql: string; bindings: string[] } = ownerClause('ca', user.id, user.anchorEmail);
-    const rows: ConnectedApplicationInternal[] = await this.database
-      .prepare(
-        `
-          SELECT ${APPLICATION_COLUMNS}
-          ${FROM_APPLICATION}
-          WHERE ${owner.sql}
-          ORDER BY ca.updated_at DESC, ca.created_at DESC
-        `,
-      )
-      .bind(...owner.bindings)
-      .all<ConnectedApplicationInternal>()
-      .then((result: D1Result<ConnectedApplicationInternal>): ConnectedApplicationInternal[] => result.results || []);
+    const rows = await this.all<ConnectedApplicationInternal>(
+      `
+        SELECT ${APPLICATION_COLUMNS}
+        ${FROM_APPLICATION}
+        WHERE ${owner.sql}
+        ORDER BY ca.updated_at DESC, ca.created_at DESC
+      `,
+      owner.bindings,
+    );
     return rows.map((row: ConnectedApplicationInternal): ConnectedApplicationMetadata => this.toMetadata(row));
   }
 
   public async countByUser(user: AccountIdentity): Promise<number> {
     const owner: { sql: string; bindings: string[] } = ownerClause('ca', user.id, user.anchorEmail);
-    const row: { count: number } | null = await this.database
-      .prepare(`SELECT COUNT(*) AS count FROM connected_applications ca WHERE ${owner.sql}`)
-      .bind(...owner.bindings)
-      .first<{ count: number }>();
-    return row?.count ?? 0;
+    return this.count(`SELECT COUNT(*) AS count FROM connected_applications ca WHERE ${owner.sql}`, owner.bindings);
   }
 
   public async getMetadataByIdForUser(applicationId: string, user: AccountIdentity): Promise<ConnectedApplicationMetadata | undefined> {
@@ -152,25 +138,31 @@ class ConnectedApplicationDAO extends EncryptedDAO {
     status: string,
   ): Promise<ConnectedApplicationMetadata | undefined> {
     const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
-    const encrypted = await encryptData(JSON.stringify(credentials), this.masterKey);
+    const envelope = await encryptSecret(JSON.stringify(credentials), this.masterKey);
     const owner: { sql: string; bindings: string[] } = ownerClause('', user.id, user.anchorEmail);
-    await this.runWithRetry(
-      (): Promise<D1Result> =>
-        this.database
-          .prepare(
-            `
-              UPDATE connected_applications
-              SET display_name = ?, encrypted_credentials = ?, credentials_iv = ?, status = ?, updated_at = ?
-              WHERE application_id = ? AND ${owner.sql}
-            `,
-          )
-          .bind(displayName, encrypted.encrypted, encrypted.iv, status, now, applicationId, ...owner.bindings)
-          .run(),
-      'update connected application',
+    await this.run(
+      `
+        UPDATE connected_applications
+        SET display_name = ?, encrypted_credentials = ?, credentials_iv = ?, status = ?, updated_at = ?
+        WHERE application_id = ? AND ${owner.sql}
+      `,
+      [displayName, envelope.ciphertext, envelope.iv, status, now, applicationId, ...owner.bindings],
     );
     return this.getMetadataByIdForUser(applicationId, user);
   }
 
+  /**
+   * Record the refresh token an authorization returned, and mark the
+   * application connected.
+   *
+   * `status` moves to `connected` here rather than on a separate call, because
+   * a connected application with no refresh token is the one state worth
+   * avoiding: it will never refresh again, and nothing would report it.
+   *
+   * `_providerEmail` is accepted and ignored. The provider's own address claim
+   * is not the account's address and must never overwrite `current_email`;
+   * recording it would put a second identity on the row.
+   */
   public async markOAuth2Connected(applicationId: string, refreshToken: string, _providerEmail?: string): Promise<void> {
     const application: ConnectedApplication | undefined = await this.getById(applicationId);
     if (!application || application.connectionMethod !== CONNECTION_METHOD_OAUTH2) {
@@ -181,24 +173,26 @@ class ConnectedApplicationDAO extends EncryptedDAO {
       ...(application.credentials as OAuth2Credentials),
       refreshToken,
     };
-    const encrypted = await encryptData(JSON.stringify(credentials), this.masterKey);
+    const envelope = await encryptSecret(JSON.stringify(credentials), this.masterKey);
     const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
-    await this.runWithRetry(
-      (): Promise<D1Result> =>
-        this.database
-          .prepare(
-            `
-              UPDATE connected_applications
-              SET encrypted_credentials = ?, credentials_iv = ?, status = ?, updated_at = ?
-              WHERE application_id = ?
-            `,
-          )
-          .bind(encrypted.encrypted, encrypted.iv, CONNECTED_APPLICATION_STATUS_CONNECTED, now, applicationId)
-          .run(),
-      'mark OAuth2 application connected',
+    await this.run(
+      `
+        UPDATE connected_applications
+        SET encrypted_credentials = ?, credentials_iv = ?, status = ?, updated_at = ?
+        WHERE application_id = ?
+      `,
+      [envelope.ciphertext, envelope.iv, CONNECTED_APPLICATION_STATUS_CONNECTED, now, applicationId],
     );
   }
 
+  /**
+   * Swap in a rotated refresh token.
+   *
+   * Silently does nothing for a non-OAuth2 application. That is deliberate: this
+   * runs on the refresh path, where an application whose method is not OAuth2
+   * has nothing to rotate and raising would fail a tick over an application that
+   * was never in scope.
+   */
   public async updateOAuth2RefreshToken(applicationId: string, refreshToken: string): Promise<void> {
     const application: ConnectedApplication | undefined = await this.getById(applicationId);
     if (!application || application.connectionMethod !== CONNECTION_METHOD_OAUTH2) return;
@@ -206,49 +200,57 @@ class ConnectedApplicationDAO extends EncryptedDAO {
       ...(application.credentials as OAuth2Credentials),
       refreshToken,
     };
-    const encrypted = await encryptData(JSON.stringify(credentials), this.masterKey);
-    await this.runWithRetry(
-      (): Promise<D1Result> =>
-        this.database
-          .prepare('UPDATE connected_applications SET encrypted_credentials = ?, credentials_iv = ? WHERE application_id = ?')
-          .bind(encrypted.encrypted, encrypted.iv, applicationId)
-          .run(),
-      'update OAuth2 refresh token',
-    );
+    const envelope = await encryptSecret(JSON.stringify(credentials), this.masterKey);
+    await this.run('UPDATE connected_applications SET encrypted_credentials = ?, credentials_iv = ? WHERE application_id = ?', [
+      envelope.ciphertext,
+      envelope.iv,
+      applicationId,
+    ]);
   }
 
+  /**
+   * Delete an application, scoped to its owner.
+   *
+   * `ON DELETE CASCADE` takes the application's API keys and OAuth2 rows with
+   * it, so there is nothing to clean up here — and doing it manually would be a
+   * second, diverging copy of a rule D1 already enforces.
+   */
   public async deleteForUser(applicationId: string, user: AccountIdentity): Promise<void> {
     const owner: { sql: string; bindings: string[] } = ownerClause('', user.id, user.anchorEmail);
-    await this.runWithRetry(
-      (): Promise<D1Result> =>
-        this.database
-          .prepare(`DELETE FROM connected_applications WHERE application_id = ? AND ${owner.sql}`)
-          .bind(applicationId, ...owner.bindings)
-          .run(),
-      'delete connected application',
-    );
+    await this.run(`DELETE FROM connected_applications WHERE application_id = ? AND ${owner.sql}`, [applicationId, ...owner.bindings]);
   }
 
   private async getRowById(applicationId: string, user?: AccountIdentity): Promise<ConnectedApplicationInternal | undefined> {
     // Built together with its binding so the two can never drift apart.
     const owner: { sql: string; bindings: string[] } = user ? ownerClause('ca', user.id, user.anchorEmail) : { sql: '', bindings: [] };
     const whereUser: string = owner.sql ? ` AND ${owner.sql}` : '';
-    const row: ConnectedApplicationInternal | null = await this.database
-      .prepare(
-        `
-          SELECT ${APPLICATION_COLUMNS}
-          ${FROM_APPLICATION}
-          WHERE ca.application_id = ?${whereUser}
-          LIMIT 1
-        `,
-      )
-      .bind(applicationId, ...owner.bindings)
-      .first<ConnectedApplicationInternal>();
+    const row = await this.first<ConnectedApplicationInternal>(
+      `
+        SELECT ${APPLICATION_COLUMNS}
+        ${FROM_APPLICATION}
+        WHERE ca.application_id = ?${whereUser}
+        LIMIT 1
+      `,
+      [applicationId, ...owner.bindings],
+    );
     return row ?? undefined;
   }
 
+  /**
+   * Decrypt a row's credential blob.
+   *
+   * The `encrypted_credentials` / `credentials_iv` pair is the storage form of
+   * `encryptSecret`'s envelope — same AES-GCM, same 96-bit random IV, same
+   * base64 — so a value written before this repo adopted the kit decrypts
+   * unchanged. The names differ (`encrypted` → `ciphertext`) and that is the
+   * only difference: the column is unchanged, so no migration runs and no
+   * stored credential is orphaned.
+   */
   private async toApplication(row: ConnectedApplicationInternal): Promise<ConnectedApplication> {
-    const decryptedCredentials: string = await decryptData(row.encrypted_credentials, row.credentials_iv, this.masterKey);
+    const decryptedCredentials: string = await decryptSecret(
+      { ciphertext: row.encrypted_credentials, iv: row.credentials_iv },
+      this.masterKey,
+    );
     return {
       ...this.toMetadata(row),
       credentials: JSON.parse(decryptedCredentials) as ConnectedApplicationCredentials,

@@ -13,10 +13,24 @@ Vite React SPA served at `/user`.
 - `src/components/shared/` — `Header`, `Notice`, `LanguageSelector`, `StatusBadge`,
   `Unauthorized`.
 - `src/hooks/` — `useAsyncResource` (shared async lifecycle), `useApplications`,
-  `useApiKeys`, `useCurrentUser`, `useProcessing`, `useNotice`, `useSpaLanguage`.
+  `useApiKeys`, `useProcessing`, `useSpaLanguage`, `useMailboxes`, and `useNotice` (the kit's,
+  from `@rexezuge/web`).
 - `src/lib/` — `api.ts` (fetch + D1 bookmark), `format.ts`, `locale.ts`, `providers.ts`,
   `constants.ts`, `utils.ts`.
 - `src/i18n.ts` — language detection, normalization, and lazy locale loading.
+
+## `@rexezuge/web` — what was adopted, and what deliberately was not
+
+Adopted: **`useNotice`**, which is a pure behavioural win — the local copy leaked its
+`setTimeout` on unmount and re-fired one notice's dismissal while another was on screen.
+
+**The visual layer stays local.** `Button`, `Card`, `Badge`, `Input` are built from literal
+`#hex` colours, while the kit's equivalents read the CSS custom properties in
+`@rexezuge/web`'s token set (`--color-surface-1`, `--color-text-primary`, …). Adopting a kit
+component means adopting its whole token set in one go — a mixed element set shows a visible
+seam — so it is one deliberate change rather than a file-by-file drift. `globals.css` here has
+no `@source` for the kit **because the kit renders nothing in this SPA**; if a kit control is
+adopted, add one, or it ships unstyled and silently.
 
 ## Async Data
 

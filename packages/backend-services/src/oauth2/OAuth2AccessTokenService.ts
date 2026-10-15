@@ -4,8 +4,8 @@ import {
 } from '@mail-meow/backend-runtime/constants';
 import type { OAuth2AccessTokenCacheDAO } from '@mail-meow/backend-data/dao';
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
-import { OAuth2TokenNonRetryableError, OAuth2TokenRetryableError } from '@mail-meow/backend-errors';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
+import { OAuth2TokenNonRetryableError, OAuth2TokenRetryableError } from '@rexezuge/errors';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
 
 interface OAuth2AccessTokenResult {
   accessToken: string;

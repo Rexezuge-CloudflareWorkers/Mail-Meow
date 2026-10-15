@@ -1,8 +1,7 @@
 import { BackgroundTaskRunDAO } from '@mail-meow/backend-data/dao';
-import type { D1Queryable } from '@mail-meow/backend-data/utils';
+import type { D1Queryable } from '@mail-meow/backend-runtime/base';
 import { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { AbstractPruningTask } from './AbstractPruningTask';
-import type { IEnv } from './IScheduledTask';
 
 class BackgroundTaskRunPruningTask extends AbstractPruningTask<BackgroundTaskRunPruningTaskEnv> {
   protected getRetentionDays(env: BackgroundTaskRunPruningTaskEnv): number {
@@ -14,7 +13,7 @@ class BackgroundTaskRunPruningTask extends AbstractPruningTask<BackgroundTaskRun
   }
 }
 
-interface BackgroundTaskRunPruningTaskEnv extends IEnv {
+interface BackgroundTaskRunPruningTaskEnv {
   DB: D1Database;
   BACKGROUND_TASK_RUN_RETENTION_DAYS?: string;
 }

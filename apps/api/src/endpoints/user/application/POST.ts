@@ -1,5 +1,5 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
@@ -114,7 +114,7 @@ class CreateApplicationRoute extends IUserRoute<CreateApplicationRequest, Create
   protected async handleRequest(request: CreateApplicationRequest, env: Env, cxt: RouteContext): Promise<CreateApplicationResponse> {
     const user = this.getAuthenticatedAccount(cxt);
     const scope = createRequestScope(env);
-    const application = await scope.applications.createApplication({
+    const application = await scope.get(Tokens.ApplicationService).createApplication({
       user,
       displayName: request.displayName,
       providerId: request.providerId,

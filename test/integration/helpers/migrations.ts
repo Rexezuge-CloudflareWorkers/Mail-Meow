@@ -106,8 +106,8 @@ function executableStatements(sql: string): string[] {
   return splitSql(sql).filter((stmt) => {
     if (stmt.length === 0) return false;
     const withoutComments = stmt
-      .replace(/--[^\n]*/g, '')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replaceAll(/--[^\n]*/g, '')
+      .replaceAll(/\/\*[\s\S]*?\*\//g, '')
       .trim();
     return withoutComments.length > 0;
   });

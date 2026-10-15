@@ -1,5 +1,5 @@
 import { convert } from 'html-to-text';
-import { CryptoUtil } from '@mail-meow/shared/utils';
+import { CryptoUtil } from '@rexezuge/shared';
 
 interface EmailBody {
   text?: string;

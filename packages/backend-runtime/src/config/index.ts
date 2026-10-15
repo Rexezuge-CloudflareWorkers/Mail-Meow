@@ -1,2 +1,2 @@
-export { AppConfigReader, describeSettings, validateConfig } from './AppConfig';
-export type { AppConfig, SettingDescriptor, SettingKey } from './AppConfig';
+export { AppConfigReader, describeSettings } from './AppConfig';
+export type { SettingDescriptor } from './AppConfig';

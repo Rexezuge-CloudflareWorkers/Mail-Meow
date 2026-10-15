@@ -1,5 +1,5 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
@@ -71,12 +71,9 @@ class CreateApplicationApiKeyRoute extends IUserRoute<CreateApplicationApiKeyReq
     cxt: RouteContext,
   ): Promise<CreateApplicationApiKeyResponse> {
     const scope = createRequestScope(env);
-    const { metadata, apiKey } = await scope.apiKeys.createApiKey(
-      request.applicationId,
-      this.getAuthenticatedAccount(cxt),
-      request.name,
-      request.expiresInDays,
-    );
+    const { metadata, apiKey } = await scope
+      .get(Tokens.ApiKeyService)
+      .createApiKey(request.applicationId, this.getAuthenticatedAccount(cxt), request.name, request.expiresInDays);
     return {
       apiKey,
       metadata,

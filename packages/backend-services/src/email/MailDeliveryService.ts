@@ -1,6 +1,6 @@
 import { CONNECTED_APPLICATION_STATUS_CONNECTED, CONNECTION_METHOD_OAUTH2 } from '@mail-meow/shared/constants';
 import type { ConnectedApplicationDAO } from '@mail-meow/backend-data/dao';
-import { BadRequestError } from '@mail-meow/backend-errors';
+import { BadRequestError } from '@rexezuge/errors';
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import type { ConnectedApplication, OAuth2Credentials } from '@mail-meow/shared/model';
 import { resolveStrategy } from '@mail-meow/provider-clients';

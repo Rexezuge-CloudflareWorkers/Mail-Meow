@@ -1,353 +1,132 @@
-import globals from 'globals';
+import { defineRepoLintConfig } from '@rexezuge/tooling/eslint';
 import tseslint from 'typescript-eslint';
-import unicorn from 'eslint-plugin-unicorn';
-import sonarjs from 'eslint-plugin-sonarjs';
 import reactHooks from 'eslint-plugin-react-hooks';
-import pluginRegexp from 'eslint-plugin-regexp';
-import eslintConfigPrettier from 'eslint-config-prettier';
-import prettier from 'eslint-plugin-prettier';
 
+/**
+ * The repo's lint rules are `@rexezuge/tooling`'s.
+ *
+ * This file was 353 lines of hand-maintained config. `defineRepoLintConfig` is
+ * the converged table shared by the nine-repo family, so the layer boundaries here
+ * stop being a second copy that can disagree with the other eight: a rule
+ * tightened in the kit arrives on the next version bump rather than in a
+ * hand-edit nobody would notice was missing.
+ *
+ * ## What this gained, not just what it lost
+ *
+ * The kit's table names three boundaries this file did not enforce at all, and
+ * all three were violations waiting to happen — each is a convention today,
+ * stated in `AGENTS.md` and checked by nothing:
+ *
+ * - **`apps/background` must not import `apps/api`.** The old file documented
+ *   this as "convention-only, no dedicated lint block".
+ * - **`apps/web` must not import `@mail-meow/*` at all.** A backend package
+ *   imported by the SPA typechecks and then fails at bundle time, with the error
+ *   pointing at the bundler rather than at the boundary that caused it.
+ * - **`apps/api` must not import `backend-data` values**, not just DAOs. The old
+ *   rule banned `@mail-meow/backend-data/dao` and left the package's other
+ *   subpaths open, so `apps/api` could reach a constant or a helper directly and
+ *   skip the service that owns it.
+ *
+ * The kit also adds browser globals for `apps/web` rather than leaving that
+ * package linted under Node globals only.
+ *
+ * ## What it cost
+ *
+ * `packages/backend-errors` is gone — replaced by `@rexezuge/errors` — so its
+ * Layer 0 block went with it, and the `Layer 0: shared` block is now the only
+ * zero-dependency base layer. `@rexezuge/*` is below all of them: every package
+ * may import it, which is the whole point of a shared kernel.
+ */
 export default tseslint.config(
-  {
-    ignores: [
-      'eslint.config.mjs',
-      'worker-configuration.d.ts',
-      'apps/*/dist/**',
-      'src/generated/**',
-      'apps/api/src/generated/**',
-      'coverage/**',
-      'coverage-integration/**',
-      'node_modules/**',
-      'test/**',
-    ],
-  },
+  defineRepoLintConfig({
+    scope: '@mail-meow',
+  }),
 
-  // Base: globals for all JS/TS source files
-  {
-    files: ['**/*.{js,mjs,cjs,ts,mts,cts,tsx,jsx}'],
-    languageOptions: {
-      globals: globals.node,
-    },
-  },
-
-  // TypeScript: type-aware recommended rules, scoped to TS files only
-  {
-    files: ['**/*.{ts,mts,cts,tsx}'],
-    extends: tseslint.configs.recommendedTypeChecked,
-    languageOptions: {
-      parserOptions: {
-        projectService: true,
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-  },
-
-  // --- typescript-eslint overrides ---
-  {
-    files: ['**/*.{ts,mts,cts,tsx}'],
-    rules: {
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-        },
-      ],
-      // Allow `void expr` for intentional fire-and-forget in Workers
-      '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
-      // Allow explicit `any` in limited cases already existing in the codebase
-      '@typescript-eslint/no-explicit-any': 'warn',
-      // Relax unsafe rules to warn — too noisy at the `any` boundary of external APIs
-      '@typescript-eslint/no-unsafe-assignment': 'warn',
-      '@typescript-eslint/no-unsafe-member-access': 'warn',
-      '@typescript-eslint/no-unsafe-call': 'warn',
-      '@typescript-eslint/no-unsafe-return': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
-      // JSX event handlers and hook callback objects commonly use async functions where void is expected
-      '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: { attributes: false, properties: false } }],
-    },
-  },
-
-  // --- Unicorn: modern JS/TS quality rules ---
-  unicorn.configs['flat/recommended'],
-  {
-    rules: {
-      // Codebase uses ctx, req, res, env, err, util, db, dao, etc. — too invasive to rename
-      'unicorn/prevent-abbreviations': 'off',
-      // D1/DAO layer returns null; disabling this avoids mass rewrites
-      'unicorn/no-null': 'off',
-      // Monorepo uses CommonJS-compatible module style in some configs
-      'unicorn/prefer-module': 'off',
-      // Top-level await not available in all Workers entry points
-      'unicorn/prefer-top-level-await': 'off',
-      // Error subclassing via `new MyError()` is intentional in backend-errors
-      'unicorn/custom-error-definition': 'off',
-      // Template literals throughout the codebase are fine as-is
-      'unicorn/no-useless-undefined': 'off',
-      // Allow process.exit in build/script files
-      'unicorn/no-process-exit': 'off',
-      // Array reduce is used intentionally in analytics/data transformation
-      'unicorn/no-array-reduce': 'off',
-      // Allow Number() — parseInt/parseFloat are used in some cases intentionally
-      'unicorn/prefer-number-properties': ['error', { checkInfinity: false }],
-      // Allow nested ternaries in JSX (React render patterns)
-      'unicorn/no-nested-ternary': 'off',
-      // Early-return guard clauses (`if (x) return y;`) are the established style across the
-      // backend and web layers; the rule only rewrites the final guard of a ladder, which yields
-      // asymmetric mixed style and long inline ternaries (e.g. a 3-clause negated validation guard)
-      'unicorn/prefer-ternary': 'off',
-      // Allow Array.from — codebase uses it for iterables
-      'unicorn/prefer-spread': 'off',
-      // Entire codebase uses PascalCase for TS files; kebab-case would require mass renames
-      'unicorn/filename-case': 'off',
-      // Established names (ApplicationContextDocument, BaseUrlUtil, etc.) should not be force-renamed
-      'unicorn/name-replacements': 'off',
-      // Zod schema builder chains and other deep method chains are intentional
-      'unicorn/max-nested-calls': 'off',
-      // import.meta.dirname is not available in all test environments
-      'unicorn/prefer-import-meta-properties': 'off',
-      // Codebase uses `err` as catch parameter name throughout; too invasive to rename
-      'unicorn/catch-error-name': 'off',
-      // Established boolean param names (retryable, enabled, etc.) should not be force-prefixed
-      'unicorn/consistent-boolean-name': 'off',
-      // Uint8Array#toBase64 / fromBase64 are not guaranteed in all Workers runtime versions
-      'unicorn/prefer-uint8array-base64': 'off',
-      // Class member ordering would require extensive restructuring of existing classes
-      'unicorn/consistent-class-member-order': 'off',
-      // Gmail API response fields (addLabelIds, removeLabelIds) use verb prefixes by convention
-      'unicorn/no-non-function-verb-prefix': 'off',
-      // forEach is used intentionally throughout the codebase in provider and utility layers
-      'unicorn/no-for-each': 'off',
-      // .then() chains in DAO and provider layers are often intentional — warn, don't block
-      'unicorn/prefer-await': 'warn',
-      // Callback references (e.g. .map(Number)) are sometimes intentional
-      'unicorn/no-array-callback-reference': 'warn',
-      // toSorted() is ES2023 and may not be in all tsconfig lib targets
-      'unicorn/no-array-sort': 'warn',
-    },
-  },
-
-  // --- SonarJS: code smell and bug detection ---
-  sonarjs.configs.recommended,
-  {
-    rules: {
-      // Raise duplicate-string threshold to avoid flagging intentional repeated literals like provider IDs
-      'sonarjs/no-duplicate-string': ['warn', { threshold: 5 }],
-      // Cognitive complexity — warn rather than error to allow gradual improvement
-      'sonarjs/cognitive-complexity': ['warn', 20],
-      // False positives: connection method names like 'imap-password' and field names like 'password_hash'
-      'sonarjs/no-hardcoded-passwords': 'off',
-      // Third-party deprecations (e.g. Zod v4 migration) are warnings, not errors
-      'sonarjs/deprecation': 'warn',
-      // Nested ternaries in complex data-mapping code — warn rather than block
-      'sonarjs/no-nested-conditional': 'warn',
-      // React component props are commonly not marked Readonly<>; enforce gradually
-      'sonarjs/prefer-read-only-props': 'warn',
-      // Static readonly properties require invasive refactoring of established utility classes
-      'sonarjs/public-static-readonly': 'warn',
-      // Nested template literals are used intentionally in SQL queries and prompt construction
-      'sonarjs/no-nested-template-literals': 'warn',
-    },
-  },
-
-  // --- React Hooks: rules of hooks for the SPA ---
+  /**
+   * React Hooks, for the SPA.
+   *
+   * The kit deliberately does not ship this plugin — it would take the kit out of
+   * zero-dependency, and the rule set belongs to the app that has JSX. Without
+   * these four lines the SPA loses rules-of-hooks enforcement *and* every
+   * existing `eslint-disable-next-line react-hooks/exhaustive-deps` comment in
+   * the tree becomes a hard error, because ESLint rejects a disable comment
+   * naming a rule that was never defined.
+   */
   {
     files: ['apps/web/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs['recommended-latest'].rules,
   },
 
-  // --- Regexp: static analysis for regular expressions ---
-  pluginRegexp.configs['flat/recommended'],
-
-  // --- Prettier: formatting drift is a hard error; the repo ships no separate format gate ---
-  eslintConfigPrettier,
+  /**
+   * `apps/web/tsconfig.json` targets ES2020.
+   *
+   * `Array#at` and `String#replaceAll` ship in every browser the SPA supports
+   * but are absent from that package's *types* under an ES2020 lib, so the kit's
+   * base table — which assumes a modern lib — demands forms this package cannot
+   * compile. Prefer the index form here.
+   */
   {
-    plugins: { prettier },
+    files: ['apps/web/**/*.{ts,tsx}'],
     rules: {
-      'prettier/prettier': 'error',
+      'unicorn/prefer-at': 'off',
+      'unicorn/prefer-string-replace-all': 'off',
     },
   },
 
-  // --- Import direction guardrails ---
-  // Layer 0: shared — zero @mail-meow/* deps
+  /**
+   * Test-file policy the kit's narrower table does not carry.
+   *
+   * Every entry here was already a local override in the previous version of this
+   * file, with the reason it existed. They are repo policy rather than family
+   * policy, so they stay here rather than being pushed into the kit and imposed on
+   * eight repos that did not ask for them.
+   *
+   * They are also what makes the suite readable. `sonarjs/parameterized-tests`
+   * fires on three sibling `it()` blocks that differ by one argument each, and
+   * converting them to `it.each` replaces a diff that reads as a behavioural
+   * change with one that reads as a table.
+   */
   {
-    files: ['packages/shared/**/*.{ts,js}'],
+    files: ['test/**/*.{ts,tsx,mts,cts}', '**/*.test.{ts,tsx,mts,cts}', '**/*.spec.{ts,tsx,mts,cts}'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@mail-meow/*'],
-              message: 'shared must not import from other @mail-meow packages — it is a zero-dependency base layer',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  // Layer 0: backend-errors — zero @mail-meow/* deps
-  {
-    files: ['packages/backend-errors/**/*.{ts,js}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@mail-meow/*'],
-              message: 'backend-errors must not import from other @mail-meow packages — it is a zero-dependency base layer',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  // Layer 1: backend-runtime — only shared and backend-errors
-  {
-    files: ['packages/backend-runtime/**/*.{ts,js}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@mail-meow/backend-data', '@mail-meow/backend-data/*'],
-              message: 'backend-runtime must not import from backend-data (higher layer)',
-            },
-            {
-              group: ['@mail-meow/provider-clients', '@mail-meow/provider-clients/*'],
-              message: 'backend-runtime must not import from provider-clients (higher layer)',
-            },
-            {
-              group: ['@mail-meow/backend-services', '@mail-meow/backend-services/*'],
-              message: 'backend-runtime must not import from backend-services (higher layer)',
-            },
-            { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'backend-runtime must not import from apps/api' },
-            {
-              group: ['@mail-meow/background', '@mail-meow/background/*'],
-              message: 'backend-runtime must not import from apps/background',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  // Layer 2: backend-data — only shared and backend-errors
-  {
-    files: ['packages/backend-data/**/*.{ts,js}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@mail-meow/backend-runtime', '@mail-meow/backend-runtime/*'],
-              message: 'backend-data must not import from backend-runtime',
-            },
-            {
-              group: ['@mail-meow/provider-clients', '@mail-meow/provider-clients/*'],
-              message: 'backend-data must not import from provider-clients',
-            },
-            {
-              group: ['@mail-meow/backend-services', '@mail-meow/backend-services/*'],
-              message: 'backend-data must not import services (higher layer)',
-            },
-            { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'backend-data must not import from apps/api' },
-            { group: ['@mail-meow/background', '@mail-meow/background/*'], message: 'backend-data must not import from apps/background' },
-          ],
-        },
-      ],
-    },
-  },
-  // Layer 2: provider-clients — only shared and backend-errors
-  {
-    files: ['packages/provider-clients/**/*.{ts,js}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@mail-meow/backend-data', '@mail-meow/backend-data/*'],
-              message: 'provider-clients must not import DAOs from backend-data',
-            },
-            {
-              group: ['@mail-meow/backend-runtime', '@mail-meow/backend-runtime/*'],
-              message: 'provider-clients must not import from backend-runtime',
-            },
-            {
-              group: ['@mail-meow/backend-services', '@mail-meow/backend-services/*'],
-              message: 'provider-clients must not import from backend-services (higher layer)',
-            },
-            { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'provider-clients must not import from apps/api' },
-            {
-              group: ['@mail-meow/background', '@mail-meow/background/*'],
-              message: 'provider-clients must not import from apps/background',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  // Layer 3: backend-services — cannot import apps
-  {
-    files: ['packages/backend-services/**/*.{ts,js}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            { group: ['@mail-meow/api', '@mail-meow/api/*'], message: 'backend-services must not import from apps/api' },
-            {
-              group: ['@mail-meow/background', '@mail-meow/background/*'],
-              message: 'backend-services must not import from apps/background',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  // Layer 5: apps/api — route through backend-services, not directly to provider-clients
-  {
-    files: ['apps/api/**/*.{ts,js}'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@mail-meow/provider-clients', '@mail-meow/provider-clients/*'],
-              message: 'apps/api must not import provider-clients directly; use @mail-meow/backend-services instead',
-            },
-            {
-              group: ['@mail-meow/backend-data/dao', '@mail-meow/backend-data/dao/*'],
-              message: 'apps/api must not import DAOs directly; use @mail-meow/backend-services instead',
-            },
-          ],
-        },
-      ],
-    },
-  },
-
-  // --- Test file overrides (must be last to override plugin rules) ---
-  {
-    files: ['test/**/*.{ts,tsx}', '**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
-    rules: {
-      // Unbound method is a common false positive in Vitest/Jest mock assertions like expect(fn).toHaveBeenCalledWith(...)
+      // `it.each` versus explicit `for...of` is a style choice, and the assertion
+      // text is often clearer written out.
+      'sonarjs/parameterized-tests': 'off',
+      // A deliberate `undefined` argument is how a test exercises a
+      // default-parameter branch, which is the whole point of the call.
+      'sonarjs/no-undefined-argument': 'off',
+      // `Array.from({ length: n }, () => value)` is the idiomatic fixture builder.
+      'unicorn/no-array-from-fill': 'off',
+      // An explicit `continue` states the loop's intent.
+      'unicorn/prefer-continue': 'off',
+      // Fixture data and id generation in tests are not security-relevant — and
+      // the batch fixture that seeds 25 fake applications would trip this on
+      // every value in it.
+      'sonarjs/pseudo-random': 'off',
+      // Mock assertions read as unbound methods constantly: `expect(fn)`.
       '@typescript-eslint/unbound-method': 'off',
-      // Test helpers and stubs routinely use async functions without await
+      // Test helpers and stubs routinely declare `async` without `await`.
       '@typescript-eslint/require-await': 'off',
-      // Redundant type constituents appear in typed mock stubs
+      // Typed mock stubs spell the return type they are standing in for.
       '@typescript-eslint/no-redundant-type-constituents': 'off',
-      // Promise.withResolvers() and function-scoping refactors are cosmetic in tests
+      // `Promise.withResolvers()` is ES2024 and absent from every lib in the tree.
       'unicorn/prefer-promise-with-resolvers': 'off',
+      // A `useCallback` around a stub is noise; the rule fires on test doubles.
       'unicorn/consistent-function-scoping': 'off',
-      // sonarjs/assertions-in-tests fires false positives when test helpers handle assertions indirectly
+      // Fires when a test helper handles the assertion indirectly.
       'sonarjs/assertions-in-tests': 'off',
-      // sonarjs/no-extra-arguments fires incorrectly on Vitest mock overloads
+      // Fires incorrectly on Vitest mock overloads.
       'sonarjs/no-extra-arguments': 'off',
+      // `mockResolvedValue(undefined)` and `resolve(undefined)` are how a test says
+      // "this is a void-returning call and it resolved". Writing `.then(noop)`
+      // instead states the same thing at twice the length.
+      'unicorn/no-useless-undefined': 'off',
+      // The tree uses `/** one line of prose */` for doc comments on constants and
+      // short predicates, which the kit's table normalises to the multi-line form.
+      // Rewriting several hundred of them would bury this diff under formatting
+      // noise and change nothing a reader can see.
+      'unicorn/single-line-block-comment-style': 'off',
     },
   },
 );

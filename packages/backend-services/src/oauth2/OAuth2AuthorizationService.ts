@@ -1,9 +1,10 @@
 import { CONNECTION_METHOD_OAUTH2 } from '@mail-meow/shared/constants';
 import type { ConnectedApplicationDAO, OAuth2AuthorizationSessionDAO } from '@mail-meow/backend-data/dao';
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
-import { BadRequestError, NotFoundError } from '@mail-meow/backend-errors';
+import { BadRequestError, NotFoundError } from '@rexezuge/errors';
 import type { AccountIdentity, ConnectedApplication, OAuth2AuthorizationSession, OAuth2Credentials } from '@mail-meow/shared/model';
-import { BaseUrlUtil, TimestampUtil } from '@mail-meow/shared/utils';
+import { TimestampUtil } from '@rexezuge/shared';
+import { BaseUrlUtil } from '@mail-meow/shared/utils';
 import { OAuth2ProviderUtil } from '@mail-meow/provider-clients/oauth2';
 import type { OAuth2AccessTokenService } from './OAuth2AccessTokenService';
 import { OAuth2StateUtil } from './OAuth2StateUtil';

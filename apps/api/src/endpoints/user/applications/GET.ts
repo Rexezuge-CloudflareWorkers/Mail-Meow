@@ -1,5 +1,5 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 import { ApplicationResponseUtil } from '@mail-meow/backend-services/application';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
@@ -17,7 +17,9 @@ class ListApplicationsRoute extends IUserRoute<ListApplicationsRequest, ListAppl
 
   protected async handleRequest(request: ListApplicationsRequest, env: Env, cxt: RouteContext): Promise<ListApplicationsResponse> {
     const scope = createRequestScope(env);
-    const applications: ConnectedApplicationMetadata[] = await scope.applications.listApplications(this.getAuthenticatedAccount(cxt));
+    const applications: ConnectedApplicationMetadata[] = await scope
+      .get(Tokens.ApplicationService)
+      .listApplications(this.getAuthenticatedAccount(cxt));
     return {
       applications: applications.map((application: ConnectedApplicationMetadata) =>
         ApplicationResponseUtil.withRedirectUri(application, request.raw),

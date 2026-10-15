@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ProviderApiNonRetryableError, ProviderApiRetryableError } from '@mail-meow/backend-errors';
+import { ProviderApiNonRetryableError, ProviderApiRetryableError } from '@rexezuge/errors';
 import { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { isRetryableHttpStatus, providerFetchJson, providerFetchOk } from '@mail-meow/provider-clients';
 import { FetchHttpClient } from '@mail-meow/provider-clients/http';
@@ -41,9 +41,7 @@ describe('providerFetchRaw', () => {
   });
 
   it('throws a non-retryable error for a 4xx', async () => {
-    const { client } = clientReturning(
-      new Response(JSON.stringify({ error: { message: 'quota exceeded' } }), { status: 403, statusText: 'Forbidden' }),
-    );
+    const { client } = clientReturning(Response.json({ error: { message: 'quota exceeded' } }, { status: 403, statusText: 'Forbidden' }));
 
     await expect(providerFetchOk('https://example.com', { method: 'GET' }, { ...REQUEST, client })).rejects.toBeInstanceOf(
       ProviderApiNonRetryableError,
@@ -52,7 +50,7 @@ describe('providerFetchRaw', () => {
 
   it('surfaces the provider error message', async () => {
     const { client } = clientReturning(
-      new Response(JSON.stringify({ error: { message: 'Invalid credentials' } }), { status: 401, statusText: 'Unauthorized' }),
+      Response.json({ error: { message: 'Invalid credentials' } }, { status: 401, statusText: 'Unauthorized' }),
     );
 
     await expect(providerFetchOk('https://example.com', { method: 'GET' }, { ...REQUEST, client })).rejects.toThrow(/Invalid credentials/);
@@ -177,9 +175,11 @@ describe('PROVIDER_REQUEST_TIMEOUT_MS reach', () => {
 
   it('parses a valid override and keeps the default for a malformed one', () => {
     expect(AppConfigReader.fromEnv({ PROVIDER_REQUEST_TIMEOUT_MS: '2500' }).providerRequestTimeoutMs).toBe(2500);
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    expect(AppConfigReader.fromEnv({ PROVIDER_REQUEST_TIMEOUT_MS: 'soon' }).providerRequestTimeoutMs).toBe(15_000);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('PROVIDER_REQUEST_TIMEOUT_MS'));
-    warn.mockRestore();
+    const malformed = AppConfigReader.fromEnv({ PROVIDER_REQUEST_TIMEOUT_MS: 'soon' });
+    expect(malformed.providerRequestTimeoutMs).toBe(15_000);
+    // The report moved from a `console.warn` at construction time to a startup
+    // warning from `validate()`. A malformed setting is reported; it no longer
+    // shouts about it once per process before the worker has started.
+    expect(malformed.validate()).toContainEqual(expect.stringContaining('PROVIDER_REQUEST_TIMEOUT_MS'));
   });
 });

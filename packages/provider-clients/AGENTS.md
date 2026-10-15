@@ -2,7 +2,7 @@
 
 Scope: `packages/provider-clients/**`. Parent index: `../../AGENTS.md`.
 
-Layer 2. Depends only on `@mail-meow/shared` and `@mail-meow/backend-errors`. No
+Layer 2. Depends only on `@mail-meow/shared` and `@rexezuge/{errors,shared}`. No
 `@mail-meow/backend-data` (no DAOs), no `backend-runtime`, no `backend-services`, no `apps/*`
 (enforced by `no-restricted-imports`).
 
@@ -12,14 +12,18 @@ Layer 2. Depends only on `@mail-meow/shared` and `@mail-meow/backend-errors`. No
   seam. Inject it rather than calling `fetch` directly so tests can substitute a client.
 - `BaseProviderHttp.ts` — bearer-token JSON helpers built on `HttpClient`; maps non-OK responses
   to `ProviderApiRetryableError` / `ProviderApiNonRetryableError` via `isRetryableHttpStatus`.
-- `MailDeliveryUtil.ts` — `sendEmail` dispatch plus MIME construction (`createEmail`,
-  `buildAlternativeMimeBody`, `stripHtml`, `base64UrlEncodeString`).
+- `ProviderRegistry.ts` — `PROVIDER_STRATEGIES` and `resolveStrategy(providerId)`, one
+  `sendEmail` per provider behind a common interface. This replaced a `providerId` switch and is
+  why there is no `MailDeliveryUtil.ts`: a new provider is a new map entry, not a new branch in a
+  function someone has to remember to extend.
+- `EmailMimeBuilder.ts` — MIME construction (`createEmail`, `buildAlternativeMimeBody`,
+  `stripHtml`).
 - `SnsDeliveryUtil.ts` — AWS SNS publish via `aws4fetch`, signature-v4 signing.
 - `OAuth2ProviderUtil.ts` — provider OAuth2 config table, `buildAuthorizationUrl`,
   `exchangeCode`, `refreshAccessToken`.
-- `gmail/GmailProviderUtil.ts` — Gmail profile lookup.
-- `outlook/OutlookProviderUtil.ts` — Microsoft Graph profile lookup (this one **does** validate
-  the response shape; keep it that way).
+
+There is no `gmail/GmailProviderUtil.ts` and no `outlook/OutlookProviderUtil.ts`. Profile lookups
+were the last per-provider `if` branches; they moved into the strategy registry's send path.
 
 ## Provider Naming
 
@@ -38,8 +42,8 @@ Do not reintroduce password signup or user-managed refresh-token paste flows.
   classification and turns a retryable provider `429`/`503` into a non-retryable 500. `SnsDeliveryUtil`
   is the exception: `aws4fetch` owns its own signing client, so it takes `timeoutMs` as a parameter
   instead (`PROVIDER_REQUEST_TIMEOUT_MS`).
-- **Base64url lives in `CryptoUtil`** (`base64UrlEncode` / `toBase64Url`). `EmailMimeBuilder` delegates
-  to it. Never spread a large `Uint8Array` into `String.fromCodePoint(...)` — a 1 MB MIME body exceeds
+- **Base64url lives in `@rexezuge/shared`** (`base64UrlEncode` / `toBase64Url`). `EmailMimeBuilder`
+  delegates to it. Never spread a large `Uint8Array` into `String.fromCodePoint(...)` — a 1 MB MIME body exceeds
   the engine's argument limit.
 - **Check `response.ok` before `JSON.parse`.** A non-JSON error body (HTML from an edge proxy,
   an empty 503) otherwise throws a bare `SyntaxError` that is not a `ServiceError`, so it is
@@ -51,4 +55,4 @@ Do not reintroduce password signup or user-managed refresh-token paste flows.
 - **Sanitize provider error bodies** before they reach a log, a D1 column, or an HTTP response.
   Provider text can echo back request material.
 - Do not branch on `providerId` with `if`/`switch` ladders in new code; extend the config table
-  in `OAuth2ProviderUtil` or dispatch in `MailDeliveryUtil.sendEmail`.
+  in `OAuth2ProviderUtil`, or add an entry to `PROVIDER_STRATEGIES` in `ProviderRegistry.ts`.

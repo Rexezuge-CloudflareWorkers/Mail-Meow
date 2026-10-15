@@ -1,4 +1,4 @@
-import { InternalServerError, ProviderApiRetryableError } from '@mail-meow/backend-errors';
+import { InternalServerError, ProviderApiRetryableError } from '@rexezuge/errors';
 import { AwsClient } from 'aws4fetch';
 import { isRetryableHttpStatus } from './BaseProviderHttp';
 

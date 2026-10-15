@@ -1,17 +1,19 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   ApplicationApiKeyDAO,
   BackgroundTaskRunDAO,
-  BaseDAO,
   ConnectedApplicationDAO,
+  findRowById,
+  newAccountId,
+  newAnchor,
   OAuth2AuthorizationSessionDAO,
   UserDAO,
   UserEmailDAO,
 } from '@mail-meow/backend-data/dao';
 import type { AccountIdentity } from '@mail-meow/shared/model';
-import { DatabaseError } from '@mail-meow/backend-errors';
+import { DatabaseError } from '@rexezuge/errors';
 import { createFailingDb, createMockDb } from '../helpers/mockDb';
-import { encryptData } from '@mail-meow/backend-data/crypto';
+import { encryptSecret } from '@rexezuge/d1';
 
 const MASTER_KEY = btoa('k'.repeat(32));
 
@@ -197,8 +199,8 @@ describe('ConnectedApplicationDAO', () => {
   });
 
   it('decrypts credentials when loading a full application', async () => {
-    const encrypted = await encryptData(JSON.stringify({ clientId: 'a', clientSecret: 'b' }), MASTER_KEY);
-    const mock = createMockDb([{ ...APPLICATION_ROW, encrypted_credentials: encrypted.encrypted, credentials_iv: encrypted.iv }]);
+    const encrypted = await encryptSecret(JSON.stringify({ clientId: 'a', clientSecret: 'b' }), MASTER_KEY);
+    const mock = createMockDb([{ ...APPLICATION_ROW, encrypted_credentials: encrypted.ciphertext, credentials_iv: encrypted.iv }]);
     const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
 
     const application = await dao.getById('app-1');
@@ -214,9 +216,9 @@ describe('ConnectedApplicationDAO', () => {
   });
 
   it('refuses to mark a non-OAuth2 application connected', async () => {
-    const encrypted = await encryptData(JSON.stringify({ accessKeyId: 'a' }), MASTER_KEY);
+    const encrypted = await encryptSecret(JSON.stringify({ accessKeyId: 'a' }), MASTER_KEY);
     const mock = createMockDb([
-      { ...APPLICATION_ROW, connection_method: 'access-keys', encrypted_credentials: encrypted.encrypted, credentials_iv: encrypted.iv },
+      { ...APPLICATION_ROW, connection_method: 'access-keys', encrypted_credentials: encrypted.ciphertext, credentials_iv: encrypted.iv },
     ]);
     const dao = new ConnectedApplicationDAO(mock.db, MASTER_KEY);
 
@@ -226,9 +228,9 @@ describe('ConnectedApplicationDAO', () => {
   });
 
   it('ignores a refresh-token update for a non-OAuth2 application', async () => {
-    const encrypted = await encryptData(JSON.stringify({ accessKeyId: 'a' }), MASTER_KEY);
+    const encrypted = await encryptSecret(JSON.stringify({ accessKeyId: 'a' }), MASTER_KEY);
     const mock = createMockDb([
-      { ...APPLICATION_ROW, connection_method: 'access-keys', encrypted_credentials: encrypted.encrypted, credentials_iv: encrypted.iv },
+      { ...APPLICATION_ROW, connection_method: 'access-keys', encrypted_credentials: encrypted.ciphertext, credentials_iv: encrypted.iv },
     ]);
 
     await new ConnectedApplicationDAO(mock.db, MASTER_KEY).updateOAuth2RefreshToken('app-1', 'refresh');
@@ -371,30 +373,64 @@ describe('UserDAO', () => {
     updated_at: 200,
   };
 
+  /**
+   * The insert, and the two things that make the opaque-anchor retry safe.
+   *
+   * `ON CONFLICT DO NOTHING` with **no** target: `users` carries two unique
+   * constraints, and naming the anchor would leave a `current_email` collision as
+   * a raised error a caller cannot tell from a transient D1 failure.
+   *
+   * `updated_at` is written because `migrations/0006_add_updated_at_column.sql`
+   * made it `NOT NULL`. The kit's own `createUser` does not, so leaving the
+   * override would make every new account fail to insert.
+   */
   it('creates an account with the identity columns stamped', async () => {
-    const mock = createMockDb([{ success: true, meta: { changes: 1 } }]);
+    const mock = createMockDb([{ success: true, meta: { changes: 1 } }, { id: 'usr_generated0000000000000000000' }]);
     const dao = new UserDAO(mock.db);
 
-    await dao.createUser({ id: 'usr_1', anchor: 'me@example.com', loginEmail: 'me@example.com', now: 1 });
+    await dao.createUser({ anchor: 'me@example.com', loginEmail: 'me@example.com', now: 1 });
 
-    const statement = mock.statementAt(0);
-    expect(statement.sql).toContain('INSERT INTO users');
-    // No-op on a lost race for the same anchor, which is what makes the
-    // retry-with-an-opaque-anchor path safe.
-    expect(statement.sql).toContain('ON CONFLICT(email) DO NOTHING');
-    expect(statement.bindings).toEqual(['me@example.com', 1, 1, 'usr_1', 'me@example.com']);
-    expect(statement.sql).not.toContain('me@example.com');
+    const insert = mock.statementAt(0);
+    expect(insert.sql).toContain('INSERT INTO users');
+    expect(insert.sql).toContain('ON CONFLICT DO NOTHING');
+    // Values are always bound, never interpolated.
+    expect(insert.sql).not.toContain('me@example.com');
+    // The id is generated, so the read-back below is what decides whether the
+    // insert actually produced an account.
+    expect(insert.bindings[0]).toBe('me@example.com');
+    expect(insert.bindings[1]).toBe(1);
+    expect(insert.bindings[2]).toBe(1);
+    expect(String(insert.bindings[3])).toMatch(/^usr_[0-9a-f]{32}$/);
+    expect(insert.bindings[4]).toBe('me@example.com');
+  });
+
+  /**
+   * A row migration 0011 left `id IS NULL` must be *adopted*, never duplicated.
+   *
+   * D1 cannot alter a column's nullability, so a pre-0011 deployment has id-less
+   * rows permanently. A plain `ON CONFLICT DO NOTHING` treats one as a
+   * *conflicting* row, the read-back returns `null`, and registration takes the
+   * opaque-anchor retry — minting a second account beside the first and
+   * orphaning every id-keyed row behind the original.
+   */
+  it('adopts an id-less row rather than forking a second account', async () => {
+    const mock = createMockDb([{ success: true, meta: { changes: 0 } }]);
+
+    await new UserDAO(mock.db).createUser({ anchor: 'me@example.com', loginEmail: 'me@example.com', now: 1 });
+
+    const adopt = mock.statements.find((entry) => entry.sql.includes('SET id = ?'));
+    expect(adopt).toBeDefined();
+    expect(adopt?.sql).toContain('WHERE email = ? AND id IS NULL');
   });
 
   it('generates ids and anchors in the documented shapes', () => {
-    expect(UserDAO.newId()).toMatch(/^usr_[0-9a-f]{32}$/);
+    expect(newAccountId()).toMatch(/^usr_[0-9a-f]{32}$/);
     // The anchor must never be a real address, or it could never be released.
-    expect(UserDAO.newAnchor()).toMatch(/^anchor-[0-9a-f]{32}@users\.invalid$/);
-    expect(UserDAO.newId()).not.toBe(UserDAO.newId());
+    expect(newAnchor()).toMatch(/^anchor-[0-9a-f]{32}@users\.invalid$/);
+    expect(newAccountId()).not.toBe(newAccountId());
   });
 
   it('reads the preferred language, preferring the current address', () => {
-    const dao = new UserDAO(createMockDb().db);
     // `email` is the frozen anchor and `current_email` the login address; the
     // domain model must report the latter.
     const mapped = UserDAO.toUser({ ...USER_ROW, email: 'old@example.com', current_email: 'me@example.com' });
@@ -402,7 +438,6 @@ describe('UserDAO', () => {
   });
 
   it('falls back to the anchor on a database without current_email', () => {
-    const dao = new UserDAO(createMockDb().db);
     // A pre-0011 database: no id, no current_email. The mapping must still yield
     // a usable address rather than a NULL.
     const mapped = UserDAO.toUser({
@@ -519,7 +554,7 @@ describe('BackgroundTaskRunDAO', () => {
     const mock = createMockDb([[RUN_ROW]]);
     const dao = new BackgroundTaskRunDAO(mock.db);
 
-    await dao.listForUser('me@example.com', { limit: 5_000 });
+    await dao.listForUser('me@example.com', { limit: 5000 });
 
     // Clamped to 50, then bound as limit+1 to detect a further page.
     expect(mock.statementAt(0).bindings).toContain(51);
@@ -603,11 +638,11 @@ describe('BackgroundTaskRunDAO', () => {
   });
 });
 
-describe('BaseDAO.findById', () => {
+describe('findRowById', () => {
   it('interpolates an allow-listed table and column', async () => {
     const mock = createMockDb([{ id: 1 }]);
 
-    const row = await BaseDAO.findById(mock.db, 'users', 'email', 'me@example.com');
+    const row = await findRowById(mock.db, 'users', 'email', 'me@example.com');
 
     expect(row).toEqual({ id: 1 });
     expect(mock.only().sql).toContain('FROM users WHERE email = ?');
@@ -617,22 +652,22 @@ describe('BaseDAO.findById', () => {
     // Dynamic SQL may only vary by identifier; this is the guard that keeps that
     // true when a caller passes a caller-influenced value.
     const mock = createMockDb();
-    await expect(BaseDAO.findById(mock.db, 'users; DROP TABLE users', 'id', 'x')).rejects.toThrow(/Invalid SQL identifier/);
+    await expect(findRowById(mock.db, 'users; DROP TABLE users', 'id', 'x')).rejects.toThrow(/Invalid SQL identifier/);
     expect(mock.statements).toHaveLength(0);
   });
 
   it('rejects a column list containing a non-identifier', async () => {
     const mock = createMockDb();
-    await expect(BaseDAO.findById(mock.db, 'users', 'id', 'x', 'id, (SELECT 1)')).rejects.toThrow(/Invalid SQL identifier/);
+    await expect(findRowById(mock.db, 'users', 'id', 'x', 'id, (SELECT 1)')).rejects.toThrow(/Invalid SQL identifier/);
   });
 
   it('validates and joins an explicit column list', async () => {
     const mock = createMockDb([null]);
-    await BaseDAO.findById(mock.db, 'users', 'id', 'x', ' id , email ');
+    await findRowById(mock.db, 'users', 'id', 'x', ' id , email ');
     expect(mock.only().sql).toContain('SELECT id, email FROM users');
   });
 
   it('returns null for a missing row', async () => {
-    await expect(BaseDAO.findById(createMockDb([null]).db, 'users', 'id', 'x')).resolves.toBeNull();
+    await expect(findRowById(createMockDb([null]).db, 'users', 'id', 'x')).resolves.toBeNull();
   });
 });

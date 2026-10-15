@@ -13,7 +13,7 @@ function decodeBase64Url(value: string): string {
 }
 
 function extractMimeBoundary(rawMessage: string): string {
-  const match: RegExpMatchArray | null = rawMessage.match(/boundary="([^"]+)"/);
+  const match: RegExpExecArray | null = /boundary="([^"]+)"/.exec(rawMessage);
   expect(match).not.toBeNull();
   return match![1];
 }
@@ -251,9 +251,7 @@ describe('outlook strategy', () => {
   });
 
   it('surfaces a provider failure as a classified error', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: 'quota exceeded' } }), { status: 429 }));
+    const fetchMock = vi.fn().mockResolvedValueOnce(Response.json({ error: { message: 'quota exceeded' } }, { status: 429 }));
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(

@@ -1,9 +1,16 @@
-import { DatabaseError } from '@mail-meow/backend-errors';
 import type { OAuth2AuthorizationSession, OAuth2AuthorizationSessionInternal } from '@mail-meow/shared/model';
-import { TimestampUtil, UUIDUtil } from '@mail-meow/shared/utils';
-import { executeD1WithRetry } from '../utils';
+import { TimestampUtil, UUIDUtil } from '@rexezuge/shared';
 import { BaseDAO } from './BaseDAO';
 
+const SESSION_COLUMNS = 'session_id, application_id, state_hash, code_verifier, redirect_uri, created_at, expires_at, consumed_at';
+
+/**
+ * One-time PKCE authorization sessions.
+ *
+ * The whole class exists to make a `state` value single-use. Everything else is
+ * bookkeeping, and the one part that has to be exactly right is
+ * {@link consume}.
+ */
 class OAuth2AuthorizationSessionDAO extends BaseDAO {
   public async create(
     applicationId: string,
@@ -14,38 +21,35 @@ class OAuth2AuthorizationSessionDAO extends BaseDAO {
   ): Promise<void> {
     const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
     const sessionId: string = UUIDUtil.getRandomUUID();
-    const result: D1Result = await executeD1WithRetry(
-      (): Promise<D1Result> =>
-        this.database
-          .prepare(
-            `
-              INSERT INTO oauth2_authorization_sessions
-                (session_id, application_id, state_hash, code_verifier, redirect_uri, created_at, expires_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
-            `,
-          )
-          .bind(sessionId, applicationId, stateHash, codeVerifier, redirectUri, now, expiresAt)
-          .run(),
-      'create OAuth2 authorization session',
+    await this.run(
+      `
+        INSERT INTO oauth2_authorization_sessions
+          (session_id, application_id, state_hash, code_verifier, redirect_uri, created_at, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [sessionId, applicationId, stateHash, codeVerifier, redirectUri, now, expiresAt],
     );
-    if (!result.success) {
-      throw new DatabaseError(`Failed to create OAuth2 authorization session: ${result.error}`);
-    }
   }
 
+  /**
+   * The unconsumed, unexpired session a presented `state` identifies.
+   *
+   * `undefined` rather than `null` for "no session": the caller distinguishes
+   * "unknown or expired" from "no session" nowhere, and `undefined` is what this
+   * method's callers already read. The kit's `first()` returns `null` for a
+   * missing row, and the adapter is this line.
+   */
   public async getActive(applicationId: string, stateHash: string): Promise<OAuth2AuthorizationSession | undefined> {
     const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
-    const row: OAuth2AuthorizationSessionInternal | null = await this.database
-      .prepare(
-        `
-          SELECT session_id, application_id, state_hash, code_verifier, redirect_uri, created_at, expires_at, consumed_at
-          FROM oauth2_authorization_sessions
-          WHERE application_id = ? AND state_hash = ? AND expires_at > ? AND consumed_at IS NULL
-          LIMIT 1
-        `,
-      )
-      .bind(applicationId, stateHash, now)
-      .first<OAuth2AuthorizationSessionInternal>();
+    const row = await this.first<OAuth2AuthorizationSessionInternal>(
+      `
+        SELECT ${SESSION_COLUMNS}
+        FROM oauth2_authorization_sessions
+        WHERE application_id = ? AND state_hash = ? AND expires_at > ? AND consumed_at IS NULL
+        LIMIT 1
+      `,
+      [applicationId, stateHash, now],
+    );
     return row ? this.toSession(row) : undefined;
   }
 
@@ -56,21 +60,17 @@ class OAuth2AuthorizationSessionDAO extends BaseDAO {
    * present the same `state` concurrently, the loser's `UPDATE` still "succeeds"
    * — it simply matches zero rows. Only `meta.changes` distinguishes them, so a
    * caller that ignores it lets a replayed callback complete a second exchange.
+   *
+   * This is why the DAO returns `boolean` rather than `void`: `success: true`
+   * from D1 means the statement ran, not that it claimed a row.
    */
   public async consume(sessionId: string): Promise<boolean> {
     const consumedAt: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
-    const result: D1Result = await executeD1WithRetry(
-      (): Promise<D1Result> =>
-        this.database
-          .prepare('UPDATE oauth2_authorization_sessions SET consumed_at = ? WHERE session_id = ? AND consumed_at IS NULL')
-          .bind(consumedAt, sessionId)
-          .run(),
-      'consume OAuth2 authorization session',
-    );
-    if (!result.success) {
-      throw new DatabaseError(`Failed to consume OAuth2 authorization session: ${result.error}`);
-    }
-    return (result.meta as { changes?: number } | undefined)?.changes === 1;
+    const result = await this.run('UPDATE oauth2_authorization_sessions SET consumed_at = ? WHERE session_id = ? AND consumed_at IS NULL', [
+      consumedAt,
+      sessionId,
+    ]);
+    return result.meta?.changes === 1;
   }
 
   private toSession(row: OAuth2AuthorizationSessionInternal): OAuth2AuthorizationSession {

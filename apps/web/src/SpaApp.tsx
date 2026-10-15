@@ -4,12 +4,12 @@ import type { TFunction } from 'i18next';
 import Unauthorized from './components/shared/Unauthorized';
 import Header from './components/shared/Header';
 import Notice from './components/shared/Notice';
-import type { NoticeData } from './components/shared/Notice';
 import SpaViewRouter from './components/layout/SpaViewRouter';
 import MailboxesView from './components/views/MailboxesView';
 import ProcessingView from './components/views/ProcessingView';
 import HelpView from './components/views/HelpView';
-import { useNotice } from './hooks/useNotice';
+import { useNotice } from '@rexezuge/web';
+import type { Notice as NoticeData } from '@rexezuge/web';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useMailboxes } from './hooks/useMailboxes';
 import { useApiKeys } from './hooks/useApiKeys';
@@ -29,10 +29,12 @@ import * as appSvc from './services/applicationService';
  * since it is diagnostic text the provider chose to send.
  */
 function getInitialNotice(t: TFunction): NoticeData | null {
-  const params = new URLSearchParams(globalThis.location.search);
-  if (params.get('oauth2') === 'connected') return { type: 'success', text: t('notice.oauthConnected', 'OAuth2 Connection Completed.') };
+  const params = new URLSearchParams(location.search);
+  if (params.get('oauth2') === 'connected') {
+    return { kind: 'success', message: t('notice.oauthConnected', 'OAuth2 Connection Completed.') };
+  }
   if (params.get('oauth2') === 'error') {
-    return { type: 'error', text: params.get('message') || t('notice.oauthFailed', 'OAuth2 Connection Failed.') };
+    return { kind: 'error', message: params.get('message') || t('notice.oauthFailed', 'OAuth2 Connection Failed.') };
   }
   return null;
 }
@@ -41,7 +43,7 @@ export default function SpaApp() {
   const { t, i18n } = useTranslation();
   const [view, setView] = useState<SpaView>('mailboxes');
   const [isBusy, setIsBusy] = useState(false);
-  const { notice, setNotice, showNotice } = useNotice();
+  const { notice, showNotice } = useNotice({ initial: getInitialNotice(t) });
   const { user, setUser, authorized, loadCurrentUser } = useCurrentUser();
   const mailboxes = useMailboxes({ setIsBusy, showNotice });
   const {
@@ -59,11 +61,6 @@ export default function SpaApp() {
   const { language, languageStatus, languagePending, handleLanguageChange } = useSpaLanguage({ user, showNotice, setUser });
 
   useEffect(() => {
-    const initial = getInitialNotice(t);
-    if (initial) setNotice(initial);
-  }, [setNotice, t]);
-
-  useEffect(() => {
     loadCurrentUser()
       .then(async (me) => {
         if (!me) return;
@@ -76,7 +73,7 @@ export default function SpaApp() {
           showNotice('error', error instanceof Error ? error.message : t('notice.loadFailed', 'Load Failed'));
         }
       })
-      .catch(() => undefined);
+      .catch(() => {});
   }, [loadCurrentUser, loadApplications, showNotice, t]);
 
   useEffect(() => {
@@ -151,7 +148,7 @@ export default function SpaApp() {
       setIsBusy(true);
       try {
         const data = await appSvc.createOAuth2Authorization(applicationId);
-        globalThis.location.assign(data.authorizationUrl);
+        location.assign(data.authorizationUrl);
       } catch (error) {
         showNotice('error', error instanceof Error ? error.message : t('notice.oauthStartFailed', 'Unable To Start OAuth2.'));
         setIsBusy(false);

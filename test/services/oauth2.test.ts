@@ -3,7 +3,7 @@ import { OAuth2AuthorizationService } from '@mail-meow/backend-services/oauth2';
 import { OAuth2AccessTokenService } from '@mail-meow/backend-services/oauth2';
 import { OAuth2StateUtil } from '@mail-meow/backend-services/oauth2';
 import { AppConfigReader } from '@mail-meow/backend-runtime/config';
-import { BadRequestError, NotFoundError, OAuth2TokenNonRetryableError, OAuth2TokenRetryableError } from '@mail-meow/backend-errors';
+import { BadRequestError, NotFoundError, OAuth2TokenNonRetryableError, OAuth2TokenRetryableError } from '@rexezuge/errors';
 import type { AccountIdentity } from '@mail-meow/shared/model';
 
 const RAW = new Request('https://example.com/user/application/oauth2/authorize');
@@ -221,7 +221,7 @@ describe('OAuth2AccessTokenService', () => {
 
 describe('OAuth2StateUtil', () => {
   it('generates a state and a code verifier', () => {
-    expect(OAuth2StateUtil.generateState()).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(OAuth2StateUtil.generateState()).toMatch(/^[\w-]+$/);
     expect(OAuth2StateUtil.generateCodeVerifier().length).toBeGreaterThanOrEqual(43);
   });
 
@@ -229,7 +229,7 @@ describe('OAuth2StateUtil', () => {
     const verifier = OAuth2StateUtil.generateCodeVerifier();
     const challenge = await OAuth2StateUtil.getCodeChallenge(verifier);
     expect(challenge).not.toBe(verifier);
-    expect(challenge).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(challenge).toMatch(/^[\w-]+$/);
   });
 
   it('hashes the state so the raw value is never stored', async () => {

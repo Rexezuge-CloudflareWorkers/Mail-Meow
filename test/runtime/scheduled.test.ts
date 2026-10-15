@@ -3,9 +3,9 @@ import { computeDateCutoffIso, computeUnixCutoffSeconds, DEFAULT_PRUNE_BATCH_SIZ
 import { tasksForPhase, CRON_TASK_DEFINITIONS } from '@mail-meow/background/scheduled';
 import { IScheduledTask } from '@mail-meow/background/scheduled';
 import { AppConfigReader, describeSettings } from '@mail-meow/backend-runtime/config';
-import { LocaleUtil } from '@mail-meow/shared/utils';
+import { LocaleUtil } from '@rexezuge/shared';
 import { ApiKeyUtil } from '@mail-meow/shared/utils';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
 
 describe('RepositoryHelper pruneInBatches', () => {
   it('stops on a short batch and reports the backlog as drained', async () => {
@@ -85,7 +85,7 @@ describe('IScheduledTask', () => {
     protected override getTaskType(): string {
       return 'test_task';
     }
-    protected createTaskRunDAO(): never {
+    protected createRunRecorder(): never {
       return {
         startRun: vi.fn().mockResolvedValue('run-1'),
         succeedRun: vi.fn().mockResolvedValue(undefined),
@@ -144,7 +144,7 @@ describe('IScheduledTask', () => {
       protected override getTaskType(): string {
         return 'failing';
       }
-      protected createTaskRunDAO(): never {
+      protected createRunRecorder(): never {
         return { startRun: vi.fn().mockResolvedValue('run-9'), succeedRun: vi.fn(), failRun, skipRun: vi.fn() } as never;
       }
       protected async handleScheduledTask(): Promise<void> {
@@ -167,7 +167,7 @@ describe('IScheduledTask', () => {
       protected override getTaskType(): string {
         return 'leaky';
       }
-      protected createTaskRunDAO(): never {
+      protected createRunRecorder(): never {
         return { startRun: vi.fn().mockResolvedValue('run-10'), succeedRun: vi.fn(), failRun, skipRun: vi.fn() } as never;
       }
       protected async handleScheduledTask(): Promise<void> {
@@ -193,7 +193,7 @@ describe('IScheduledTask', () => {
       protected override getTaskType(): string {
         return 'unloggable';
       }
-      protected createTaskRunDAO(): never {
+      protected createRunRecorder(): never {
         return {
           startRun: vi.fn().mockRejectedValue(new Error('D1 down')),
           succeedRun: vi.fn(),
@@ -228,58 +228,73 @@ describe('AppConfig', () => {
     expect(config.maxApiKeysPerApplication).toBe(3);
   });
 
-  it('warns and falls back on a malformed value', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  /**
+   * Settings are parsed lazily and reported through `validate()`.
+   *
+   * Both halves changed. Reads no longer parse all twelve values on construction,
+   * so `GET /user/me` — which reads one — does no work for the other eleven. And
+   * a misconfiguration is a *warning*, not a throw: a throw from `fromEnv` took
+   * down every request in the deployment, so a configuration typo surfaced as a
+   * 500 storm rather than as a log line an operator could act on.
+   */
+  it('falls back and reports a malformed value', () => {
+    const config = AppConfigReader.fromEnv({ MAX_APPLICATIONS_PER_USER: 'many' });
 
-    expect(AppConfigReader.fromEnv({ MAX_APPLICATIONS_PER_USER: 'many' }).maxApplicationsPerUser).toBe(99);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('MAX_APPLICATIONS_PER_USER'));
-
-    warnSpy.mockRestore();
+    expect(config.maxApplicationsPerUser).toBe(99);
+    expect(config.validate()).toContainEqual(expect.stringContaining('MAX_APPLICATIONS_PER_USER'));
   });
 
-  it('rejects a non-positive integer', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    expect(AppConfigReader.fromEnv({ MAX_APPLICATIONS_PER_USER: '0' }).maxApplicationsPerUser).toBe(99);
-    expect(AppConfigReader.fromEnv({ MAX_APPLICATIONS_PER_USER: '-5' }).maxApplicationsPerUser).toBe(99);
-    warnSpy.mockRestore();
+  it('falls back and reports a non-positive integer', () => {
+    for (const value of ['0', '-5']) {
+      const config = AppConfigReader.fromEnv({ MAX_APPLICATIONS_PER_USER: value });
+      expect(config.maxApplicationsPerUser).toBe(99);
+      expect(config.validate()).toContainEqual(expect.stringContaining('MAX_APPLICATIONS_PER_USER'));
+    }
   });
 
-  it('accepts the usual boolean spellings', () => {
+  /**
+   * `DEBUG_MODE` is exactly `'true'` or nothing.
+   *
+   * It used to accept `1`, `yes`, `on`, and mixed case. A diagnostics flag that
+   * a *typo* enables is the wrong direction: `'True'` and `'true '` were both
+   * enough to switch it on, and neither is a value anyone sets deliberately.
+   */
+  it('enables DEBUG_MODE only for the exact string "true"', () => {
     expect(AppConfigReader.fromEnv({ DEBUG_MODE: 'true' }).debugMode).toBe(true);
-    expect(AppConfigReader.fromEnv({ DEBUG_MODE: '1' }).debugMode).toBe(true);
-    expect(AppConfigReader.fromEnv({ DEBUG_MODE: ' TRUE ' }).debugMode).toBe(true);
+    expect(AppConfigReader.fromEnv({ DEBUG_MODE: '1' }).debugMode).toBe(false);
+    expect(AppConfigReader.fromEnv({ DEBUG_MODE: 'yes' }).debugMode).toBe(false);
+    expect(AppConfigReader.fromEnv({ DEBUG_MODE: ' TRUE ' }).debugMode).toBe(false);
     expect(AppConfigReader.fromEnv({ DEBUG_MODE: 'no' }).debugMode).toBe(false);
   });
 
-  it('warns on an unrecognized boolean', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    expect(AppConfigReader.fromEnv({ DEBUG_MODE: 'maybe' }).debugMode).toBe(false);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('DEBUG_MODE'));
-    warnSpy.mockRestore();
-  });
-
   it('warns about an unknown upper-case variable so a typo is not silent', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    AppConfigReader.fromEnv({ MAX_APPLICATIONS_PER_USR: '5' });
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('MAX_APPLICATIONS_PER_USR'));
-    warnSpy.mockRestore();
+    // A misspelled setting is otherwise indistinguishable from an unset one, and
+    // silently takes the default.
+    const config = AppConfigReader.fromEnv({ MAX_APPLICATIONS_PER_USR: '5' });
+
+    expect(config.maxApplicationsPerUser).toBe(99);
+    expect(config.validate()).toContainEqual(expect.stringContaining('MAX_APPLICATIONS_PER_USR'));
   });
 
   it('does not warn about bindings or secrets', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    AppConfigReader.fromEnv({ DB: {}, AES_ENCRYPTION_KEY_SECRET: {}, OAUTH2_TOKEN_CACHE: {} });
-    expect(warnSpy).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
+    const config = AppConfigReader.fromEnv({ DB: {}, AES_ENCRYPTION_KEY_SECRET: {}, OAUTH2_TOKEN_CACHE: {} });
+
+    expect(config.validate().filter((warning) => warning.includes('Unrecognized'))).toEqual([]);
   });
 
-  it('rejects a default API key expiry above the maximum', () => {
-    expect(() => AppConfigReader.fromEnv({ DEFAULT_API_KEY_EXPIRY_DAYS: '30', MAX_API_KEY_EXPIRY_DAYS: '7' })).toThrow(/must not exceed/);
+  it('warns rather than throwing when the API key default exceeds its maximum', () => {
+    const config = AppConfigReader.fromEnv({ DEFAULT_API_KEY_EXPIRY_DAYS: '30', MAX_API_KEY_EXPIRY_DAYS: '7' });
+
+    expect(config.validate()).toContainEqual(expect.stringContaining('exceeds MAX_API_KEY_EXPIRY_DAYS'));
   });
 
-  it('rejects a refresh window below the minimum valid window', () => {
-    expect(() =>
-      AppConfigReader.fromEnv({ OAUTH2_ACCESS_TOKEN_REFRESH_WINDOW_SECONDS: '30', OAUTH2_ACCESS_TOKEN_MIN_VALID_SECONDS: '60' }),
-    ).toThrow(/must exceed/);
+  it('warns rather than throwing when the refresh window is below the minimum valid window', () => {
+    const config = AppConfigReader.fromEnv({
+      OAUTH2_ACCESS_TOKEN_REFRESH_WINDOW_SECONDS: '30',
+      OAUTH2_ACCESS_TOKEN_MIN_VALID_SECONDS: '60',
+    });
+
+    expect(config.validate()).toContainEqual(expect.stringContaining('does not exceed OAUTH2_ACCESS_TOKEN_MIN_VALID_SECONDS'));
   });
 
   it('survives a null or non-object env', () => {
@@ -345,15 +360,22 @@ describe('ErrorSanitizationUtil', () => {
     expect(ErrorSanitizationUtil.sanitizeMessage('The application was not found.')).toBe('The application was not found.');
   });
 
-  it('prefixes an error with its name', () => {
-    expect(ErrorSanitizationUtil.sanitizeErrorForLogging(new TypeError('boom'))).toBe('TypeError: boom');
+  it('prefixes an error with its name and carries the redacted stack', () => {
+    // The kit's `sanitizeErrorForLogging` appends the stack after the redacted
+    // `name: message` pair, so a log line names both the failure and where it
+    // came from. The stack is redacted too — a stack frame is a line of source,
+    // and a source line can carry the interpolated secret.
+    const line = ErrorSanitizationUtil.sanitizeErrorForLogging(new TypeError('boom'));
+
+    expect(line).toMatch(/^TypeError: boom/);
+    expect(line).toContain('at ');
   });
 });
 
 describe('ApiKeyUtil', () => {
   it('generates a prefixed, url-safe key', () => {
     const key = ApiKeyUtil.generateApiKey();
-    expect(key).toMatch(/^mm_[A-Za-z0-9_-]+$/);
+    expect(key).toMatch(/^mm_[\w-]+$/);
   });
 
   it('generates a distinct key each time', () => {

@@ -1,6 +1,6 @@
 import type { BackgroundTaskRunDAO, ConnectedApplicationDAO } from '@mail-meow/backend-data/dao';
 import type { BackgroundTaskRunList, ListTaskRunsOptions } from '@mail-meow/backend-data/dao';
-import { BadRequestError, NotFoundError } from '@mail-meow/backend-errors';
+import { BadRequestError, NotFoundError } from '@rexezuge/errors';
 import { BACKGROUND_TASK_TYPE_OAUTH2_REFRESH } from '@mail-meow/shared/constants';
 import type { AccountIdentity } from '@mail-meow/shared/model';
 import type { OAuth2AccessTokenService } from '../oauth2/OAuth2AccessTokenService';

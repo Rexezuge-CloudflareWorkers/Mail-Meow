@@ -5,7 +5,7 @@ import {
   type ConnectedApplicationStatus,
   CONNECTION_METHOD_ACCESS_KEYS,
 } from '@mail-meow/shared/constants';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
@@ -133,16 +133,18 @@ class UpdateApplicationRoute extends IUserRoute<UpdateApplicationRequest, Update
       request.connectionMethod === CONNECTION_METHOD_ACCESS_KEYS
         ? CONNECTED_APPLICATION_STATUS_CONNECTED
         : CONNECTED_APPLICATION_STATUS_DRAFT;
-    const application = await scope.applications.updateApplication(
-      request.applicationId,
-      user,
-      request.displayName,
-      request.providerId,
-      request.connectionMethod,
-      credentials,
-      status,
-      request.raw,
-    );
+    const application = await scope
+      .get(Tokens.ApplicationService)
+      .updateApplication(
+        request.applicationId,
+        user,
+        request.displayName,
+        request.providerId,
+        request.connectionMethod,
+        credentials,
+        status,
+        request.raw,
+      );
     return {
       application,
     };

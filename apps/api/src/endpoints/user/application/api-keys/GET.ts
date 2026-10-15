@@ -1,6 +1,6 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
-import { BadRequestError } from '@mail-meow/backend-errors';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
+import { BadRequestError } from '@rexezuge/errors';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 import type { ApplicationApiKeyMetadata } from '@mail-meow/shared/model';
@@ -39,7 +39,7 @@ class ListApplicationApiKeysRoute extends IUserRoute<ListApplicationApiKeysReque
     }
     const scope = createRequestScope(env);
     return {
-      apiKeys: await scope.apiKeys.listApiKeys(applicationId, this.getAuthenticatedAccount(cxt)),
+      apiKeys: await scope.get(Tokens.ApiKeyService).listApiKeys(applicationId, this.getAuthenticatedAccount(cxt)),
     };
   }
 }

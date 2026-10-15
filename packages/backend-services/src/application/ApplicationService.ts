@@ -7,7 +7,7 @@ import {
 } from '@mail-meow/shared/constants';
 import type { ConnectedApplicationDAO, UserDAO, UserEmailDAO } from '@mail-meow/backend-data/dao';
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
-import { BadRequestError } from '@mail-meow/backend-errors';
+import { BadRequestError } from '@rexezuge/errors';
 import type { AccountIdentity, ConnectedApplicationCredentials, ConnectedApplicationMetadata } from '@mail-meow/shared/model';
 import { BaseUrlUtil } from '@mail-meow/shared/utils';
 

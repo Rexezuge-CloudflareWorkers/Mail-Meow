@@ -1,6 +1,6 @@
 import { NO_SECURITY, UNAUTHORIZED_API_KEY_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
-import { BadRequestError } from '@mail-meow/backend-errors';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
+import { BadRequestError } from '@rexezuge/errors';
 import { IBaseRoute } from '@/endpoints/IBaseRoute';
 import type { ExtendedResponse, IRequest, IResponse, RouteContext } from '@/endpoints/IBaseRoute';
 
@@ -81,7 +81,7 @@ class OAuth2CallbackRoute extends IBaseRoute<OAuth2CallbackRequest, OAuth2Callba
     }
 
     const scope = createRequestScope(env);
-    await scope.oauth2Authorization.completeCallback({
+    await scope.get(Tokens.OAuth2AuthorizationService).completeCallback({
       applicationId,
       code,
       state,

@@ -2,10 +2,15 @@
   "name": "@mail-meow/shared",
   "version": "1.0.0",
   "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@rexezuge/shared": "1.8.2",
     "zod": "4.6.5"
   },
   "devDependencies": {

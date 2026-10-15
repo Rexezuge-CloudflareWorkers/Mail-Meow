@@ -14,8 +14,6 @@
     "strict": true,
     "skipLibCheck": true,
     "paths": {
-      "@mail-meow/backend-errors": ["../backend-errors/src"],
-      "@mail-meow/backend-errors/*": ["../backend-errors/src/*"],
       "@mail-meow/provider-clients": ["./src"],
       "@mail-meow/provider-clients/*": ["./src/*"],
       "@mail-meow/shared": ["../shared/src"],

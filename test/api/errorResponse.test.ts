@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { toErrorResponse, clientFacingMessage } from '@/errors/errorResponse';
-import { BadRequestError, ConflictError, DatabaseError, NotFoundError, ServiceError, UnauthorizedError } from '@mail-meow/backend-errors';
+import { BadRequestError, ConflictError, DatabaseError, NotFoundError, ServiceError, UnauthorizedError } from '@rexezuge/errors';
 
 /**
  * The one disclosure decision the API layer makes.
@@ -71,7 +71,11 @@ describe('toErrorResponse — untyped errors', () => {
 
     // A bare Error tells the route layer nothing, so it cannot become a status.
     expect(response.status).toBe(500);
-    expect(response.body.Exception.Type).toBe('InternalServerError');
+    // `InternalError`, not `InternalServerError`. The distinction is worth
+    // keeping: the first means "an untyped value escaped a code path that was
+    // supposed to throw from the taxonomy", the second means "we deliberately
+    // raised a 500". Collapsing them hides the first, which is a bug.
+    expect(response.body.Exception.Type).toBe('InternalError');
     expect(response.body.Exception.Message).not.toContain('undefined is not a function');
   });
 

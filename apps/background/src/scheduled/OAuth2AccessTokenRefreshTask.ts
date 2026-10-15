@@ -1,10 +1,10 @@
 import { OAuth2AccessTokenRefreshStatusDAO } from '@mail-meow/backend-data/dao';
-import { createD1SessionEnv } from '@mail-meow/backend-data/utils';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createD1SessionEnv } from '@mail-meow/backend-runtime/base';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 import { BACKGROUND_TASK_TYPE_OAUTH2_REFRESH } from '@mail-meow/shared/constants';
-import { ErrorSanitizationUtil, TimestampUtil } from '@mail-meow/shared/utils';
-import { IScheduledTask } from './IScheduledTask';
-import type { IEnv, TaskRunSummary } from './IScheduledTask';
+import { ErrorSanitizationUtil, TimestampUtil } from '@rexezuge/shared';
+import { IScheduledTask } from './MailMeowScheduledTask';
+import type { TaskRunSummary } from './MailMeowScheduledTask';
 
 /**
  * How many individual failures to name in the run summary.
@@ -26,8 +26,8 @@ class OAuth2AccessTokenRefreshTask extends IScheduledTask<OAuth2AccessTokenRefre
     _ctx: ExecutionContext,
   ): Promise<TaskRunSummary> {
     const scope = createRequestScope(env);
-    const refreshWindowSeconds: number = scope.config.oauth2AccessTokenRefreshWindowSeconds;
-    const batchSize: number = scope.config.oauth2TokenRefreshBatchSize;
+    const refreshWindowSeconds: number = scope.get(Tokens.Config).oauth2AccessTokenRefreshWindowSeconds;
+    const batchSize: number = scope.get(Tokens.Config).oauth2TokenRefreshBatchSize;
     const refreshBefore: number = TimestampUtil.getCurrentUnixTimestampInSeconds() + refreshWindowSeconds;
     const sessionEnv = createD1SessionEnv(env);
     const statusDAO = new OAuth2AccessTokenRefreshStatusDAO(sessionEnv.DB);
@@ -37,7 +37,7 @@ class OAuth2AccessTokenRefreshTask extends IScheduledTask<OAuth2AccessTokenRefre
     const failures: string[] = [];
     for (const applicationId of applicationIds) {
       try {
-        await scope.oauth2AccessTokens.refreshAccessToken(applicationId, { forceRefresh: true });
+        await scope.get(Tokens.OAuth2AccessTokenService).refreshAccessToken(applicationId, { forceRefresh: true });
         refreshed++;
       } catch (error: unknown) {
         // The reason is what makes this actionable. A bare `catch {}` reported
@@ -79,7 +79,7 @@ function summarize(total: number, refreshed: number, failures: string[]): string
   return `${base}; ${failures.length} failed — ${shown.join('; ')}${remainder > 0 ? `; +${remainder} more` : ''}`;
 }
 
-interface OAuth2AccessTokenRefreshTaskEnv extends IEnv {
+interface OAuth2AccessTokenRefreshTaskEnv {
   DB: D1Database;
   AES_ENCRYPTION_KEY_SECRET: SecretsStoreSecret;
   OAUTH2_TOKEN_CACHE: KVNamespace;

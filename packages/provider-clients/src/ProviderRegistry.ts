@@ -1,6 +1,6 @@
-import { BadRequestError, ProviderApiNonRetryableError } from '@mail-meow/backend-errors';
+import { BadRequestError, ProviderApiNonRetryableError } from '@rexezuge/errors';
 import { PROVIDER_GOOGLE_GMAIL, PROVIDER_MICROSOFT_OUTLOOK } from '@mail-meow/shared/constants';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
 import { providerFetchJson, providerFetchOk } from './BaseProviderHttp';
 import type { ProviderRequest } from './BaseProviderHttp';
 import { EmailMimeBuilder } from './EmailMimeBuilder';

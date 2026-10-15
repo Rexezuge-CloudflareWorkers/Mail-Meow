@@ -1,7 +1,7 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 import type { BackgroundTaskRun, BackgroundTaskRunStatus } from '@mail-meow/backend-services/processing';
 
 class ListBackgroundTaskRunsRoute extends IUserRoute<ListBackgroundTaskRunsRequest, ListBackgroundTaskRunsResponse> {
@@ -19,7 +19,7 @@ class ListBackgroundTaskRunsRoute extends IUserRoute<ListBackgroundTaskRunsReque
     cxt: RouteContext,
   ): Promise<ListBackgroundTaskRunsResponse> {
     const scope = createRequestScope(env);
-    return scope.processing.listTaskRuns(this.getAuthenticatedAccount(cxt), {
+    return scope.get(Tokens.ProcessingService).listTaskRuns(this.getAuthenticatedAccount(cxt), {
       taskType: this.getQueryParam(request, 'taskType'),
       applicationId: this.getQueryParam(request, 'applicationId'),
       status: this.getQueryParam(request, 'status') as BackgroundTaskRunStatus | undefined,

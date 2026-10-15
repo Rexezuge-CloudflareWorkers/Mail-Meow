@@ -1,6 +1,7 @@
-import { DefaultInternalServerError, ServiceError } from '@mail-meow/backend-errors';
-import type { ErrorCode } from '@mail-meow/backend-errors';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
+import { ServiceError } from '@rexezuge/errors';
+import { errorBody, toServiceError } from '@rexezuge/http';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 /**
  * The error envelope every API response uses.
@@ -22,12 +23,15 @@ interface ErrorEnvelope {
  * untyped-error masking, so the same underlying failure produced different
  * bodies depending on which layer caught it.
  *
- * It lives in `apps/api` rather than `backend-errors` because it needs
- * `ErrorSanitizationUtil` (Layer 0, but `backend-errors` is deliberately
- * dependency-free at Layer 0) and because both callers are API-layer.
+ * The taxonomy and the envelope now come from `@rexezuge/{errors,http}`: the
+ * 5xx-mask is `expose` in the catalog, applied by `errorBody`, which is where
+ * the family puts it so nine repos stop carrying nine copies of the rule. What
+ * stays here is the two decisions the family does not make on our behalf — the
+ * redaction backstop, and whether the *caller* owns the failure, because the
+ * two consumers need opposite halves of that answer.
  */
 interface ErrorResponse {
-  status: ErrorCode;
+  status: ContentfulStatusCode;
   body: ErrorEnvelope;
   /**
    * Whether the failure is the caller's problem.
@@ -46,17 +50,19 @@ interface ErrorResponse {
 /**
  * Decides what the caller is allowed to see.
  *
- * 5xx messages are built from raw D1 errors and provider response bodies, so
- * passing them through verbatim hands API clients internal detail — table and
- * column names, and whatever the provider echoed back. 4xx messages are authored
- * for the caller and returned as-is, after redaction as a backstop. Both the log
- * and the response are redacted, so neither leaks the raw text.
+ * `error.expose` already draws the line — 4xx is authored for the caller, 5xx
+ * is masked — and `errorBody` is where that becomes bytes. This adds the
+ * redaction backstop on the 4xx side, because the two are not the same
+ * decision: a 4xx message is *authored* for the caller but a service is free to
+ * compose it from client input, and `OAuth2AuthorizationService` interpolates a
+ * client-supplied redirect URI into one. `errorBody`'s masked 5xx text is a
+ * constant and needs no such pass.
  */
 function clientFacingMessage(error: ServiceError): string {
-  if (error.getErrorCode() >= 500) {
-    return DefaultInternalServerError.getErrorMessage();
+  if (!error.expose) {
+    return errorBody(error).Exception.Message;
   }
-  return ErrorSanitizationUtil.sanitizeMessage(error.getErrorMessage());
+  return ErrorSanitizationUtil.sanitizeMessage(error.message);
 }
 
 /**
@@ -65,23 +71,28 @@ function clientFacingMessage(error: ServiceError): string {
  * Returns the decision rather than performing it, because the two callers need
  * different halves: `IBaseRoute` always answers with the envelope, while the
  * auth middleware has to rethrow anything that is not the caller's fault.
+ *
+ * `toServiceError` normalizes an untyped throw — a provider response body, an
+ * `Authorization` header — into a 500 before anything reads its message, which
+ * is what keeps an untyped value out of the response.
  */
 function toErrorResponse(error: unknown): ErrorResponse {
+  const serviceError: ServiceError = toServiceError(error);
+  const body: ErrorEnvelope = errorBody(serviceError);
+  body.Exception.Message = clientFacingMessage(serviceError);
+
   if (error instanceof ServiceError) {
     return {
-      status: error.getErrorCode(),
-      body: { Exception: { Type: error.getErrorType(), Message: clientFacingMessage(error) } },
-      isCallerError: error.getErrorCode() < 500,
+      status: serviceError.status as ContentfulStatusCode,
+      body,
+      isCallerError: serviceError.status < 500,
       logDetail: null,
     };
   }
-  // An untyped error can carry a provider response body or an Authorization
-  // header, so it is redacted before it reaches any log or response.
+
   return {
-    status: DefaultInternalServerError.getErrorCode(),
-    body: {
-      Exception: { Type: DefaultInternalServerError.getErrorType(), Message: DefaultInternalServerError.getErrorMessage() },
-    },
+    status: serviceError.status as ContentfulStatusCode,
+    body,
     isCallerError: false,
     logDetail: ErrorSanitizationUtil.sanitizeErrorForLogging(error),
   };

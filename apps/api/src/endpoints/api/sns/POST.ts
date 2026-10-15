@@ -1,5 +1,5 @@
 import { API_KEY_SECURITY, UNAUTHORIZED_API_KEY_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 import { IPublicApplicationRoute } from '@/endpoints/IPublicApplicationRoute';
 import type { IPublicApplicationRequest, IResponse, RouteContext } from '@/endpoints/IPublicApplicationRoute';
 
@@ -71,7 +71,9 @@ class SendSNSRoute extends IPublicApplicationRoute<SendSNSRequest, SendSNSRespon
 
   protected async handleRequest(request: SendSNSRequest, env: Env, _cxt: RouteContext): Promise<SendSNSResponse> {
     const scope = createRequestScope(env);
-    const messageId: string = await scope.sns.publishForApplication(request.application, request.message, request.subject);
+    const messageId: string = await scope
+      .get(Tokens.SnsDeliveryService)
+      .publishForApplication(request.application, request.message, request.subject);
     return {
       message: 'The message was published successfully.',
       messageId,

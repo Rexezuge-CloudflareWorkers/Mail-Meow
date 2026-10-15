@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { ShowNotice } from '@rexezuge/web';
 import { LANGUAGE_STORAGE_KEY, detectInitialLanguage, loadLanguage, normalizeLanguage } from '../i18n';
 import { updatePreferredLanguage } from '../services/userService';
 import type { CurrentUser } from '../types';
 
 interface UseSpaLanguageInput {
   user: CurrentUser | null;
-  showNotice: (type: 'success' | 'error', text: string) => void;
+  showNotice: ShowNotice;
   setUser: (user: CurrentUser) => void;
 }
 

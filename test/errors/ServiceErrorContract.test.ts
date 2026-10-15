@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as errors from '@mail-meow/backend-errors';
+import * as errors from '@rexezuge/errors';
 
 /**
  * Every exported error class is instantiated with a bare message and checked
@@ -30,12 +30,13 @@ const ERROR_CLASSES = [
 describe('ServiceError nominal contract', () => {
   for (const className of ERROR_CLASSES) {
     it(`${className} is an instance of ServiceError and Error`, () => {
-      const exported = errors[className] as unknown as new (message?: string) => Error & { getErrorCode(): number };
+      const exported = errors[className] as unknown as new (message?: string) => Error & { status: number; type: string };
       const error = new exported('boom');
 
       expect(error).toBeInstanceOf(errors.ServiceError);
       expect(error).toBeInstanceOf(Error);
-      expect(typeof error.getErrorCode()).toBe('number');
+      expect(typeof error.status).toBe('number');
+      expect(typeof error.type).toBe('string');
     });
   }
 

@@ -4,23 +4,26 @@ Scope: unit + integration tests. Parent index: `../../../AGENTS.md`.
 
 ## Layout
 
-`vitest.config.mts` defines **two projects**, because the two halves of this repo need
-different environments and a `.tsx` test must not be able to run in the node project:
+Two config files, because the two halves of this repo need different environments and a `.tsx`
+test must not be able to run in the node project:
 
-| Project   | Environment | Includes                                                        | Setup                   |
-| --------- | ----------- | --------------------------------------------------------------- | ----------------------- |
-| `backend` | `node`      | `test/**/*.test.ts` (excludes `test/integration/`, `test/web/`) | `test/setup/backend.ts` |
-| `web`     | `jsdom`     | `test/web/**/*.test.{ts,tsx}`                                   | `test/setup/web.ts`     |
+| Config                  | Command             | Environment | Includes                                                        | Setup                   |
+| ----------------------- | ------------------- | ----------- | --------------------------------------------------------------- | ----------------------- |
+| `vitest.config.mts`     | `pnpm run test`     | `node`      | `test/**/*.test.ts` (excludes `test/integration/`, `test/web/`) | `test/setup/backend.ts` |
+| `vitest.web.config.mts` | `pnpm run test:web` | `jsdom`     | `test/web/**/*.test.{ts,tsx}`                                   | `test/setup/web.ts`     |
 
-Vitest projects do **not** inherit the root `resolve`, so the `@mail-meow/*` aliases are
-declared explicitly in each project. The web project adds `~` → `apps/web/src`; `@` is
-already the API worker's own alias.
+Both are `@rexezuge/tooling` factories (`defineUnitVitestConfig` / `defineWebVitestConfig`), so
+the `@mail-meow/*` and `~` → `apps/web/src` aliases are derived rather than hand-listed. Run
+either with `pnpm run test:all`.
+
+They used to be two _projects_ inside the root `vitest.config.mts`. A project boundary inside
+one file is a boundary nobody discovers: the SPA's environment, plugins and alias table sat 40
+lines below the backend's, with no filename to point at. Two files means a failing web test
+names its own harness.
 
 `test/setup/web.ts` initializes i18next with the `en` bundle. Every component renders through
 `useTranslation`, and without an initialized instance `t` returns `undefined`, so components
 render empty and every query fails.
-
-Run one project with `pnpm exec vitest run --project web`.
 
 **`pnpm run typegen` is a prerequisite for `pnpm -r typecheck`.** `worker-configuration.d.ts`
 is generated and gitignored. `pnpm install --ignore-scripts` skips the `postinstall` that
@@ -30,17 +33,27 @@ generates it, and typecheck then reports ~8 phantom errors (`Cannot find module
 `pnpm run typegen` before trusting a typecheck failure.
 
 **A dependency of a leaf package needs an explicit alias to be mockable from `test/`.**
-`jose` is declared by `backend-services`, so under pnpm's isolated `node_modules` it only
-resolves from that package. A test at the repo root that imports `jose` loads a _different_
-module instance than the service under test, and `vi.mock('jose')` then silently does
-nothing — the real verifier runs, the test fails with a confusing `Invalid Compact JWS`, and
-the mock looks like the bug. `vitest.config.mts` pins `jose` to one path for both. The same
-applies to any future leaf-only dependency a test needs to mock.
+Under pnpm's isolated `node_modules` a package declared only by a leaf resolves from that
+leaf alone, so a test at the repo root that imports it loads a _different_ module instance
+than the code under test — and `vi.mock(...)` then silently does nothing, leaving the real
+implementation running and the mock looking like the bug. `defineUnitVitestConfig`'s `aliases`
+carries such an entry when one is needed; it used to pin `jose` for exactly this reason.
+
+**`hono` and `chanfana` are in the config's `noExternal`, not in `aliases`.** Inlining rather
+than aliasing is what keeps one copy of Hono in play: `apps/api` and `@rexezuge/http` must
+resolve to the _same_ Hono, or a `MiddlewareHandler` from one is invisible to the other and
+the middleware simply does not run — no error, no failing assertion. Two copies of Hono also
+disagree about `Hono`'s trailing type parameters, which turns into an error at
+`fromHono(app)` naming neither Hono nor a version.
 
 ## Thresholds
 
-`vitest.config.mts`: **statements 66 / branches 59 / functions 68 / lines 67**.
-Actual: 66.59 / 59.94 / 68.24 / 67.24.
+`vitest.config.mts`: **statements 73 / branches 59 / functions 82 / lines 73**.
+Actual: 73.65 / 60.14 / 82.87 / 73.58.
+
+The SDK adoption dipped branches (59.94 → 59.81) by adding real branching faster than tests.
+The response was to test the new branches, not move the floor — and the floor is now above
+where it started.
 
 Raised from 60/45/60/60, which was itself raised from a 19/8/28/20 floor the dead-code removal
 had made meaningless. This is an interim bar, not a destination — the long-term target is

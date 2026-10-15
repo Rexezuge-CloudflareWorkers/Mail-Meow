@@ -33,9 +33,20 @@ vi.mock('@mail-meow/backend-services/composition', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@mail-meow/backend-services/composition')>();
   return {
     ...actual,
+    // A container-shaped double: the scope resolves by token, so the stub has to
+    // answer `get(Tokens.Config)` and `get(Tokens.OAuth2AccessTokenService)`
+    // rather than carry properties. Switching on the token keeps the two
+    // resolvable values distinct without reproducing the real graph.
     createRequestScope: () => ({
-      config: { oauth2AccessTokenRefreshWindowSeconds: 900, oauth2TokenRefreshBatchSize: 25 },
-      oauth2AccessTokens: { refreshAccessToken },
+      get: (token: unknown): unknown => {
+        if (token === actual.Tokens.Config) {
+          return { oauth2AccessTokenRefreshWindowSeconds: 900, oauth2TokenRefreshBatchSize: 25 };
+        }
+        if (token === actual.Tokens.OAuth2AccessTokenService) {
+          return { refreshAccessToken };
+        }
+        throw new Error(`Unexpected token in the background task: ${String(token)}`);
+      },
     }),
   };
 });
@@ -67,7 +78,7 @@ function makeDb(responses?: Parameters<typeof createMockDb>[0]): ReturnType<type
 async function runTask(): Promise<{ itemsProcessed: number; itemsFailed: number; summary?: string; details?: unknown }> {
   let captured: { itemsProcessed: number; itemsFailed: number; summary?: string; details?: unknown } | undefined;
   class Probe extends OAuth2AccessTokenRefreshTask {
-    protected override createTaskRunDAO(): never {
+    protected override createRunRecorder(): never {
       return {
         startRun: vi.fn().mockResolvedValue('run-1'),
         succeedRun: vi.fn().mockImplementation((_id: string, summary: typeof captured) => {
@@ -194,7 +205,7 @@ describe('OAuth2AccessTokenRefreshTask', () => {
   it('is tracked under the oauth2_refresh task type', async () => {
     const startRun = vi.fn().mockResolvedValue('run-1');
     class Probe extends OAuth2AccessTokenRefreshTask {
-      protected override createTaskRunDAO(): never {
+      protected override createRunRecorder(): never {
         return {
           startRun,
           succeedRun: vi.fn().mockResolvedValue(undefined),
@@ -219,7 +230,7 @@ describe('BackgroundTaskRunPruningTask', () => {
     const errorSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
     class Probe extends BackgroundTaskRunPruningTask {
-      protected override createTaskRunDAO(): never {
+      protected override createRunRecorder(): never {
         return {
           startRun: vi.fn().mockResolvedValue('run-1'),
           succeedRun: vi.fn().mockResolvedValue(undefined),
