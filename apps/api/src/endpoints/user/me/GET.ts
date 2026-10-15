@@ -1,7 +1,7 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 
 class GetCurrentUserRoute extends IUserRoute<GetCurrentUserRequest, GetCurrentUserResponse> {
   schema = {
@@ -15,15 +15,16 @@ class GetCurrentUserRoute extends IUserRoute<GetCurrentUserRequest, GetCurrentUs
 
   protected async handleRequest(_request: GetCurrentUserRequest, env: Env, cxt: RouteContext): Promise<GetCurrentUserResponse> {
     const scope = createRequestScope(env);
-    const config = scope.config;
+    const config = scope.get(Tokens.Config);
     // Resolved, not just read from the context: `email` must be the account's
     // *current* address, which is `users.current_email` and not necessarily the
     // one Access asserted on this request.
-    const user = (await scope.users.upsertUser(this.getAuthenticatedUserEmailAddress(cxt))) ?? this.getAuthenticatedAccount(cxt);
+    const user =
+      (await scope.get(Tokens.UserService).upsertUser(this.getAuthenticatedUserEmailAddress(cxt))) ?? this.getAuthenticatedAccount(cxt);
     return {
       id: user.id,
       email: user.email,
-      preferredLanguage: await scope.users.getPreferredLanguage(user),
+      preferredLanguage: await scope.get(Tokens.UserService).getPreferredLanguage(user),
       limits: {
         maxApplicationsPerUser: config.maxApplicationsPerUser,
         maxApiKeysPerApplication: config.maxApiKeysPerApplication,

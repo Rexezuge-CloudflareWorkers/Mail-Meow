@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeEmail } from '@mail-meow/shared/utils';
-import { CryptoUtil } from '@mail-meow/shared/utils';
+import { normalizeEmail } from '@rexezuge/shared';
+import { CryptoUtil } from '@rexezuge/shared';
 
 /**
  * The two rules that used to be implemented several times each.
@@ -28,7 +28,7 @@ describe('normalizeEmail', () => {
 
   it('reduces an all-whitespace address to the empty string', () => {
     // Callers treat empty as "no address" and must not query with it.
-    expect(normalizeEmail('   ')).toBe('');
+    expect(normalizeEmail(' '.repeat(3))).toBe('');
   });
 
   it('preserves the domain case distinction that local-part folding would lose', () => {

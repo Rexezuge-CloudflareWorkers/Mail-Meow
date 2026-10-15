@@ -1,5 +1,5 @@
 import { API_KEY_SECURITY, UNAUTHORIZED_API_KEY_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 
 import { IPublicApplicationRoute } from '@/endpoints/IPublicApplicationRoute';
 import type { IPublicApplicationRequest, IResponse, RouteContext } from '@/endpoints/IPublicApplicationRoute';
@@ -96,7 +96,7 @@ class SendEmailRoute extends IPublicApplicationRoute<SendEmailRequest, SendEmail
 
   protected async handleRequest(request: SendEmailRequest, env: Env, _cxt: RouteContext): Promise<SendEmailResponse> {
     const scope = createRequestScope(env);
-    await scope.mailDelivery.sendEmailForApplication(request.application, request.to, request.subject, {
+    await scope.get(Tokens.MailDeliveryService).sendEmailForApplication(request.application, request.to, request.subject, {
       text: request.text,
       html: request.html,
     });

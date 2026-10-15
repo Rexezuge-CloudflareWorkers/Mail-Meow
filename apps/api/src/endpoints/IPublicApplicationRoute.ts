@@ -1,5 +1,5 @@
 import type { ConnectedApplication } from '@mail-meow/shared/model';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 import { IBaseRoute } from './IBaseRoute';
 import type { IRequest, IResponse, RouteContext } from './IBaseRoute';
 
@@ -16,7 +16,7 @@ abstract class IPublicApplicationRoute<TRequest extends IPublicApplicationReques
 > {
   protected override async enrichRequest(request: TRequest, c: RouteContext): Promise<TRequest> {
     const scope = createRequestScope(c.env);
-    const application: ConnectedApplication = await scope.apiKeys.resolveApplication(c.req.param('api_key'));
+    const application: ConnectedApplication = await scope.get(Tokens.ApiKeyService).resolveApplication(c.req.param('api_key'));
     return { ...request, application };
   }
 }

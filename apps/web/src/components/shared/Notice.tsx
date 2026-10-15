@@ -1,12 +1,8 @@
 import { useTranslation } from 'react-i18next';
-
-export interface NoticeData {
-  type: 'success' | 'error';
-  text: string;
-}
+import type { Notice } from '@rexezuge/web';
 
 interface NoticeProps {
-  notice: NoticeData | null;
+  notice: Notice | null;
   onDismiss?: () => void;
 }
 
@@ -18,12 +14,18 @@ interface NoticeProps {
  * errors were silently dropped for screen-reader users. `role="alert"` implies
  * `aria-live="assertive"`, which interrupts; that suits an error and not a
  * routine success, so the two are distinguished.
+ *
+ * The value shape (`{ kind, message }`) and the dismissal timer both come from
+ * `@rexezuge/web`'s `useNotice`; only the presentation is this app's, because it
+ * is built from literal hex colours rather than the kit's CSS-variable tokens and
+ * the two cannot be mixed on one element without a visible seam. See
+ * `apps/web/AGENTS.md`.
  */
 export default function Notice({ notice, onDismiss }: NoticeProps) {
   const { t } = useTranslation();
   if (!notice) return null;
 
-  const isError = notice.type === 'error';
+  const isError = notice.kind === 'error';
   return (
     <div
       role={isError ? 'alert' : 'status'}
@@ -31,7 +33,7 @@ export default function Notice({ notice, onDismiss }: NoticeProps) {
       aria-atomic="true"
       className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-slide-down flex items-center gap-3 px-5 py-3 rounded-md shadow-xl bg-[#1a1f29] border border-[#374151]"
     >
-      <span className={isError ? 'text-[#fca5a5]' : 'text-[#6ee7b7]'}>{notice.text}</span>
+      <span className={isError ? 'text-[#fca5a5]' : 'text-[#6ee7b7]'}>{notice.message}</span>
       {onDismiss && (
         <button
           type="button"

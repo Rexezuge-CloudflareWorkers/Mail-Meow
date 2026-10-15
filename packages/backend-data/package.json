@@ -5,8 +5,6 @@
   "exports": {
     "./constants": "./src/constants/index.ts",
     "./constants/*": "./src/constants/*.ts",
-    "./crypto": "./src/crypto/index.ts",
-    "./crypto/*": "./src/crypto/*.ts",
     "./dao": "./src/dao/index.ts",
     "./dao/*": "./src/dao/*.ts",
     "./utils": "./src/utils/index.ts",
@@ -16,8 +14,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mail-meow/backend-errors": "workspace:*",
-    "@mail-meow/shared": "workspace:*"
+    "@mail-meow/shared": "workspace:*",
+    "@rexezuge/d1": "1.8.2",
+    "@rexezuge/errors": "1.8.2",
+    "@rexezuge/shared": "1.8.2"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

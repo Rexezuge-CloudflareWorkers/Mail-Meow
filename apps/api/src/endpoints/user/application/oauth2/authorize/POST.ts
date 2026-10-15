@@ -1,5 +1,5 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
@@ -48,7 +48,9 @@ class CreateOAuth2AuthorizationRoute extends IUserRoute<CreateOAuth2Authorizatio
     cxt: RouteContext,
   ): Promise<CreateOAuth2AuthorizationResponse> {
     const scope = createRequestScope(env);
-    return scope.oauth2Authorization.createAuthorization(this.getAuthenticatedAccount(cxt), request.applicationId, request.raw);
+    return scope
+      .get(Tokens.OAuth2AuthorizationService)
+      .createAuthorization(this.getAuthenticatedAccount(cxt), request.applicationId, request.raw);
   }
 }
 

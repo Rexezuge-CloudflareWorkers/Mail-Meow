@@ -14,10 +14,21 @@
     "test:coverage:integration": "vitest run --coverage --config test/integration/vitest.config.mts",
     "lint": "NODE_OPTIONS=--max-old-space-size=6144 eslint --fix .",
     "lint:check": "NODE_OPTIONS=--max-old-space-size=6144 eslint .",
-    "typegen": "wrangler types --config ./apps/api/wrangler.template.jsonc --env-interface CloudflareEnv"
+    "typegen": "wrangler types --config ./apps/api/wrangler.template.jsonc --env-interface CloudflareEnv",
+    "test:web": "vitest run --config vitest.web.config.mts",
+    "test:web:coverage": "vitest run --coverage --config vitest.web.config.mts",
+    "test:all": "pnpm run test:coverage && pnpm run test:integration && pnpm run test:web"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.23.0",
+    "@rexezuge/d1": "1.8.2",
+    "@rexezuge/errors": "1.8.2",
+    "@rexezuge/http": "1.8.2",
+    "@rexezuge/identity": "1.8.2",
+    "@rexezuge/runtime": "1.8.2",
+    "@rexezuge/shared": "1.8.2",
+    "@rexezuge/tooling": "1.8.2",
+    "@rexezuge/web": "1.8.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",

@@ -114,7 +114,7 @@ describe('API key lifecycle', () => {
 
   it('rejects a key name that is blank', async () => {
     const applicationId = await createApplication();
-    const response = await json('/user/application/api-key', 'POST', { applicationId, name: '   ' });
+    const response = await json('/user/application/api-key', 'POST', { applicationId, name: ' '.repeat(3) });
     expect(response.status).toBe(400);
   });
 });

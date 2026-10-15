@@ -13,7 +13,6 @@ const baseResources = {
 } as const;
 
 function canonicalizeTag(tag: string): string {
-  // eslint-disable-next-line unicorn/prefer-string-replace-all -- tsconfig lib is ES2020 (no replaceAll types)
   const normalized = tag.trim().replace(/_/g, '-');
   const parts = normalized.split('-').filter(Boolean);
   if (parts.length === 0) return 'en';

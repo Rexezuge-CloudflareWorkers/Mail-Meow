@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@mail-meow/shared": "workspace:*"
+    "@mail-meow/shared": "workspace:*",
+    "@rexezuge/runtime": "1.8.2",
+    "@rexezuge/shared": "1.8.2"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

@@ -18,12 +18,13 @@ import {
   UpdateApplicationRoute,
   UpdateCurrentUserRoute,
 } from '@/endpoints';
-import { MiddlewareHandlers } from '@/middleware';
+import { MiddlewareHandlers, securityHeadersMiddleware, USER_API_LIMIT } from '@/middleware';
 import { OPENAPI_COMPONENTS } from '@/openapi/components';
 import { SPA_HTML } from '@/generated/spa-shell';
 import { DURABLE_OBJECT_CRON_TASKS_RUN_URL, DURABLE_OBJECT_NAMESPACE_GLOBAL } from '@mail-meow/backend-runtime/constants';
-import { createD1SessionEnv } from '@mail-meow/backend-data/utils';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
+import { createD1SessionEnv } from '@mail-meow/backend-runtime/base';
+import { AppConfigReader } from '@mail-meow/backend-runtime/config';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
 
 const D1_BOOKMARK_HEADER: string = 'x-d1-bookmark';
 
@@ -49,6 +50,31 @@ type AppRouter = HonoOpenAPIRouterType<{
   Bindings: Env;
   Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId: string };
 }>;
+
+/**
+ * Log every configuration warning, once per isolate.
+ *
+ * `AppConfigReader.validate()` reports the things a request can still succeed
+ * through but an operator should know about: a misspelled setting that silently
+ * took a default, a `DEV_AUTH_EMAIL` left set in production, an API-key default
+ * above its maximum. It was written to be called from here and was not, so the
+ * whole ladder produced nothing and only tests ever saw it.
+ *
+ * Per-isolate rather than per-request on purpose: `fromEnv` re-parses every
+ * setting, so calling it per request would re-emit these on every call, and a
+ * warning nobody reads is the same as no warning. Keyed on `env` identity because
+ * a Worker isolate can outlive a deployment — a warm isolate keeps the old
+ * isolate's state, and a new deployment gets a new `env` object.
+ */
+let warnedEnv: unknown;
+
+function reportConfigurationWarnings(env: Env): void {
+  if (warnedEnv === env) return;
+  warnedEnv = env;
+  for (const warning of AppConfigReader.fromEnv(env).validate()) {
+    console.warn(warning);
+  }
+}
 
 class MailMeowWorker extends AbstractEntrypointWorker {
   protected readonly app: AppRouter;
@@ -79,7 +105,16 @@ class MailMeowWorker extends AbstractEntrypointWorker {
       });
     });
 
+    // Order is load-bearing. Hono runs middleware in registration order, so the
+    // limiter is registered *after* the authenticator: that is what puts
+    // `AuthenticatedUserEmailAddress` on the context for it to key on. Swapped,
+    // it degrades silently to a per-IP bucket and every operator behind one NAT
+    // shares a budget. See `middleware/HttpHardening.ts`.
     app.use('/user/*', MiddlewareHandlers.userAuthentication());
+    app.use('/user/*', USER_API_LIMIT);
+    // Deliberately not scoped to `/user/*`: these headers are correct for every
+    // response, including the delivery endpoints and the 404 catch-all.
+    app.use('*', securityHeadersMiddleware);
 
     const openapi: AppRouter = fromHono(app, {
       docs_url: '/docs',
@@ -155,6 +190,7 @@ class MailMeowWorker extends AbstractEntrypointWorker {
   }
 
   protected async onRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    reportConfigurationWarnings(env);
     const path: string = new URL(request.url).pathname;
     if (!MailMeowWorker.shouldUseD1Session(path, env)) {
       return this.app.fetch(request, env, ctx);
@@ -174,7 +210,6 @@ class MailMeowWorker extends AbstractEntrypointWorker {
     return response;
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await -- forwards via ctx.waitUntil, no direct await
   protected async onScheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     const cronTasksId: DurableObjectId = (env as unknown as { CRON_TASKS: DurableObjectNamespace }).CRON_TASKS.idFromName(
       DURABLE_OBJECT_NAMESPACE_GLOBAL,

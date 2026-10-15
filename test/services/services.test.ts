@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { ApiKeyService } from '@mail-meow/backend-services/apikey';
 import { ApplicationService } from '@mail-meow/backend-services/application';
@@ -6,8 +6,30 @@ import { UserService } from '@mail-meow/backend-services/user';
 import { ProcessingService } from '@mail-meow/backend-services/processing';
 import { MailDeliveryService } from '@mail-meow/backend-services/email';
 import { SnsDeliveryService } from '@mail-meow/backend-services/sns';
-import { BadRequestError, NotFoundError, UnauthorizedError } from '@mail-meow/backend-errors';
+import { BadRequestError, NotFoundError, UnauthorizedError } from '@rexezuge/errors';
 import { BACKGROUND_TASK_TYPE_OAUTH2_REFRESH } from '@mail-meow/shared/constants';
+
+/**
+ * The two provider collaborators, stubbed.
+ *
+ * Both are network clients; both suites below assert *when* they are called and
+ * with what, which is the part that belongs to this repo rather than to the
+ * provider client. The provider clients' own request shaping has its own tests.
+ */
+const { refreshAccessToken, sendEmail, snsPublish } = vi.hoisted(() => ({
+  refreshAccessToken: vi.fn(),
+  sendEmail: vi.fn(),
+  snsPublish: vi.fn(),
+}));
+
+vi.mock('@mail-meow/provider-clients/oauth2', () => ({
+  OAuth2ProviderUtil: { refreshAccessToken },
+}));
+
+vi.mock('@mail-meow/provider-clients', () => ({
+  resolveStrategy: (): { sendEmail: typeof sendEmail } => ({ sendEmail }),
+  SnsDeliveryUtil: { publish: snsPublish },
+}));
 
 /**
  * A config reader with selected values overridden.
@@ -277,7 +299,10 @@ describe('UserService', () => {
 
   function build(options: { user?: unknown; registry?: unknown } = {}) {
     const userDAO = {
-      createUser: vi.fn().mockResolvedValue(undefined),
+      // The kit's `createUser` resolves to the new id, or `null` for a detected
+      // no-op (the anchor was already taken), which is the caller's signal to
+      // retry with an opaque one.
+      createUser: vi.fn().mockResolvedValue('usr_newaccountid0000000000000'),
       getById: vi.fn().mockResolvedValue(options.user ?? null),
       getByEmail: vi.fn().mockResolvedValue(options.user ?? null),
       getByCurrentEmail: vi.fn().mockResolvedValue(options.user ?? null),
@@ -301,7 +326,9 @@ describe('UserService', () => {
       user: USER_ROW,
     });
 
-    await expect(service.upsertUser('me@example.com')).resolves.toEqual(OWNER);
+    // `username` is on the resolved account: this schema has no handle column, so
+    // the kit's `summarize` reads it as `null` and the shape carries the field.
+    await expect(service.upsertUser('me@example.com')).resolves.toEqual({ ...OWNER, username: null });
     // Resolve-then-create: creating first would fork a duplicate for any address
     // that had been reassigned.
     expect(userDAO.createUser).not.toHaveBeenCalled();
@@ -444,39 +471,114 @@ describe('ProcessingService', () => {
 
 describe('MailDeliveryService', () => {
   const applicationDAO = { updateOAuth2RefreshToken: vi.fn().mockResolvedValue(undefined) };
-  const service = new MailDeliveryService({ applicationDAO: () => Promise.resolve(applicationDAO as never) });
+  const service = new MailDeliveryService({
+    applicationDAO: () => Promise.resolve(applicationDAO as never),
+    config: (): AppConfigReader => config({ providerRequestTimeoutMs: 1234 }),
+  });
 
-  beforeEachReset();
-  function beforeEachReset() {
+  const CONNECTED = {
+    ...APPLICATION,
+    status: 'connected',
+    connectionMethod: 'oauth2',
+    credentials: { clientId: 'c', clientSecret: 's', refreshToken: 'r' },
+  };
+
+  beforeEach(() => {
     applicationDAO.updateOAuth2RefreshToken.mockClear();
-  }
+    refreshAccessToken.mockReset();
+    refreshAccessToken.mockResolvedValue({ accessToken: 'fresh', expiresAt: 1 });
+    sendEmail.mockReset();
+    sendEmail.mockResolvedValue(undefined);
+  });
 
   it('refuses a draft application', async () => {
-    await expect(service.sendEmailForApplication({ ...APPLICATION, status: 'draft' }, 'a@b.c', 'Hi', { text: 'x' })).rejects.toThrow(
+    await expect(service.sendEmailForApplication({ ...CONNECTED, status: 'draft' }, 'a@b.c', 'Hi', { text: 'x' })).rejects.toThrow(
       /not connected to an authorized OAuth2/,
     );
   });
 
   it('refuses a non-OAuth2 application', async () => {
     await expect(
-      service.sendEmailForApplication({ ...APPLICATION, connectionMethod: 'access-keys' }, 'a@b.c', 'Hi', { text: 'x' }),
+      service.sendEmailForApplication({ ...CONNECTED, connectionMethod: 'access-keys' }, 'a@b.c', 'Hi', { text: 'x' }),
     ).rejects.toThrow(/not connected to an authorized OAuth2/);
+  });
+
+  /**
+   * A fresh token per send, not a cached one. The cron refreshes for the
+   * cron-driven paths; a cached token is exactly what would have gone stale
+   * between refreshes.
+   */
+  it('refreshes a token per send rather than reading the cache', async () => {
+    await service.sendEmailForApplication(CONNECTED, 'a@b.c', 'Hi', { text: 'x' });
+
+    expect(refreshAccessToken).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 1234 }));
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ from: 'me@example.com', to: 'a@b.c', subject: 'Hi', accessToken: 'fresh' }),
+      { timeoutMs: 1234 },
+    );
+  });
+
+  /**
+   * Providers may rotate the refresh token on every use. Persisting it is what
+   * stops the *next* refresh failing on a token the provider already invalidated —
+   * so the write is not optional when the provider sends one back.
+   */
+  it('persists a rotated refresh token', async () => {
+    refreshAccessToken.mockResolvedValue({ accessToken: 'fresh', expiresAt: 1, refreshToken: 'rotated' });
+
+    await service.sendEmailForApplication(CONNECTED, 'a@b.c', 'Hi', { text: 'x' });
+
+    expect(applicationDAO.updateOAuth2RefreshToken).toHaveBeenCalledWith('app-1', 'rotated');
+  });
+
+  it('does not write when the provider returns no rotated token', async () => {
+    await service.sendEmailForApplication(CONNECTED, 'a@b.c', 'Hi', { text: 'x' });
+
+    expect(applicationDAO.updateOAuth2RefreshToken).not.toHaveBeenCalled();
   });
 });
 
 describe('SnsDeliveryService', () => {
-  const service = new SnsDeliveryService();
+  const service = new SnsDeliveryService({ config: (): AppConfigReader => config({ providerRequestTimeoutMs: 4321 }) });
+
+  const SNS = {
+    ...APPLICATION,
+    providerId: 'amazon-sns',
+    connectionMethod: 'access-keys',
+    status: 'connected',
+    credentials: { accessKeyId: 'AK', secretAccessKey: 'SK', topicArn: 'arn:topic' },
+  };
+
+  beforeEach(() => {
+    snsPublish.mockReset();
+    snsPublish.mockResolvedValue('message-id');
+  });
 
   it('refuses a non-SNS application', async () => {
     await expect(service.publishForApplication(APPLICATION, 'message')).rejects.toThrow(/Amazon SNS access-key/);
   });
 
   it('refuses a draft SNS application', async () => {
-    await expect(
-      service.publishForApplication(
-        { ...APPLICATION, providerId: 'amazon-sns', connectionMethod: 'access-keys', status: 'draft' },
-        'message',
-      ),
-    ).rejects.toThrow(/Amazon SNS access-key/);
+    await expect(service.publishForApplication({ ...SNS, status: 'draft' }, 'message')).rejects.toThrow(/Amazon SNS access-key/);
+  });
+
+  it('refuses an SNS application that is not access-key based', async () => {
+    await expect(service.publishForApplication({ ...SNS, connectionMethod: 'oauth2' }, 'message')).rejects.toThrow(/Amazon SNS access-key/);
+  });
+
+  /**
+   * The outbound deadline comes from configuration, not a constant in the
+   * provider client — one place to change it, and the value the caller configured.
+   */
+  it('publishes with the configured deadline and returns the message id', async () => {
+    await expect(service.publishForApplication(SNS, 'message', 'Subject')).resolves.toBe('message-id');
+
+    expect(snsPublish).toHaveBeenCalledWith('AK', 'SK', 'arn:topic', 'message', 'Subject', 4321);
+  });
+
+  it('omits the subject when there is none', async () => {
+    await service.publishForApplication(SNS, 'message');
+
+    expect(snsPublish).toHaveBeenCalledWith('AK', 'SK', 'arn:topic', 'message', undefined, 4321);
   });
 });

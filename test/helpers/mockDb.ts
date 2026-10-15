@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
-import type { D1Queryable, D1Result } from '@mail-meow/backend-data/utils';
+import type { D1Queryable } from '@mail-meow/backend-runtime/base';
+import type { D1Result } from '@rexezuge/d1';
 
 /**
  * Minimal D1 double.

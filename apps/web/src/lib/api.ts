@@ -4,9 +4,9 @@ let latestD1Bookmark: string | undefined;
 
 function getFetchPath(input: Parameters<typeof fetch>[0]): string {
   try {
-    if (typeof input === 'string') return new URL(input, globalThis.location.origin).pathname;
+    if (typeof input === 'string') return new URL(input, location.origin).pathname;
     if (input instanceof URL) return input.pathname;
-    return new URL(input.url, globalThis.location.origin).pathname;
+    return new URL(input.url, location.origin).pathname;
   } catch {
     return '';
   }
@@ -15,7 +15,7 @@ function getFetchPath(input: Parameters<typeof fetch>[0]): string {
 function rememberD1Bookmark(value: string | null): void {
   const next: string | undefined = value?.trim() || undefined;
   if (!next) return;
-  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- module-level bookmark cache, Otter pattern
+
   latestD1Bookmark = next;
 }
 

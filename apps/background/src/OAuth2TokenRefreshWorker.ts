@@ -1,11 +1,11 @@
 import { AbstractDurableObjectWorker } from '@mail-meow/backend-runtime/base';
 import { CONNECTED_APPLICATION_STATUS_CONNECTED, CONNECTION_METHOD_OAUTH2 } from '@mail-meow/shared/constants';
 import { ConnectedApplicationDAO, OAuth2AccessTokenCacheDAO, OAuth2AccessTokenRefreshStatusDAO } from '@mail-meow/backend-data/dao';
-import { createD1SessionEnv } from '@mail-meow/backend-data/utils';
+import { createD1SessionEnv } from '@mail-meow/backend-runtime/base';
 import type { ConnectedApplication, OAuth2Credentials } from '@mail-meow/shared/model';
-import { TimestampUtil } from '@mail-meow/shared/utils';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
-import { BadRequestError, DefaultInternalServerError, NotFoundError, ProviderApiNonRetryableError } from '@mail-meow/backend-errors';
+import { TimestampUtil } from '@rexezuge/shared';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
+import { BadRequestError, DefaultInternalServerError, NotFoundError, ProviderApiNonRetryableError } from '@rexezuge/errors';
 import { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { PROVIDER_STRATEGIES } from '@mail-meow/provider-clients';
 import type { ProviderStrategy } from '@mail-meow/provider-clients';
@@ -34,7 +34,7 @@ interface OAuth2TokenWorkerResponse {
   providerEmail?: string;
 }
 
-class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
+class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker<Env> {
   private currentOperation: Promise<unknown> | undefined;
   /**
    * Resolved once per isolate. `fromEnv` re-parses and re-validates every
@@ -76,8 +76,7 @@ class OAuth2TokenRefreshWorker extends AbstractDurableObjectWorker {
       if (status >= 500) console.error('OAuth2 token operation failed:', ErrorSanitizationUtil.sanitizeErrorForLogging(error));
       // 5xx detail is redacted before it leaves the Durable Object. The log line
       // above is redacted too, so the two are safe to read independently.
-      const message: string =
-        status >= 500 ? DefaultInternalServerError.getErrorMessage() : ErrorSanitizationUtil.sanitizeErrorForLogging(error);
+      const message: string = status >= 500 ? DefaultInternalServerError.message : ErrorSanitizationUtil.sanitizeErrorForLogging(error);
       return Response.json({ error: message }, { status });
     }
   }

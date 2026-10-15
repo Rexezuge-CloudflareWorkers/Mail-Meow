@@ -1,5 +1,5 @@
 import { PROVIDER_GOOGLE_GMAIL, PROVIDER_MICROSOFT_OUTLOOK } from '@mail-meow/shared/constants';
-import { BadRequestError } from '@mail-meow/backend-errors';
+import { BadRequestError } from '@rexezuge/errors';
 import type { OAuth2Credentials } from '@mail-meow/shared/model';
 import { providerFetchJson } from './BaseProviderHttp';
 import type { ProviderRequest } from './BaseProviderHttp';

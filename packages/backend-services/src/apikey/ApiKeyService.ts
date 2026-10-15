@@ -1,9 +1,10 @@
 import type { ApplicationApiKeyDAO, ConnectedApplicationDAO } from '@mail-meow/backend-data/dao';
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
-import { BadRequestError, UnauthorizedError } from '@mail-meow/backend-errors';
+import { BadRequestError, UnauthorizedError } from '@rexezuge/errors';
 import { CONNECTED_APPLICATION_STATUS_CONNECTED } from '@mail-meow/shared/constants';
 import type { AccountIdentity, ApplicationApiKeyMetadata, ConnectedApplication } from '@mail-meow/shared/model';
-import { ApiKeyUtil, TimestampUtil } from '@mail-meow/shared/utils';
+import { TimestampUtil } from '@rexezuge/shared';
+import { ApiKeyUtil } from '@mail-meow/shared/utils';
 
 /**
  * Collaborators, supplied by the composition root.

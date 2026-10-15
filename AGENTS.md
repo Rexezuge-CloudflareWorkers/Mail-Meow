@@ -7,10 +7,10 @@ Guidance for agents working in Mail-Meow. `CLAUDE.md` is a symbolic link to this
 Mail-Meow is a Cloudflare Worker API + Vite React SPA in a pnpm workspace (`@mail-meow/monorepo`, `packageManager: pnpm@11.2.2`).
 
 - **Core**: Cloudflare Zero Trust on `/user/*` (JWT `cf-access-jwt-assertion`); public delivery endpoints under `/api/*` use API keys embedded in the path.
-- **Identity**: `users.id` is the stable account key; the email address is a mutable attribute, so an address can change without touching the user's applications, API keys, or task-run history. Migration `0011_user_identity.sql` adds `users.id` + `users.current_email`, the `user_emails` address registry (`is_verified=1` may authenticate; a changed-from address is kept `is_verified=0` for attribution and released for re-registration), and a `user_id` FK on `connected_applications` (backfilled case-insensitively via the registry; `NULL` = a row written by pre-0011 code, still reachable through the `*_email` fallback). `users.email` is now the **frozen anchor** — immutable, and the target of the one surviving foreign key — because D1 honours neither `PRAGMA foreign_keys = off` nor `PRAGMA legacy_alter_table = on` and `defer_foreign_keys` does not suppress `ON DELETE CASCADE`, so that reference cannot be repointed without losing rows. Login resolves through `user_emails`; every user-keyed read matches `user_id` with the address as the pre-0011 fallback. `UserIdentityService` (`packages/backend-services/src/identity/`, one instance per request scope) owns `resolveAccount`/`resolveUserId`/`setPrimaryEmail`/`linkVerifiedEmail`; `UserService.upsertUser` is resolve-then-create via `user/accountLookup.ts`, so an address can never fork a second account. `setPrimaryEmail` is deliberately **not routed** — Access is the only authenticator, so a self-service change needs a proof-of-control confirm step first. Ops path: `scripts/change-email.ts`.
+- **Identity**: `users.id` is the stable account key; the email address is a mutable attribute, so an address can change without touching the user's applications, API keys, or task-run history. Migration `0011_user_identity.sql` adds `users.id` + `users.current_email`, the `user_emails` address registry (`is_verified=1` may authenticate; a changed-from address is kept `is_verified=0` for attribution and released for re-registration), and a `user_id` FK on `connected_applications` (backfilled case-insensitively via the registry; `NULL` = a row written by pre-0011 code, still reachable through the `*_email` fallback). `users.email` is now the **frozen anchor** — immutable, and the target of the one surviving foreign key — because D1 honours neither `PRAGMA foreign_keys = off` nor `PRAGMA legacy_alter_table = on` and `defer_foreign_keys` does not suppress `ON DELETE CASCADE`, so that reference cannot be repointed without losing rows. Login resolves through `user_emails`; every user-keyed read matches `user_id` with the address as the pre-0011 fallback. `UserIdentityService` (`packages/backend-services/src/identity/`, a re-export of `@rexezuge/identity` — one instance per request scope) owns `resolveAccount`/`resolveUserId`/`setPrimaryEmail`/`linkVerifiedEmail`; `UserService.upsertUser` is resolve-then-create through it, so an address can never fork a second account. `setPrimaryEmail` is deliberately **not routed** — Access is the only authenticator, so a self-service change needs a proof-of-control confirm step first. Ops path: `scripts/change-email.ts`.
 - **Background**: `apps/background` auto-refreshes OAuth2 tokens via `CronTasksWorker` DO (2-phase `TaskRegistry`) + `OAuth2TokenRefreshWorker` DO (per-application serialization, KV cache).
 - **Providers**: `google-gmail`, `microsoft-outlook` (`oauth2`), `amazon-sns` (`access-keys`). See `packages/provider-clients/AGENTS.md`.
-- **Features**: 12-locale i18n (frontend `apps/web/src/locales` + backend `packages/shared/src/i18n`), task-run visibility, API-key management. See Index below.
+- **Features**: 12-locale i18n (frontend `apps/web/src/locales` + `apps/web/src/i18n.ts`, validated against `LocaleUtil` from `@rexezuge/shared`), task-run visibility, API-key management. See Index below.
 
 ## Cloudflare Documentation
 
@@ -53,16 +53,26 @@ warning backlog is how `prettier/prettier` drift and unsafe-`any` regressions ac
 ## Import Direction
 
 ```
-Layer 0: shared, backend-errors          — zero @mail-meow/* deps
-Layer 1: backend-runtime                 → layer 0 only
-Layer 2: backend-data, provider-clients  → layer 0 only
-Layer 3: backend-services                → layers 0–2 (not apps)
+(@rexezuge/* sits below every layer: any package may import it. That is what a
+ shared kernel is for, and it is why the family guarantees one copy of each with a
+ pnpm `overrides` block rather than pinning eight packages in every manifest.)
+
+Layer 0: shared                           — zero @mail-meow/* deps
+Layer 1: backend-runtime                  → layer 0 only
+Layer 2: backend-data, provider-clients   → layer 0 only
+Layer 3: backend-services                 → layers 0–2 (not apps)
 (no Layer 4 by design)
-Layer 5: apps/background                 → layers 0–3 (provider-clients OK)
-         apps/api                        → layers 0–3 + background (NOT provider-clients directly)
+Layer 5: apps/background                  → layers 0–3 (provider-clients OK)
+         apps/api                         → layers 0–3 + background
+                                           (NOT provider-clients; NOT backend-data
+                                            *values* — a DAO or constant shape comes
+                                            from backend-services instead)
+         apps/web                         → the browser only, never @mail-meow/*
 ```
 
-Enforced by ESLint `no-restricted-imports` in `eslint.config.mjs` (Layer 5 currently only blocks `apps/api → provider-clients`).
+Enforced by ESLint `no-restricted-imports` from `@rexezuge/tooling`'s boundary table,
+not by a block in this file. Three of those boundaries were conventions here and rules
+now: `background → api`, `web → @mail-meow/*`, and `api → backend-data` values.
 
 ## Index
 

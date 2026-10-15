@@ -13,7 +13,7 @@ vi.mock('~/services/userService', () => ({ getCurrentUser }));
 
 import { useApiKeys } from '~/hooks/useApiKeys';
 import { useCurrentUser } from '~/hooks/useCurrentUser';
-import { useNotice } from '~/hooks/useNotice';
+import { useNotice } from '@rexezuge/web';
 import StatusBadge from '~/components/shared/StatusBadge';
 import Unauthorized from '~/components/shared/Unauthorized';
 import HelpView from '~/components/views/HelpView';
@@ -111,10 +111,10 @@ describe('useNotice', () => {
     act(() => {
       result.current.showNotice('error', 'Boom');
     });
-    expect(result.current.notice).toEqual({ type: 'error', text: 'Boom' });
+    expect(result.current.notice).toEqual({ kind: 'error', message: 'Boom' });
 
     act(() => {
-      result.current.clearNotice();
+      result.current.dismissNotice();
     });
     expect(result.current.notice).toBeNull();
   });

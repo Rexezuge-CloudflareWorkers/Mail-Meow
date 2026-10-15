@@ -1,9 +1,10 @@
-import { computeUnixCutoffSeconds, createD1SessionEnv, pruneInBatches } from '@mail-meow/backend-data/utils';
-import type { D1Queryable } from '@mail-meow/backend-data/utils';
-import { IScheduledTask } from './IScheduledTask';
-import type { IEnv, TaskRunSummary } from './IScheduledTask';
+import { computeUnixCutoffSeconds, pruneInBatches } from '@mail-meow/backend-data/utils';
+import { createD1SessionEnv } from '@mail-meow/backend-runtime/base';
+import type { D1Queryable } from '@mail-meow/backend-runtime/base';
+import { IScheduledTask } from './MailMeowScheduledTask';
+import type { TaskRunSummary } from './MailMeowScheduledTask';
 
-interface PruningTaskEnv extends IEnv {
+interface PruningTaskEnv {
   DB: D1Database;
 }
 

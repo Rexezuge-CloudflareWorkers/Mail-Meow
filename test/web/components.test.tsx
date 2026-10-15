@@ -14,7 +14,7 @@ describe('Notice', () => {
   it('announces an error assertively so it interrupts', () => {
     // A plain div is announced by nothing, so errors were silently dropped for
     // screen-reader users.
-    render(<Notice notice={{ type: 'error', text: 'Save Failed' }} />);
+    render(<Notice notice={{ kind: 'error', message: 'Save Failed' }} />);
 
     const alert = screen.getByRole('alert');
     expect(alert).toHaveTextContent('Save Failed');
@@ -23,7 +23,7 @@ describe('Notice', () => {
   });
 
   it('announces a success politely without interrupting', () => {
-    render(<Notice notice={{ type: 'success', text: 'Saved' }} />);
+    render(<Notice notice={{ kind: 'success', message: 'Saved' }} />);
 
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent('Saved');
@@ -32,14 +32,14 @@ describe('Notice', () => {
 
   it('offers a dismiss control when a handler is supplied', async () => {
     const onDismiss = vi.fn();
-    render(<Notice notice={{ type: 'error', text: 'Boom' }} onDismiss={onDismiss} />);
+    render(<Notice notice={{ kind: 'error', message: 'Boom' }} onDismiss={onDismiss} />);
 
     await userEvent.click(screen.getByRole('button', { name: /dismiss/i }));
     expect(onDismiss).toHaveBeenCalledOnce();
   });
 
   it('omits the dismiss control when no handler is supplied', () => {
-    render(<Notice notice={{ type: 'success', text: 'Saved' }} />);
+    render(<Notice notice={{ kind: 'success', message: 'Saved' }} />);
     expect(screen.queryByRole('button')).toBeNull();
   });
 });

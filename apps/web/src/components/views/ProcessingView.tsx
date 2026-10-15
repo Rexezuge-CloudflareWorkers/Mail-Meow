@@ -97,7 +97,7 @@ export default function ProcessingView({ lng }: { lng: string }) {
                         // The hook records the failure for the alert above;
                         // swallowing it here would leave the promise unhandled
                         // and the button silently doing nothing.
-                        void triggerRefresh(applicationId).catch(() => undefined);
+                        void triggerRefresh(applicationId).catch(() => {});
                       }}
                     >
                       {t('processing.runNow', 'Run Now')}

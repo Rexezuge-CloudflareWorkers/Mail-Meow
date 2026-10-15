@@ -4,6 +4,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@rexezuge/d1': 1.8.2
+  '@rexezuge/errors': 1.8.2
+  '@rexezuge/http': 1.8.2
+  '@rexezuge/identity': 1.8.2
+  '@rexezuge/runtime': 1.8.2
+  '@rexezuge/shared': 1.8.2
+  '@rexezuge/tooling': 1.8.2
+  '@rexezuge/web': 1.8.2
+
 importers:
 
   .:
@@ -11,6 +21,30 @@ importers:
       '@cloudflare/vitest-pool-workers':
         specifier: 0.23.0
         version: 0.23.0(@vitest/runner@4.1.11)(@vitest/snapshot@4.1.11)(vitest@4.1.11)
+      '@rexezuge/d1':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/errors':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/http':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/identity':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/runtime':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/shared':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/tooling':
+        specifier: 1.8.2
+        version: 1.8.2(eslint-config-prettier@10.1.8(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-prettier@5.5.6(eslint-config-prettier@10.1.8(eslint@10.12.0(jiti@2.7.0)))(eslint@10.12.0(jiti@2.7.0))(prettier@3.9.9))(eslint-plugin-regexp@3.3.1(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-sonarjs@4.2.2(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-unicorn@76.0.0(eslint@10.12.0(jiti@2.7.0)))(eslint@10.12.0(jiti@2.7.0))(globals@17.13.0)(jsonc-parser@3.3.1)(prettier@3.9.9)(typescript-eslint@8.71.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)(vitest@4.1.11)
+      '@rexezuge/web':
+        specifier: 1.8.2
+        version: 1.8.2(lucide-react@1.57.0(@types/react@19.3.0)(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@testing-library/jest-dom':
         specifier: ^7.0.1
         version: 7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.11)
@@ -98,9 +132,6 @@ importers:
       '@mail-meow/backend-data':
         specifier: workspace:*
         version: link:../../packages/backend-data
-      '@mail-meow/backend-errors':
-        specifier: workspace:*
-        version: link:../../packages/backend-errors
       '@mail-meow/backend-runtime':
         specifier: workspace:*
         version: link:../../packages/backend-runtime
@@ -113,6 +144,18 @@ importers:
       '@mail-meow/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@rexezuge/errors':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/http':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/runtime':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/shared':
+        specifier: 1.8.2
+        version: 1.8.2
       chanfana:
         specifier: 3.4.0
         version: 3.4.0
@@ -132,9 +175,6 @@ importers:
       '@mail-meow/backend-data':
         specifier: workspace:*
         version: link:../../packages/backend-data
-      '@mail-meow/backend-errors':
-        specifier: workspace:*
-        version: link:../../packages/backend-errors
       '@mail-meow/backend-runtime':
         specifier: workspace:*
         version: link:../../packages/backend-runtime
@@ -147,6 +187,18 @@ importers:
       '@mail-meow/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@rexezuge/d1':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/errors':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/runtime':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/shared':
+        specifier: 1.8.2
+        version: 1.8.2
     devDependencies:
       '@types/node':
         specifier: 26.6.5
@@ -157,12 +209,18 @@ importers:
 
   apps/web:
     dependencies:
+      '@rexezuge/web':
+        specifier: 1.8.2
+        version: 1.8.2(lucide-react@1.57.0(@types/react@19.3.0)(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       clsx:
         specifier: 2.1.1
         version: 2.1.1
       i18next:
         specifier: ^26.4.2
         version: 26.4.2(typescript@6.0.3)
+      lucide-react:
+        specifier: 1.57.0
+        version: 1.57.0(@types/react@19.3.0)(react@19.3.0)
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -215,25 +273,18 @@ importers:
 
   packages/backend-data:
     dependencies:
-      '@mail-meow/backend-errors':
-        specifier: workspace:*
-        version: link:../backend-errors
       '@mail-meow/shared':
         specifier: workspace:*
         version: link:../shared
-    devDependencies:
-      '@types/node':
-        specifier: 26.6.5
-        version: 26.6.5
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-
-  packages/backend-errors:
-    dependencies:
-      hono:
-        specifier: 4.13.13
-        version: 4.13.13
+      '@rexezuge/d1':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/errors':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/shared':
+        specifier: 1.8.2
+        version: 1.8.2
     devDependencies:
       '@types/node':
         specifier: 26.6.5
@@ -247,6 +298,12 @@ importers:
       '@mail-meow/shared':
         specifier: workspace:*
         version: link:../shared
+      '@rexezuge/runtime':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/shared':
+        specifier: 1.8.2
+        version: 1.8.2
     devDependencies:
       '@types/node':
         specifier: 26.6.5
@@ -260,9 +317,6 @@ importers:
       '@mail-meow/backend-data':
         specifier: workspace:*
         version: link:../backend-data
-      '@mail-meow/backend-errors':
-        specifier: workspace:*
-        version: link:../backend-errors
       '@mail-meow/backend-runtime':
         specifier: workspace:*
         version: link:../backend-runtime
@@ -272,9 +326,21 @@ importers:
       '@mail-meow/shared':
         specifier: workspace:*
         version: link:../shared
-      jose:
-        specifier: 6.2.12
-        version: 6.2.12
+      '@rexezuge/d1':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/errors':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/identity':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/runtime':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/shared':
+        specifier: 1.8.2
+        version: 1.8.2
     devDependencies:
       '@types/node':
         specifier: 26.6.5
@@ -285,12 +351,15 @@ importers:
 
   packages/provider-clients:
     dependencies:
-      '@mail-meow/backend-errors':
-        specifier: workspace:*
-        version: link:../backend-errors
       '@mail-meow/shared':
         specifier: workspace:*
         version: link:../shared
+      '@rexezuge/errors':
+        specifier: 1.8.2
+        version: 1.8.2
+      '@rexezuge/shared':
+        specifier: 1.8.2
+        version: 1.8.2
       aws4fetch:
         specifier: 1.0.20
         version: 1.0.20
@@ -310,6 +379,9 @@ importers:
 
   packages/shared:
     dependencies:
+      '@rexezuge/shared':
+        specifier: 1.8.2
+        version: 1.8.2
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -1302,6 +1374,47 @@ packages:
 
   '@poppinss/exception@1.2.3':
     resolution: {integrity: sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw==}
+
+  '@rexezuge/d1@1.8.2':
+    resolution: {integrity: sha512-w32rCykxgm31WQ/L7BZjQl/eNQyiDsIF6atfT9VsIzYhS/F7qwaUrFrG6HseUhxntBDpbffLRKqGWkNWDBshgA==}
+
+  '@rexezuge/errors@1.8.2':
+    resolution: {integrity: sha512-MNykt/FTtYwLyNTbOZUkQegVQTvr0L1KhEfZIP+Reh+wducsqxlO1vy5Z2MtTkhhZjn9M+646q5S+RoiXy3nVw==}
+
+  '@rexezuge/http@1.8.2':
+    resolution: {integrity: sha512-cpXF+aft64+rNeHGCqGWRW8tHntyOSvMMEX4tEH4oHMBcztffiGPZTQ/WS0w/PH9VuNirwztnlDpJaz2u01ofg==}
+
+  '@rexezuge/identity@1.8.2':
+    resolution: {integrity: sha512-Fmh8TOWxgeRoGr9W4MSCEMuqQpPA0XedfNRizRvlx3A1hKasBsykdz+wZpkeWbCSn053MIfWgTFmD60T1k63wQ==}
+
+  '@rexezuge/runtime@1.8.2':
+    resolution: {integrity: sha512-PyTCbm4RjLz2rUvm8aVF0my0lXHj8K/eH1YHBROBK95sBWRpaZeywKiOhAzQG4Tv7pH+gIkQgJGfZ1YimQeVEQ==}
+
+  '@rexezuge/shared@1.8.2':
+    resolution: {integrity: sha512-LXXszQbXUB4Mu9ig1nb1XZOahVMOpM70lsnvSQ7wP744+42PIJBpwDmBNqQAsfemSsTZULPYWQ7B8brfef4leA==}
+
+  '@rexezuge/tooling@1.8.2':
+    resolution: {integrity: sha512-GUWulYkpvBneJKBjyBa2kC+x+98NB8q7Z0mdvmlQGFgunS53wr9tYTv7BNe92XmjIgOsU8qTNR76CzCnh3AT2Q==}
+    peerDependencies:
+      eslint: ^10.0.0
+      eslint-config-prettier: ^10.1.8
+      eslint-plugin-prettier: ^5.5.6
+      eslint-plugin-regexp: ^3.3.1
+      eslint-plugin-sonarjs: ^4.2.2
+      eslint-plugin-unicorn: ^76.0.0
+      globals: ^17.13.0
+      jsonc-parser: ^3.3.1
+      prettier: ^3.9.0
+      typescript: ^6.0.0
+      typescript-eslint: ^8.0.0
+      vitest: ^4.0.0
+
+  '@rexezuge/web@1.8.2':
+    resolution: {integrity: sha512-FvI6vkz3yAKmFDuZXafrd0Yctsa8gEKSsHh8o/wYjRW32RUV0qPWXBGfgevOdnfHrhWpl++R2LKpGMwDKeC8eA==}
+    peerDependencies:
+      lucide-react: ^1.49.0
+      react: ^19.3.0
+      react-dom: ^19.3.0
 
   '@rolldown/binding-android-arm-eabi@1.2.12':
     resolution: {integrity: sha512-dB/a1214qKfHMXCpgqR4OZT+jS4kTyEXbQGJPqzobt5EwH5rX080pxE37alt3RzvR1bf1Yz/yGqRfrYAxuPw0A==}
@@ -2421,6 +2534,15 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lucide-react@1.57.0:
+    resolution: {integrity: sha512-bXFZEucYhAzLD62Jse76AbTR6LiSLTn3Tqir2f1n8rZrWAdLodYy7jnRZSPIT89dRLk/IseMOUWG82wJtTyTTw==}
+    peerDependencies:
+      '@types/react': '*'
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -3718,6 +3840,55 @@ snapshots:
 
   '@poppinss/exception@1.2.3': {}
 
+  '@rexezuge/d1@1.8.2':
+    dependencies:
+      '@rexezuge/errors': 1.8.2
+      '@rexezuge/shared': 1.8.2
+
+  '@rexezuge/errors@1.8.2': {}
+
+  '@rexezuge/http@1.8.2':
+    dependencies:
+      '@rexezuge/errors': 1.8.2
+      '@rexezuge/shared': 1.8.2
+      chanfana: 3.4.0
+      hono: 4.13.13
+      jose: 6.2.12
+
+  '@rexezuge/identity@1.8.2':
+    dependencies:
+      '@rexezuge/d1': 1.8.2
+      '@rexezuge/errors': 1.8.2
+      '@rexezuge/shared': 1.8.2
+
+  '@rexezuge/runtime@1.8.2': {}
+
+  '@rexezuge/shared@1.8.2': {}
+
+  '@rexezuge/tooling@1.8.2(eslint-config-prettier@10.1.8(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-prettier@5.5.6(eslint-config-prettier@10.1.8(eslint@10.12.0(jiti@2.7.0)))(eslint@10.12.0(jiti@2.7.0))(prettier@3.9.9))(eslint-plugin-regexp@3.3.1(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-sonarjs@4.2.2(eslint@10.12.0(jiti@2.7.0)))(eslint-plugin-unicorn@76.0.0(eslint@10.12.0(jiti@2.7.0)))(eslint@10.12.0(jiti@2.7.0))(globals@17.13.0)(jsonc-parser@3.3.1)(prettier@3.9.9)(typescript-eslint@8.71.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)(vitest@4.1.11)':
+    dependencies:
+      '@rexezuge/d1': 1.8.2
+      eslint: 10.12.0(jiti@2.7.0)
+      eslint-config-prettier: 10.1.8(eslint@10.12.0(jiti@2.7.0))
+      eslint-plugin-prettier: 5.5.6(eslint-config-prettier@10.1.8(eslint@10.12.0(jiti@2.7.0)))(eslint@10.12.0(jiti@2.7.0))(prettier@3.9.9)
+      eslint-plugin-regexp: 3.3.1(eslint@10.12.0(jiti@2.7.0))
+      eslint-plugin-sonarjs: 4.2.2(eslint@10.12.0(jiti@2.7.0))
+      eslint-plugin-unicorn: 76.0.0(eslint@10.12.0(jiti@2.7.0))
+      globals: 17.13.0
+      jsonc-parser: 3.3.1
+      prettier: 3.9.9
+      typescript: 6.0.3
+      typescript-eslint: 8.71.1(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3)
+      vitest: 4.1.11(@types/node@26.6.5)(@vitest/coverage-v8@4.1.11)(jsdom@30.1.2)(vite@8.3.2(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  '@rexezuge/web@1.8.2(lucide-react@1.57.0(@types/react@19.3.0)(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+    dependencies:
+      '@rexezuge/errors': 1.8.2
+      '@rexezuge/shared': 1.8.2
+      lucide-react: 1.57.0(@types/react@19.3.0)(react@19.3.0)
+      react: 19.3.0
+      react-dom: 19.3.0(react@19.3.0)
+
   '@rolldown/binding-android-arm-eabi@1.2.12':
     optional: true
 
@@ -4769,6 +4940,12 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lucide-react@1.57.0(@types/react@19.3.0)(react@19.3.0):
+    dependencies:
+      react: 19.3.0
+    optionalDependencies:
+      '@types/react': 19.3.0
 
   lz-string@1.5.0: {}
 

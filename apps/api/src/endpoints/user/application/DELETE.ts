@@ -1,5 +1,5 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
 
@@ -43,7 +43,7 @@ class DeleteApplicationRoute extends IUserRoute<DeleteApplicationRequest, Delete
 
   protected async handleRequest(request: DeleteApplicationRequest, env: Env, cxt: RouteContext): Promise<DeleteApplicationResponse> {
     const scope = createRequestScope(env);
-    await scope.applications.deleteApplication(request.applicationId, this.getAuthenticatedAccount(cxt));
+    await scope.get(Tokens.ApplicationService).deleteApplication(request.applicationId, this.getAuthenticatedAccount(cxt));
     return { success: true };
   }
 }

@@ -1,136 +1,164 @@
-import { executeD1WithRetry } from '../utils';
+import { newAccountId, UserDAO as KitUserDAO } from '@rexezuge/identity';
+import type { UserRow as KitUserRow } from '@rexezuge/identity';
+import { normalizeEmail, TimestampUtil } from '@rexezuge/shared';
 import type { AccountIdentity, User, UserInternal } from '@mail-meow/shared/model';
-import { normalizeEmail, TimestampUtil } from '@mail-meow/shared/utils';
-import { BaseDAO } from './BaseDAO';
+
+/**
+ * A row of the `users` table.
+ *
+ * Two columns are narrowed against the kit's `UserRow`, and both narrowings are
+ * facts about *this* schema rather than wishes about it:
+ *
+ * - `username: null` because nothing ever added a handle column. The kit
+ *   declares it `string | null`; here it is absent, and `null` is what
+ *   `summarize` reads it as — so the absence is stated rather than left to a
+ *   `SELECT *` that happens not to return the key.
+ * - `updated_at: number`, not `number | null`. The kit widens it for repos
+ *   whose column is nullable; `migrations/0006_add_updated_at_column.sql` made
+ *   this one `NOT NULL`, and {@link UserDAO.createUser} has to write it
+ *   because of that.
+ */
+interface UserRow extends Omit<KitUserRow, 'username' | 'updated_at'> {
+  username: null;
+  updated_at: number;
+  preferred_language?: string | null;
+}
 
 const UPDATE_BY_ID = 'UPDATE users SET preferred_language = ?, updated_at = ? WHERE id = ?';
 const UPDATE_BY_ANCHOR = 'UPDATE users SET preferred_language = ?, updated_at = ? WHERE email = ?';
 
 /**
- * Opaque hex token, e.g. `a1b2c3…`.
+ * The kit's `users` DAO, plus this database's two departures.
  *
- * Uses the platform CSPRNG rather than `UUIDUtil` because the value is an
- * internal identifier with no v4 layout requirement, and because a UUID's
- * version/variant bits would make a guessable-looking shape where none is
- * needed.
+ * ## Why this is a subclass rather than a re-export
+ *
+ * **The column.** `users` here carries `preferred_language` (migration 0010),
+ * which is a *user-facing setting*: `PUT /user/me` writes it, the SPA's language
+ * selector reads it back, and the greeting locale resolves from it. Dropping the
+ * column to match the kit would be a product regression, not a convergence — so
+ * it stays and this DAO stays, inheriting rather than copying everything the
+ * kit already got right.
+ *
+ * **The `NOT NULL` insert.** `migrations/0006_add_updated_at_column.sql` made
+ * `updated_at` `NOT NULL`, and the kit's `createUser` does not write it. Left
+ * alone, every new account would fail to insert with a constraint violation —
+ * visible immediately, but only on the one path that creates an account.
+ *
+ * ## Why `createUser` is overridden rather than inherited
+ *
+ * Two reasons, and the second is the dangerous one.
+ *
+ * The kit's version is `INSERT … ON CONFLICT DO NOTHING` plus a read-back
+ * comparing the anchor row's id to its own generated one, returning `null` when
+ * the insert was a silent no-op. That is what makes the opaque-anchor retry
+ * safe, and it is inherited as-is.
+ *
+ * What it does *not* do is tolerate an id-less row, and this database has those
+ * in every deployment created before migration 0011: `users.id` was added by
+ * `ALTER TABLE ADD COLUMN` and backfilled by an `UPDATE`, so a row written
+ * between the two — or on a database where the backfill ran against an
+ * interrupted write — has `id IS NULL` and no `current_email`. D1 cannot alter a
+ * column's nullability, so those rows are permanent.
+ *
+ * A plain `ON CONFLICT DO NOTHING` treats such a row as *conflicting* and
+ * silently creates nothing; the read-back then returns `null`, and registration
+ * takes the opaque-anchor retry — minting a **second account beside the first**
+ * and orphaning every id-keyed row behind the original. The
+ * `DO UPDATE … WHERE users.id IS NULL` clause below means a conflict can only
+ * ever *adopt* an id-less row, so this path cannot fork a second identity for an
+ * address that already has one.
  */
-function randomHex(bytes: number): string {
-  return [...crypto.getRandomValues(new Uint8Array(bytes))].map((byte: number): string => byte.toString(16).padStart(2, '0')).join('');
-}
-
-class UserDAO extends BaseDAO {
+class UserDAO extends KitUserDAO {
   /**
-   * Opaque anchor for an account whose login address is already held as
-   * another account's anchor.
+   * Create an account, stamping the identity columns migration 0011 added and
+   * the `updated_at` migration 0006 requires.
    *
-   * It must be globally unique and must never be a real address: the anchor
-   * column is the primary key that every legacy `*_email` foreign key resolves
-   * against, so an address used here could never be re-registered by a
-   * different person after the original account changed addresses.
+   * Returns the account's id, or `null` when the insert was a silent no-op —
+   * which the caller (`accountLookup`) reads as "retry with an opaque anchor".
+   * That read-back is the whole safety property here; see the class note.
    */
-  public static newAnchor(): string {
-    return `anchor-${randomHex(16)}@users.invalid`;
-  }
-
-  public static newId(): string {
-    return `usr_${randomHex(16)}`;
-  }
-
-  /**
-   * Create an account, stamping the identity columns migration 0011 added.
-   *
-   * The anchor is a parameter rather than derived from the login address, so
-   * the caller can retry with an opaque anchor when the address turned out to
-   * be taken. `ON CONFLICT(email) DO NOTHING` makes that retry safe: a lost
-   * race is a silent no-op rather than a second account for the same address.
-   *
-   * The caller claims the sign-in address in `user_emails` separately and then
-   * re-resolves, because the account is not login-capable until it does.
-   */
-  public async createUser(input: { id: string; anchor: string; loginEmail: string; now: number }): Promise<void> {
-    await executeD1WithRetry(
-      (): Promise<D1Result> =>
-        this.database
-          .prepare(
-            'INSERT INTO users (email, created_at, updated_at, id, current_email) VALUES (?, ?, ?, ?, ?) ON CONFLICT(email) DO NOTHING',
-          )
-          .bind(input.anchor, input.now, input.now, input.id, input.loginEmail)
-          .run(),
-      'create user',
+  public override async createUser(input: { anchor: string; loginEmail: string; now: number }): Promise<string | null> {
+    const anchor = input.anchor.toLowerCase();
+    const loginEmail = input.loginEmail.toLowerCase();
+    const id = newAccountId();
+    await this.run(
+      `
+        INSERT INTO users (email, created_at, updated_at, id, current_email)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT DO NOTHING
+      `,
+      [anchor, input.now, input.now, id, loginEmail],
     );
+
+    // Adopt rather than overwrite a row migration 0011 left id-less. Bounded by
+    // the primary key on `email`, so it can never fan out; the `id IS NULL`
+    // predicate is what stops it overwriting a real account that merely shares
+    // the email — which the unique index on `current_email` cannot happen to,
+    // but which the anchor primary key can if an opaque anchor were ever chosen
+    // from the address.
+    await this.run('UPDATE users SET id = ?, current_email = ?, updated_at = ? WHERE email = ? AND id IS NULL', [
+      id,
+      loginEmail,
+      input.now,
+      anchor,
+    ]);
+
+    const row = await this.getByEmail(anchor);
+    return row?.id === id ? id : null;
   }
 
   /**
    * Anchor lookup — for legacy `*_email` values and cascade resolution.
    *
    * `users.email` keeps SQLite's BINARY collation (it is the primary key), so
-   * this compares exactly. Callers that want the login address go through
-   * `getByCurrentEmail` or the address registry instead.
+   * the kit's lowercase-the-parameter rule is what makes this match: the column
+   * is stored lowercased by every writer through this DAO.
    */
-  public async getByEmail(email: string): Promise<UserInternal | null> {
-    const row: UserInternal | null = await this.database
-      .prepare('SELECT id, email, current_email, preferred_language, created_at, updated_at FROM users WHERE email = ? LIMIT 1')
-      .bind(email)
-      .first<UserInternal>();
-    return row;
-  }
-
-  public async getById(id: string): Promise<UserInternal | null> {
-    const row: UserInternal | null = await this.database
-      .prepare('SELECT id, email, current_email, preferred_language, created_at, updated_at FROM users WHERE id = ? LIMIT 1')
-      .bind(id)
-      .first<UserInternal>();
-    return row;
+  public override async getByEmail(email: string): Promise<UserRow | null> {
+    return this.first<UserRow>('SELECT * FROM users WHERE email = ? LIMIT 1', [email.toLowerCase()]);
   }
 
   /**
-   * Login-address lookup. Case-insensitive, because the registry and
-   * `current_email` are both stored lowercased while Cloudflare Access may
-   * deliver a mixed-case address.
+   * The account behind a stable key. `null` on a pre-0011 database.
+   *
+   * Overridden only to narrow the row type to this schema; the query is the
+   * kit's, which is also the point — the alternative was a second
+   * `SELECT * FROM users WHERE id = ?` that could drift from it.
    */
-  public async getByCurrentEmail(email: string): Promise<UserInternal | null> {
-    const row: UserInternal | null = await this.database
-      .prepare(
-        'SELECT id, email, current_email, preferred_language, created_at, updated_at FROM users WHERE lower(current_email) = lower(?) LIMIT 1',
-      )
-      .bind(email)
-      .first<UserInternal>();
-    return row;
+  public override async getById(id: string): Promise<UserRow | null> {
+    return this.first<UserRow>('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
   }
 
   /**
-   * Move the login address. The anchor is deliberately untouched: it is what
-   * every legacy `*_email` column and the `connected_applications` foreign key
-   * resolve against.
+   * Login-address lookup, case-insensitive.
+   *
+   * The kit's form is `current_email = ?` with a lowercased parameter, which
+   * uses the unique index. This one spells it `lower(current_email) = lower(?)`,
+   * which cannot. Both are correct *because every writer lowercases*, so the
+   * difference is the index — kept here for one reason: migration 0011
+   * deliberately leaves `current_email` NULL for mixed-case accounts it cannot
+   * disambiguate, and the surrounding resolution path was written against this
+   * shape. If the kit's indexed form is adopted here, the backfill gap has to
+   * close first or those accounts become unfindable at login.
    */
-  public async setCurrentEmail(id: string, email: string, now: number): Promise<void> {
-    await executeD1WithRetry(
-      (): Promise<D1Result> =>
-        this.database.prepare('UPDATE users SET current_email = ?, updated_at = ? WHERE id = ?').bind(email, now, id).run(),
-      'set current email',
-    );
+  public override async getByCurrentEmail(email: string): Promise<UserRow | null> {
+    return this.first<UserRow>('SELECT * FROM users WHERE lower(current_email) = lower(?) LIMIT 1', [email]);
   }
 
   /**
    * Keyed on the account id, so a stored language preference survives an
    * address change. A pre-0011 database has no `id`, so the anchor is the
    * fallback — chosen by the caller, not guessed here.
+   *
+   * Two literal statements rather than an interpolated column name: this layer
+   * only ever varies SQL by an allow-listed identifier, and neither query needs
+   * to vary at all.
    */
   public async updatePreferredLanguage(account: AccountIdentity, preferredLanguage: string | null): Promise<User | undefined> {
     const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
     const byId: boolean = account.id !== '';
     const key: string = byId ? account.id : account.anchorEmail;
-    // Two literal statements rather than an interpolated column name: this layer
-    // only ever varies SQL by an allow-listed identifier, and neither query
-    // needs to vary at all.
-    await executeD1WithRetry(
-      (): Promise<D1Result> =>
-        this.database
-          .prepare(byId ? UPDATE_BY_ID : UPDATE_BY_ANCHOR)
-          .bind(preferredLanguage, now, key)
-          .run(),
-      'update user language',
-    );
+    await this.run(byId ? UPDATE_BY_ID : UPDATE_BY_ANCHOR, [preferredLanguage, now, key]);
     const row: UserInternal | null = byId ? await this.getById(account.id) : await this.getByEmail(account.anchorEmail);
     return row ? UserDAO.toUser(row) : undefined;
   }
@@ -154,3 +182,5 @@ class UserDAO extends BaseDAO {
 }
 
 export { UserDAO };
+export type { UserRow };
+export { newAnchor, newAccountId } from '@rexezuge/identity';

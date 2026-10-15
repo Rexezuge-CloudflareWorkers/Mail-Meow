@@ -26,7 +26,7 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
 
 ## Required vars (no defaults)
 
-`POLICY_AUD`, `TEAM_DOMAIN` — Cloudflare Access JWT verification (`EmailValidationUtil`). No default; requests fail without them.
+`POLICY_AUD`, `TEAM_DOMAIN` — Cloudflare Access JWT verification, now `@rexezuge/http`'s `authenticateAccess`. No default; requests fail without them.
 
 ## Local-only (no default, not a tunable setting)
 
@@ -52,30 +52,43 @@ hardcoded deadline.
 Add new env vars as one entry in `SETTING_DESCRIPTORS` (`backend-runtime/src/config/AppConfig.ts`),
 not inline. Each descriptor carries the key, a typed parser, and a numeric default, and
 drives both parsing and the documented table above. Cross-setting invariants go in
-`validateConfig`, which runs once at construction so a bad deployment fails at
-configuration time rather than per request.
+`crossSettingWarnings`, which `validate()` composes with the per-value warnings the kit's
+`AppConfiguration` already produces.
+
+`DEBUG_MODE` is exactly `'true'`. The kit's family rule is presence-of-exactly-`true`, so `1`,
+`yes`, `on` and `TRUE` are now **rejected** with a warning rather than treated as true. That is
+a behaviour change from the previous broader spellings, and it is deliberate: a flag that reads
+differently depending on how it was capitalised is a flag nobody can trust in an incident.
 
 Values that are not safe integers, or that are not recognised booleans, fall back to the
-default **and log a warning** — a typo'd variable name is otherwise indistinguishable from
+default **and produce a warning** — a typo'd variable name is otherwise indistinguishable from
 an unset one. Unrecognised `UPPER_SNAKE` keys also warn. Read configuration through
-`scope.config` (an `AppConfigReader`); do not read `env` directly for a tunable setting.
+`scope.get(Tokens.Config)` (an `AppConfigReader`); do not read `env` directly for a tunable
+setting.
 
 ## Dependency injection
 
-There is no container. `createRequestScope(env)`
-(`packages/backend-services/src/composition/requestScope.ts`) is a plain composition root
-that constructs each DAO **once**, memoizes the Secrets Store master key, and passes every
-collaborator to each service's constructor as an explicit `*Deps` object.
+`createRequestScope(env)` (`packages/backend-services/src/composition/requestScope.ts`) builds
+every service for one request and returns a `@rexezuge/runtime` `Container`. Call sites resolve
+through it: `scope.get(Tokens.UserService)`, `scope.get(Tokens.Config)`. The registry is
+`composition/tokens.ts`.
 
-- Services never construct a DAO from `env`. If a service needs a DAO, it declares a
-  factory in its `*Deps` interface and the composition root supplies it.
-- Unit tests pass fakes through the same `*Deps` seam. Module mocks are not needed.
-- Because collaborators are constructor arguments, there is nothing to register, no token
-  to look up, and no binding that can be forgotten at a call site.
+- **Per request, never a module singleton.** The container closes over `env`, and one Worker
+  isolate serves requests under different `env` values across deployments.
+- **DAOs are registered as memoized factories.** That is what makes `ConnectedApplicationDAO`
+  read the Secrets Store master key on first use rather than on every request.
+- Unit tests resolve from a container built over fakes, or call the service directly with the
+  same `*Deps` seam. Module mocks are not needed.
 
-The previous `Container` + `Tokens` pair was a service locator: seven of its bindings were
-never resolved, the memoized DAOs it exposed were bypassed (each service built its own from
-`env`), and hiding that required seven `as never` casts.
+This replaced a hand-rolled `*Deps`-only composition root, which needed no registry but also
+had no way to substitute one collaborator for a test without constructing all of them. The
+`Container` is not a service locator here: every binding is resolved, and the binding count is
+the size of `tokens.ts` rather than something that accumulates at each call site.
+
+`AppConfigReader.fromEnv` does **not** throw on a bad value or a violated cross-setting
+invariant — it returns `string[]` warnings from `validate()`. A misconfigured setting is a
+startup log line, not a 500 storm, because a Worker that throws during config read takes down
+every route including `/`.
 
 `AppConfigReader` (`backend-runtime/src/config/AppConfig.ts`) is the only configuration
 surface. There is no `AppConfiguration`, no `ConfigurationManager`, and no

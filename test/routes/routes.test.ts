@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MailMeowWorker } from '@/workers/MailMeowWorker';
 import type { AccountIdentity } from '@mail-meow/shared/model';
 
@@ -31,19 +31,25 @@ const hoisted = vi.hoisted(() => ({
   getAuthenticatedUserEmail: vi.fn(),
 }));
 
-vi.mock('@mail-meow/backend-services/auth', () => ({
-  EmailValidationUtil: {
-    getAuthenticatedUserEmail: hoisted.getAuthenticatedUserEmail,
-  },
-}));
-
 /**
  * The composition root is replaced wholesale: route tests care about routing,
  * validation, and response shaping, not about DAO wiring (covered by the service
- * and DAO suites). Asserting `scope.apiKeys` is reached at all is the
+ * and DAO suites). Asserting that `ApiKeyService` is reached at all is the
  * interaction that matters here.
+ *
+ * The double is container-shaped — `get(token)` rather than properties — because
+ * that is what the routes now call. Switching on the token keeps the values
+ * distinct without reproducing the real graph, and `throw` on an unknown token is
+ * the useful part: a route resolving something the double does not list fails
+ * loudly instead of getting `undefined`.
+ *
+ * `Tokens` is passed through from `importOriginal` so the symbols the routes
+ * import are the ones the real registry defines.
  */
-vi.mock('@mail-meow/backend-services/composition', () => {
+vi.mock('@mail-meow/backend-services/composition', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@mail-meow/backend-services/composition')>();
+  const { Tokens } = actual;
+
   const config = new Proxy(
     {},
     {
@@ -57,33 +63,50 @@ vi.mock('@mail-meow/backend-services/composition', () => {
         return defaults[property] ?? 1;
       },
     },
-  ) as never;
+  );
 
-  return {
-    createRequestScope: () => ({
-      config,
-      apiKeys: {
+  const services = new Map<unknown, unknown>([
+    [Tokens.Config, config],
+    [
+      Tokens.ApiKeyService,
+      {
         resolveApplication: hoisted.resolveApplication,
         listApiKeys: hoisted.listApiKeys,
         createApiKey: hoisted.createApiKey,
         deleteApiKey: hoisted.deleteApiKey,
       },
-      applications: {
+    ],
+    [
+      Tokens.ApplicationService,
+      {
         createApplication: hoisted.createApplication,
         listApplications: hoisted.listApplications,
         updateApplication: hoisted.updateApplication,
         deleteApplication: hoisted.deleteApplication,
       },
-      users: {
+    ],
+    [
+      Tokens.UserService,
+      {
         upsertUser: hoisted.upsertUser,
         getPreferredLanguage: hoisted.getPreferredLanguage,
         getCurrentUserSummary: hoisted.getCurrentUserSummary,
         updatePreferredLanguage: hoisted.updatePreferredLanguage,
       },
-      oauth2Authorization: { createAuthorization: hoisted.createAuthorization, completeCallback: hoisted.completeCallback },
-      processing: { listTaskRuns: hoisted.listTaskRuns, triggerTask: hoisted.triggerTask },
-      mailDelivery: { sendEmailForApplication: hoisted.sendEmailForApplication },
-      sns: { publishForApplication: hoisted.publishForApplication },
+    ],
+    [Tokens.OAuth2AuthorizationService, { createAuthorization: hoisted.createAuthorization, completeCallback: hoisted.completeCallback }],
+    [Tokens.ProcessingService, { listTaskRuns: hoisted.listTaskRuns, triggerTask: hoisted.triggerTask }],
+    [Tokens.MailDeliveryService, { sendEmailForApplication: hoisted.sendEmailForApplication }],
+    [Tokens.SnsDeliveryService, { publishForApplication: hoisted.publishForApplication }],
+  ]);
+
+  return {
+    ...actual,
+    createRequestScope: () => ({
+      get: (token: unknown): unknown => {
+        if (!services.has(token)) throw new Error(`Route resolved an unbound token: ${String(token)}`);
+        return services.get(token);
+      },
     }),
   };
 });
@@ -129,6 +152,14 @@ const ENV = {
   BACKGROUND_TASK_RUN_RETENTION_DAYS: '30',
   CRON_TASKS: {},
   OAUTH2_TOKEN_REFRESHERS_DO: {},
+  /**
+   * The dev bypass, which is now an explicit allow-list rather than the mere
+   * presence of a var: `authenticateAccess` takes `bypassAllowed` *and* the
+   * address, so setting one without the other no longer silently disables
+   * Access. This exercises that real path rather than mocking the authenticator
+   * out — the middleware is part of what these tests are asserting.
+   */
+  DEV_AUTH_EMAIL: hoisted.authenticatedEmail,
 } as unknown as Env;
 
 const worker = new MailMeowWorker();
@@ -298,7 +329,7 @@ describe('POST /user/application', () => {
   });
 
   it('surfaces a service error with its own status', async () => {
-    hoisted.createApplication.mockRejectedValue(new (await import('@mail-meow/backend-errors')).BadRequestError('Too many applications'));
+    hoisted.createApplication.mockRejectedValue(new (await import('@rexezuge/errors')).BadRequestError('Too many applications'));
     const { status, body } = await callJson('/user/application', {
       displayName: 'My App',
       providerId: 'google-gmail',
@@ -393,9 +424,7 @@ describe('OAuth2 routes', () => {
     // Only a provider-reported `error` redirects. A failed exchange is reported
     // as a normal 4xx so the caller sees why, rather than a bare redirect that
     // discards the reason.
-    hoisted.completeCallback.mockRejectedValue(
-      new (await import('@mail-meow/backend-errors')).BadRequestError('Session is invalid or expired.'),
-    );
+    hoisted.completeCallback.mockRejectedValue(new (await import('@rexezuge/errors')).BadRequestError('Session is invalid or expired.'));
     const response = await call(`/api/oauth2/callback/${APP_ID}?code=abc&state=xyz`);
 
     expect(response.status).toBe(400);
@@ -423,7 +452,7 @@ describe('processing routes', () => {
   });
 
   it('surfaces a service rejection as a client error', async () => {
-    hoisted.triggerTask.mockRejectedValue(new (await import('@mail-meow/backend-errors')).BadRequestError('cannot be triggered manually'));
+    hoisted.triggerTask.mockRejectedValue(new (await import('@rexezuge/errors')).BadRequestError('cannot be triggered manually'));
     const { status, body } = await callJson('/user/processing/run-task', { taskType: 'delete_everything', applicationId: APP_ID });
 
     expect(status).toBe(400);
@@ -444,7 +473,7 @@ describe('processing routes', () => {
 
 describe('public delivery routes', () => {
   it('rejects an unresolvable API key', async () => {
-    hoisted.resolveApplication.mockRejectedValue(new (await import('@mail-meow/backend-errors')).UnauthorizedError('API key is required.'));
+    hoisted.resolveApplication.mockRejectedValue(new (await import('@rexezuge/errors')).UnauthorizedError('API key is required.'));
     const response = await call('/api/mm_good/email', json({ to: 'recipient@example.com', subject: 'Hi', text: 'x' }));
     expect(response.status).toBe(401);
   });
@@ -457,7 +486,7 @@ describe('public delivery routes', () => {
 
   it('rejects an invalid API key', async () => {
     hoisted.resolveApplication.mockRejectedValue(
-      new (await import('@mail-meow/backend-errors')).UnauthorizedError('The API key is invalid or expired.'),
+      new (await import('@rexezuge/errors')).UnauthorizedError('The API key is invalid or expired.'),
     );
     const response = await call('/api/mm_bad/email', json({ to: 'recipient@example.com', subject: 'Hi', text: 'x' }));
 

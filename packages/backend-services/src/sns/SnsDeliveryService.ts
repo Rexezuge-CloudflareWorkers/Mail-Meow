@@ -1,6 +1,6 @@
 import { SnsDeliveryUtil } from '@mail-meow/provider-clients';
 import type { ConnectedApplication, AccessKeyCredentials } from '@mail-meow/shared/model';
-import { BadRequestError } from '@mail-meow/backend-errors';
+import { BadRequestError } from '@rexezuge/errors';
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import { CONNECTION_METHOD_ACCESS_KEYS, CONNECTED_APPLICATION_STATUS_CONNECTED, PROVIDER_AMAZON_SNS } from '@mail-meow/shared/constants';
 

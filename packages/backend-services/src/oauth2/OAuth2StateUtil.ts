@@ -1,4 +1,4 @@
-import { CryptoUtil } from '@mail-meow/shared/utils';
+import { CryptoUtil } from '@rexezuge/shared';
 
 class OAuth2StateUtil {
   public static generateState(): string {

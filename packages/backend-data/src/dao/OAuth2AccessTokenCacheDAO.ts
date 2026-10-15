@@ -1,6 +1,6 @@
-import { decryptData, encryptData } from '../crypto';
+import { decryptSecret, encryptSecret } from '@rexezuge/d1';
 import { KV_MINIMUM_TIME_TO_LIVE_SECONDS, KV_NAMESPACE_OAUTH2_ACCESS_TOKEN_CACHE } from '../constants';
-import { ErrorSanitizationUtil, TimestampUtil } from '@mail-meow/shared/utils';
+import { ErrorSanitizationUtil, TimestampUtil } from '@rexezuge/shared';
 import { IKeyValueDAO } from './IKeyValueDAO';
 
 interface OAuth2CachedAccessToken {
@@ -35,7 +35,7 @@ class OAuth2AccessTokenCacheDAO extends IKeyValueDAO {
 
     let accessToken: string;
     try {
-      accessToken = await decryptData(cached.encryptedAccessToken, cached.iv, this.masterKey);
+      accessToken = await decryptSecret({ ciphertext: cached.encryptedAccessToken, iv: cached.iv }, this.masterKey);
     } catch (error: unknown) {
       // A value that will not authenticate is unusable: the key was rotated or
       // the entry was corrupted. Letting this throw made every token fetch fail
@@ -58,10 +58,10 @@ class OAuth2AccessTokenCacheDAO extends IKeyValueDAO {
     const now: number = TimestampUtil.getCurrentUnixTimestampInSeconds();
     if (expiresAt <= now) return;
 
-    const encrypted = await encryptData(accessToken, this.masterKey);
+    const envelope = await encryptSecret(accessToken, this.masterKey);
     const data: OAuth2CachedAccessTokenData = {
-      encryptedAccessToken: encrypted.encrypted,
-      iv: encrypted.iv,
+      encryptedAccessToken: envelope.ciphertext,
+      iv: envelope.iv,
       expiresAt,
     };
     // KV rejects a TTL below its floor, so clamp rather than reject the write.

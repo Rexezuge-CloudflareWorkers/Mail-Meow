@@ -1,7 +1,7 @@
 import { OpenAPIRoute } from 'chanfana';
 import { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import { BadRequestError } from '@mail-meow/backend-errors';
+import { BadRequestError } from '@rexezuge/errors';
 import { validateRequestInput } from '@mail-meow/shared/schema';
 import { toErrorResponse } from '@/errors/errorResponse';
 

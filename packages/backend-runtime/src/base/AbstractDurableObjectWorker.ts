@@ -1,28 +1,31 @@
-import { DurableObject } from 'cloudflare:workers';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
+import { AbstractDurableObjectWorker } from '@rexezuge/runtime';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
 
-type DurableObjectFetchRequest = Parameters<NonNullable<DurableObject<Env>['fetch']>>[0];
-type DurableObjectFetchResult = ReturnType<NonNullable<DurableObject<Env>['fetch']>>;
-type DurableObjectFetchResponse = Awaited<DurableObjectFetchResult>;
-
-abstract class AbstractDurableObjectWorker extends DurableObject<Env> {
-  public async fetch(request: DurableObjectFetchRequest): Promise<DurableObjectFetchResponse> {
-    try {
-      return await this.onRequest(request);
-    } catch (err: unknown) {
-      console.error('Unhandled error in durable object fetch():', ErrorSanitizationUtil.sanitizeErrorForLogging(err));
-      return Response.json({ error: 'Internal Error' }, { status: 500 });
-    }
+/**
+ * Mail-Meow's Durable Object base: the kit's, with a redacting sink.
+ *
+ * Same reasoning as `AbstractEntrypointWorker` — the kit's base is byte-identical
+ * across the family and its default `console.error(message, error)` is unsafe for
+ * a Worker whose DO handles OAuth2 token exchange and refresh, where the caught
+ * value can be a provider response body carrying an `Authorization` header.
+ *
+ * `createExecutionContext` is inherited unchanged: the kit's version is
+ * Mail-Meow's version, which is what its own header says it converged from.
+ */
+/**
+ * `TEnv` is unbounded rather than defaulted to the Workers `Env`.
+ *
+ * The previous signature wrote `extends AbstractDurableObjectWorker` with no
+ * parameter, which resolved to `Env` — a global declared in the *consuming*
+ * worker's `types.d.ts`. That is invisible from this package, and the moment
+ * another package imports `base` it stops compiling. `TEnv` defaults to nothing
+ * structurally and each concrete DO supplies its own binding type, which is what
+ * the kit's base intends.
+ */
+abstract class MailMeowDurableObjectWorker<TEnv = unknown> extends AbstractDurableObjectWorker<TEnv> {
+  protected override reportUnhandled(message: string, error: unknown): void {
+    console.error(message, ErrorSanitizationUtil.sanitizeErrorForLogging(error));
   }
-
-  protected createExecutionContext(): ExecutionContext {
-    return {
-      waitUntil: (promise: Promise<unknown>): void => this.ctx.waitUntil(promise),
-      passThroughOnException: (): void => undefined,
-    } as unknown as ExecutionContext;
-  }
-
-  protected abstract onRequest(request: DurableObjectFetchRequest): Promise<DurableObjectFetchResponse>;
 }
 
-export { AbstractDurableObjectWorker };
+export { MailMeowDurableObjectWorker as AbstractDurableObjectWorker };

@@ -2,16 +2,24 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "types": ["node", "vitest/globals"],
+    "jsx": "react-jsx",
     "paths": {
       "@/*": ["../apps/api/src/*"],
+      "~/*": ["../apps/web/src/*"],
       "@mail-meow/background": ["../apps/background/src"],
       "@mail-meow/backend-data": ["../packages/backend-data/src"],
-      "@mail-meow/backend-errors": ["../packages/backend-errors/src"],
       "@mail-meow/backend-runtime": ["../packages/backend-runtime/src"],
       "@mail-meow/backend-services": ["../packages/backend-services/src"],
       "@mail-meow/provider-clients": ["../packages/provider-clients/src"],
       "@mail-meow/shared": ["../packages/shared/src"]
     }
   },
-  "include": ["**/*.ts", "../apps/api/src/**/*.ts", "../apps/background/src/**/*.ts", "../packages/*/src/**/*.ts"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../apps/api/src/**/*.ts",
+    "../apps/background/src/**/*.ts",
+    "../apps/web/src/**/*.{ts,tsx}",
+    "../packages/*/src/**/*.ts"
+  ]
 }

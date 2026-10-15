@@ -1,6 +1,6 @@
 import { AbstractDurableObjectWorker } from '@mail-meow/backend-runtime/base';
-import { ErrorSanitizationUtil } from '@mail-meow/shared/utils';
-import { tasksForPhase } from '@mail-meow/background/scheduled';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
+import { cronPhases, tasksForPhase } from '@mail-meow/background/scheduled';
 
 const CRON_TASKS_RUN_PATH: string = '/run';
 
@@ -9,7 +9,7 @@ interface CronTasksRunRequest {
   scheduledTime?: unknown;
 }
 
-class CronTasksWorker extends AbstractDurableObjectWorker {
+class CronTasksWorker extends AbstractDurableObjectWorker<Env> {
   protected currentRun: Promise<void> | undefined;
 
   protected async onRequest(request: Request): Promise<Response> {
@@ -64,10 +64,27 @@ class CronTasksWorker extends AbstractDurableObjectWorker {
     }
   }
 
+  /**
+   * Run every phase, in order, each internally parallel.
+   *
+   * Phases come from the registry's own ordering rather than from a hardcoded
+   * `for (let phase = 1; phase <= 2; ...)`. The two agree today, and they will not
+   * tomorrow: a third phase added to `TaskRegistry` would be silently skipped by
+   * a loop with a literal bound, and would run *concurrently* with the others if
+   * someone widened the bound instead. Reading `phases()` means the only place
+   * that knows how many phases exist is the registry.
+   *
+   * `Promise.all` per phase, not across phases: the split exists so pruning can
+   * run behind the token refresh rather than behind it *and* beside it.
+   *
+   * A task that fails does not reject here — `IScheduledTask.swallowErrors` is
+   * `true`, precisely because this fan-out has one verdict for the whole batch.
+   */
   protected async runScheduledTasks(event: ScheduledController): Promise<void> {
     const ctx: ExecutionContext = this.createExecutionContext();
-    await Promise.all(tasksForPhase(1).map((task) => task.handle(event, this.env, ctx)));
-    await Promise.all(tasksForPhase(2).map((task) => task.handle(event, this.env, ctx)));
+    for (const phase of cronPhases()) {
+      await Promise.all(tasksForPhase(phase).map((task) => task.handle(event, this.env, ctx)));
+    }
   }
 }
 

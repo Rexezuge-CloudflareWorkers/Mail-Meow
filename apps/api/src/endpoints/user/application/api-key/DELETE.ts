@@ -1,5 +1,5 @@
 import { CLOUDFLARE_ACCESS_SECURITY, UNAUTHORIZED_ACCESS_MESSAGE, errorResponses } from '@/openapi/components';
-import { createRequestScope } from '@mail-meow/backend-services/composition';
+import { createRequestScope, Tokens } from '@mail-meow/backend-services/composition';
 
 import { IUserRoute } from '@/endpoints/IUserRoute';
 import type { IRequest, IResponse, RouteContext } from '@/endpoints/IUserRoute';
@@ -55,7 +55,7 @@ class DeleteApplicationApiKeyRoute extends IUserRoute<DeleteApplicationApiKeyReq
     cxt: RouteContext,
   ): Promise<DeleteApplicationApiKeyResponse> {
     const scope = createRequestScope(env);
-    await scope.apiKeys.deleteApiKey(request.apiKeyId, request.applicationId, this.getAuthenticatedAccount(cxt));
+    await scope.get(Tokens.ApiKeyService).deleteApiKey(request.apiKeyId, request.applicationId, this.getAuthenticatedAccount(cxt));
     return { success: true };
   }
 }

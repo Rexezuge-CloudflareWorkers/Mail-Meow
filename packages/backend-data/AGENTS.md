@@ -2,21 +2,32 @@
 
 Scope: `packages/backend-data/**`. Parent index: `../../AGENTS.md`.
 
-Layer 2. May import `@mail-meow/shared` and `@mail-meow/backend-errors`. Must not import
+Layer 2. May import `@mail-meow/shared` and `@rexezuge/{d1,errors,shared}`. Must not import
 `backend-runtime`, `provider-clients`, `backend-services`, or `apps/*`.
+
+`packages/backend-data/crypto/` is gone: AES-GCM is `@rexezuge/d1`'s `encryptSecret` /
+`decryptSecret`. The envelope is byte-compatible with what this repo wrote — same
+cipher, same 96-bit random IV, same base64 — so stored credentials decrypt unchanged
+and no migration ran. `test/integration/api/CredentialEnvelope.int.test.ts` is the
+test that proves it, and it is the first thing to break if that ever stops being true.
 
 ## DAOs
 
-- `BaseDAO` — holds the `D1Queryable`; provides the static `findById` generic lookup with
-  SQL-identifier allow-listing. `EncryptedDAO` adds the `masterKey` used by
-  `ConnectedApplicationDAO`.
+- `BaseDAO` — `@rexezuge/d1`'s, sql-first: `run` / `first` / `all` / `count` / `batch` take
+  SQL and bindings, and the retry plus the `success: false` normalization are invisible
+  at the call site. Local additions: `EncryptedDAO` (the `masterKey`),
+  `findRowById` / `deleteOlderThan` (the identifier-validated generic lookups) and
+  `assertSqlIdentifier`.
 - `ApplicationApiKeyDAO` — API key records (hash + prefix + last four, expiry, last-used).
 - `OAuth2AuthorizationSessionDAO` — PKCE `code_verifier`, hashed `state_hash`, `consumed_at`
   for one-time use.
 - `OAuth2AccessTokenRefreshStatusDAO` — per-application token expiry/refresh bookkeeping.
 - `OAuth2AccessTokenCacheDAO` — KV-backed encrypted access-token cache.
-- `UserDAO` — `users` by id or address (`createUser` stamping the 0011 `id`/`current_email` columns, `newId()`/`newAnchor()`, `getById`/`getByEmail` (frozen anchor, exact match)/`getByCurrentEmail` (case-insensitive), `setCurrentEmail`, `updatePreferredLanguage` keyed on id with the anchor as the pre-0011 fallback).
-- `UserEmailDAO` — the `user_emails` address registry: `register` re-points a revoked row but refuses a verified one, `get`/`resolveVerified`, `revokeAllVerified`, `listByUserId`.
+- `UserDAO` — subclasses `@rexezuge/identity`'s. `users` by id or address (`createUser` stamping the 0011 `id`/`current_email` columns, `newId()`/`newAnchor()`, `getById`/`getByEmail` (frozen anchor, exact match)/`getByCurrentEmail` (case-insensitive), `setCurrentEmail`, `updatePreferredLanguage` keyed on id with the anchor as the pre-0011 fallback).
+- `UserEmailDAO` — re-exported from `@rexezuge/identity`, not a local file: the `user_emails`
+  address registry (`register` re-points a revoked row but refuses a verified one, `get`/
+  `resolveVerified`, `revokeAllVerified`, `listByUserId`). The local copy was deleted rather than
+  forked, so the "a verified row is never stolen" rule has exactly one implementation.
 - `ConnectedApplicationDAO` — connected applications (encrypted credential blobs, `status` CHECK-constrained, paginated listing with an opaque cursor). Ownership matches `(user_id = ? OR (user_id IS NULL AND user_email = ?))`; the reported `userEmail` is `COALESCE(users.current_email, user_email)` via a LEFT JOIN, so an opaque anchor never reaches an API response.
 - `BackgroundTaskRunDAO` — cron task-run history: start/succeed/fail/skip plus batched pruning. `listForUser` scopes by the owning application's `user_id`, with the `*_email` fallback.
 
@@ -28,16 +39,19 @@ Layer 2. May import `@mail-meow/shared` and `@mail-meow/backend-errors`. Must no
 
 ## utils
 
-- `D1Utils.ts` — `executeD1WithRetry`, the single retrying D1 entry point. Classifies errors via
-  `D1ErrorClassifier` and backs off exponentially **with jitter**.
-- `D1SessionUtil.ts` — `createD1SessionEnv(env, bookmark)` for the `x-d1-bookmark` round trip.
-- `CursorUtil.ts` — opaque base64url cursor codec used by every paginated DAO.
 - `RepositoryHelper.ts` — `pruneInBatches` (bounded), `computeUnixCutoffSeconds`,
-  `computeDateCutoffIso`, `DEFAULT_PRUNE_BATCH_SIZE`.
-- `D1ErrorClassifier.ts` — `isD1ErrorRetryable` decides whether a D1 failure is retryable;
-  `isMissingTableError` reports that the _schema_ is absent (a migration has not run) rather than
-  the query failing. The second is what lets callers keep a documented pre-migration fallback
-  without also swallowing real outages — see `backend-services/src/user/accountLookup.ts`.
+  `computeDateCutoffIso`, `DEFAULT_PRUNE_BATCH_SIZE`. The only thing left in `utils/`.
+
+Four files used to be here and are now `@rexezuge/d1`'s or `@rexezuge/shared`'s:
+`D1Utils.ts` (`executeD1WithRetry` — retry with jittered backoff),
+`D1ErrorClassifier.ts` (`isD1ErrorRetryable`, `isMissingTableError`), `CursorUtil.ts` (the
+opaque base64url cursor codec), and `D1SessionUtil.ts`, which moved to
+`packages/backend-runtime/src/base/D1SessionEnv.ts` because it wraps a binding rather than
+doing data access and `apps/api` may not reach `backend-data` values.
+
+`isMissingTableError` is the one worth remembering: it reports that the _schema_ is absent
+(a migration has not run) rather than that the query failed, and that distinction is what lets
+callers keep a documented pre-migration fallback without also swallowing real outages.
 
 ## Rules
 

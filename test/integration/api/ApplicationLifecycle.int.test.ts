@@ -8,8 +8,6 @@ import { applyMigrations } from '../helpers/migrations';
  * the ownership and quota rules that only show up once the schema is real.
  */
 
-const USER_EMAIL = 'test@example.com';
-
 function request(path: string, init: RequestInit = {}): Promise<Response> {
   return SELF.fetch(`http://localhost${path}`, init);
 }

@@ -1,8 +1,9 @@
 import type { UserDAO, UserEmailDAO } from '@mail-meow/backend-data/dao';
 import type { AppConfigReader } from '@mail-meow/backend-runtime/config';
 import type { AccountIdentity } from '@mail-meow/shared/model';
-import { LocaleUtil } from '@mail-meow/shared/utils';
-import { registerAccount, resolveAccount } from './accountLookup';
+import { LocaleUtil, TimestampUtil } from '@rexezuge/shared';
+import { newAnchor, registerAccount, resolveAccount } from '@rexezuge/identity';
+import type { AccountLookupDeps } from '@rexezuge/identity';
 
 interface UserServiceDeps {
   userDAO: () => Promise<UserDAO>;
@@ -33,9 +34,23 @@ class UserService {
    * Resolve-then-create, so an address that already identifies an account can
    * never fork a second one. This runs on every authenticated request, so it is
    * the single place an account comes into existence.
+   *
+   * Two attempts, and the order is the whole safety property: the address itself
+   * as the frozen anchor first, then an opaque one. `createUser` is
+   * `ON CONFLICT DO NOTHING` with a read-back that detects the no-op, so the
+   * second attempt cannot mint a second account for an address that already has
+   * one — it can only succeed where the first was refused because the address
+   * was still parked as another account's anchor.
    */
   async upsertUser(email: string): Promise<AccountIdentity | null> {
-    return registerAccount({ userDAO: this.deps.userDAO, userEmailDAO: this.deps.userEmailDAO }, email);
+    const deps: AccountLookupDeps = { userDAO: this.deps.userDAO, userEmailDAO: this.deps.userEmailDAO };
+    const key: string = email.trim().toLowerCase();
+    const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
+    const created =
+      (await resolveAccount(deps, key)) ??
+      (await registerAccount(deps, key, key, now)) ??
+      (await registerAccount(deps, key, newAnchor(), now));
+    return created;
   }
 
   /**

@@ -97,7 +97,7 @@ describe('Request input schemas', () => {
     const request = new Request('https://mail.example.com/api/mm_test/email', { method: 'POST' });
 
     await expect(
-      validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello', text: '   ', html: '  ' }),
+      validateRequestInput(request, { to: 'recipient@example.com', subject: 'Hello', text: ' '.repeat(3), html: '  ' }),
     ).resolves.toMatchObject({ success: false, scope: 'body' });
   });
 
@@ -108,7 +108,7 @@ describe('Request input schemas', () => {
       validateRequestInput(request, {
         to: 'recipient@example.com',
         subject: 'Hello',
-        html: `<p>${'a'.repeat(20000)}</p>`,
+        html: `<p>${'a'.repeat(20_000)}</p>`,
       }),
     ).resolves.toMatchObject({ success: false, scope: 'body' });
   });

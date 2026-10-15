@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { ShowNotice } from '@rexezuge/web';
 import type { ConnectedApplication, ProviderId } from '../types';
 import * as appSvc from '../services/applicationService';
 
@@ -26,7 +27,7 @@ export const emptyForm: ApplicationFormState = {
 
 interface UseApplicationsOptions {
   setIsBusy: (v: boolean) => void;
-  showNotice: (type: 'success' | 'error', text: string) => void;
+  showNotice: ShowNotice;
 }
 
 export function useApplications({ setIsBusy, showNotice }: UseApplicationsOptions) {
