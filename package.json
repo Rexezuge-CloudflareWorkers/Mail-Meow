@@ -25,7 +25,7 @@
     "@rexezuge/errors": "1.8.2",
     "@rexezuge/http": "1.8.2",
     "@rexezuge/identity": "1.8.2",
-    "@rexezuge/runtime": "1.8.2",
+    "@rexezuge/runtime": "1.9.0",
     "@rexezuge/shared": "1.8.2",
     "@rexezuge/tooling": "1.8.2",
     "@rexezuge/web": "1.8.2",
