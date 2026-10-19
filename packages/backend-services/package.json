@@ -28,7 +28,7 @@
     "@mail-meow/backend-runtime": "workspace:*",
     "@mail-meow/provider-clients": "workspace:*",
     "@mail-meow/shared": "workspace:*",
-    "@rexezuge/d1": "1.8.2",
+    "@rexezuge/d1": "1.9.0",
     "@rexezuge/errors": "1.8.2",
     "@rexezuge/identity": "1.9.0",
     "@rexezuge/runtime": "1.9.0",
