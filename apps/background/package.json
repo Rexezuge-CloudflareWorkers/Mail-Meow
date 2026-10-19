@@ -20,7 +20,7 @@
     "@mail-meow/backend-services": "workspace:*",
     "@mail-meow/provider-clients": "workspace:*",
     "@mail-meow/shared": "workspace:*",
-    "@rexezuge/d1": "1.8.2",
+    "@rexezuge/d1": "1.9.0",
     "@rexezuge/errors": "1.8.2",
     "@rexezuge/runtime": "1.8.2",
     "@rexezuge/shared": "1.8.2"
