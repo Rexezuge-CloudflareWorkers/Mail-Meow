@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@mail-meow/shared": "workspace:*",
-    "@rexezuge/errors": "1.8.2",
+    "@rexezuge/errors": "1.9.0",
     "@rexezuge/shared": "1.9.0",
     "aws4fetch": "1.0.20",
     "html-to-text": "10.0.1"
