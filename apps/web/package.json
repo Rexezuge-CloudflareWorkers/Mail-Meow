@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rexezuge/web": "1.8.2",
+    "@rexezuge/web": "1.9.0",
     "clsx": "2.1.1",
     "i18next": "^26.4.2",
     "lucide-react": "1.58.0",

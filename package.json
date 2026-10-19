@@ -28,7 +28,7 @@
     "@rexezuge/runtime": "1.9.0",
     "@rexezuge/shared": "1.8.2",
     "@rexezuge/tooling": "1.9.0",
-    "@rexezuge/web": "1.8.2",
+    "@rexezuge/web": "1.9.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
