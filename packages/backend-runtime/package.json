@@ -16,7 +16,7 @@
   "dependencies": {
     "@mail-meow/shared": "workspace:*",
     "@rexezuge/runtime": "1.9.0",
-    "@rexezuge/shared": "1.9.0"
+    "@rexezuge/shared": "1.9.2"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
