@@ -12,7 +12,7 @@
     "@mail-meow/backend-services": "workspace:*",
     "@mail-meow/background": "workspace:*",
     "@mail-meow/shared": "workspace:*",
-    "@rexezuge/errors": "1.9.0",
+    "@rexezuge/errors": "1.9.2",
     "@rexezuge/http": "1.9.2",
     "@rexezuge/runtime": "1.9.0",
     "@rexezuge/shared": "1.9.2",
