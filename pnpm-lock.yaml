@@ -160,8 +160,8 @@ importers:
         specifier: 3.4.2
         version: 3.4.2
       hono:
-        specifier: 4.13.16
-        version: 4.13.16
+        specifier: 4.13.19
+        version: 4.13.19
     devDependencies:
       '@types/node':
         specifier: 26.6.6
@@ -2188,6 +2188,10 @@ packages:
 
   hono@4.13.16:
     resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
+    engines: {node: '>=16.9.0'}
+
+  hono@4.13.19:
+    resolution: {integrity: sha512-KmXvQAXwcAHV+muzbIwoJ23niEB5nMoDVr9WcRkU8mvjUECm/1+7v4Jgp7P7a+H6MLFrh+vXrGonGrGS+RQfkA==}
     engines: {node: '>=16.9.0'}
 
   hookified@1.15.1:
@@ -4570,6 +4574,8 @@ snapshots:
       hermes-estree: 0.25.1
 
   hono@4.13.16: {}
+
+  hono@4.13.19: {}
 
   hookified@1.15.1: {}
 
