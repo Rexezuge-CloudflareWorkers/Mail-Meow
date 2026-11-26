@@ -21,8 +21,8 @@
  * account.
  *
  * Usage:
- *   pnpm exec tsx scripts/change-email.ts --db mail-meow-db --account alice@example.com --to new@example.com
- *   pnpm exec tsx scripts/change-email.ts --db mail-meow-db --id usr_ab12... --to new@example.com --dry-run
+ *   pnpm exec tsx scripts/ops/change-email.ts --db mail-meow-db --account alice@example.com --to new@example.com
+ *   pnpm exec tsx scripts/ops/change-email.ts --db mail-meow-db --id usr_ab12... --to new@example.com --dry-run
  *
  * Flags:
  *   --db <name|binding>  required; D1 database name or binding
@@ -53,7 +53,7 @@ interface Args {
 }
 
 const USAGE = `Usage:
-  pnpm exec tsx scripts/change-email.ts --db <name> (--account <email> | --id <usr_id>) --to <new-email> [--remote] [--no-backup] [--dry-run]
+  pnpm exec tsx scripts/ops/change-email.ts --db <name> (--account <email> | --id <usr_id>) --to <new-email> [--remote] [--no-backup] [--dry-run]
 
 Flags:
   --db <name>       D1 database name or binding (required)

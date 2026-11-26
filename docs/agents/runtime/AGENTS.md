@@ -16,13 +16,25 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
   - `connected_applications.user_email REFERENCES users(email) ON DELETE CASCADE` cannot be repointed, which is why `0011_user_identity.sql` freezes `users.email` as an anchor instead of rebuilding that table. Rebuilding it would cascade away every application, API key, and OAuth2 session the user owns.
 - **Do not wrap a whole migration file in one `db.batch()` when it both adds a column and creates a table referencing it.** A batch is prepared in full before the first statement executes, so the new table's FK is validated against a schema the `ADD COLUMN` has not reached yet, and the file fails with `foreign key mismatch`.
 - SQLite cannot `ADD COLUMN` a PRIMARY KEY. For a stable account key on an existing table, add a plain column and put a UNIQUE index on it — a unique index is a valid foreign-key parent, which is all a `REFERENCES` clause needs.
+- `migrations/migrations.lock.json` is a forward-only SHA-256 lock checked in CI by `pnpm run validate:migrations`. Editing an already-applied migration is otherwise invisible: deploy succeeds, fresh databases pick up the edit, production keeps the old schema. Adding a migration means running `pnpm run migrations:lock` (add-only; it never blesses a changed incremental file).
 - `0007_v3_reset_schema.sql` is the v3 reset and drops every table before recreating `users`. **Any table with a foreign key to `users` must be added to that drop list**, or re-running the reset (which the integration harness does on every `applyMigrations` call) leaves the child pointing at a `users` recreated without the new columns.
 - `UserIdentityUpgrade.int.test.ts` is the template for "do not break an existing database": seed every cascade edge, apply the migration, then assert zero row loss across all of them plus `PRAGMA foreign_key_check` empty.
 
 ## Ops
 
-- `scripts/change-email.ts` — change a user's sign-in address. Wraps `UserIdentityService.setPrimaryEmail`'s three statements in the same order, takes a `wrangler d1 export` backup first (skippable with `--no-backup`), and refuses (rather than half-applying) when the target address is already a live login for another account. Supports `--dry-run` and `--remote`; interpolates nothing outside a pattern allow-list.
+- `scripts/ops/change-email.ts` — change a user's sign-in address. Wraps `UserIdentityService.setPrimaryEmail`'s three statements in the same order, takes a `wrangler d1 export` backup first (skippable with `--no-backup`), and refuses (rather than half-applying) when the target address is already a live login for another account. Supports `--dry-run` and `--remote`; interpolates nothing outside a pattern allow-list.
   - `--config` is required in practice on a clean checkout: `wrangler.jsonc` is gitignored and per-deployer, and `wrangler.template.jsonc` cannot be substituted because its placeholder `database_id` takes precedence over the `--db` name (wrangler then 404s on `00000000-…`). For ops-only D1 work, write a minimal config with the real `database_id` to `.wrangler/` (gitignored) and pass `--config .wrangler/<name>.jsonc` — do **not** leave a half-populated `wrangler.jsonc` at the repo root, because `wrangler deploy` would then omit the DO/KV/Secrets Store bindings.
+
+## Deploy and backup scripts
+
+`scripts/` mirrors the shared layout used by the sibling Workers:
+
+- `scripts/deploy/prepare-wrangler-config.ts` materializes `wrangler.jsonc` from `WRANGLER_JSONC` (or the committed template), applies `WRANGLER_PATCH_JSON` / `WRANGLER_VARS_PATCH_JSON`, requires the config to cover every template binding and var, and provisions placeholder D1/KV/Secrets Store ids. It publishes a `created` step output — the backup workflow uses it to refuse to export a database this run just created. The shared logic lives in `scripts/lib/wrangler-config/`.
+- `scripts/deploy/init-secrets.ts` creates only the Secrets Store entries the template declares; unknown names fail rather than silently provisioning an unusable value.
+- `scripts/build/` writes the `spa-shell.ts` stub on `postinstall` and verifies a built shell matches `apps/web/dist/` (`pnpm run verify:spa-shell`).
+- `scripts/backup/` backs up `mail-meow-db` daily; see `docs/db-backup-recovery.md` for the full secret list and restore playbooks.
+
+Backup secrets: `BACKUP_ENCRYPTION_KEY` is **required** once any destination is configured, and the run fails closed without it. Destinations are optional: S3 (`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`, optional `S3_REGION` / `S3_ENDPOINT`) and WebDAV (`WEBDAV_URL`, `WEBDAV_USER`, `WEBDAV_PASSWORD`, optional `WEBDAV_VENDOR` / `WEBDAV_BASE_PATH`). `BACKUP_RETENTION_DAYS` defaults to 30. With no destination configured every backup job skips and the workflow stays green.
 
 ## Required vars (no defaults)
 

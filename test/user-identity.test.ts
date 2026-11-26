@@ -18,7 +18,7 @@ import { BadRequestError } from '@rexezuge/errors';
  * `ConflictError` (409). Nothing observes the difference: `setPrimaryEmail` is
  * deliberately **not routed** (Access is the sole authenticator, so a self-service
  * change needs a proof-of-control step first) and `linkVerifiedEmail` is reached
- * only from `scripts/change-email.ts`, whose caller reads the message, not the
+ * only from `scripts/ops/change-email.ts`, whose caller reads the message, not the
  * status.
  */
 

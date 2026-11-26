@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'jsonc-parser';
-import { isEmptySecretsStoreListing, parseWranglerTableRows } from './wrangler-table';
+import { isEmptySecretsStoreListing, parseWranglerTableRows } from '../lib/wrangler-table';
 
 interface WranglerConfig {
   secrets_store_secrets?: Array<{
@@ -68,8 +68,11 @@ function listSecretNames(storeId: string): Set<string> | undefined {
   // `mail-meow-aes-encryption-key-2` satisfy `mail-meow-aes-encryption-key`.
   // Every returned row has at least two cells, so the name is always present.
   const names: Set<string> = new Set();
-  for (const [name] of parseWranglerTableRows(output)) {
-    names.add(name);
+  for (const row of parseWranglerTableRows(output)) {
+    const name = row[0];
+    if (name) {
+      names.add(name);
+    }
   }
   return names;
 }

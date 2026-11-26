@@ -102,7 +102,16 @@ then creates a table referencing it fails with `foreign key mismatch` (see
 
 ## Other guards
 
-- `scripts/check-god-files.mjs` (soft 300 / hard 400 LOC).
+CI runs each guard as its own named job so a failure names the tool, and wraps
+commands in `.github/actions/retry-step` so a transient runner failure does not
+turn into a red pipeline. `pnpm run checks:fast` runs the same guards locally;
+`pnpm run checks` adds coverage and integration.
+
+- `scripts/check-god-files.mjs` (soft 300 / hard 400 LOC) — now a hard CI gate.
+- `scripts/migrations/lock-check.ts` holds the pure migration-lock rules; `scripts/migrations/verify-migrations.ts` does the I/O. `test/scripts/migration-lock.test.ts` pins them.
+- `scripts/build/spa-shell-checks.ts` holds the pure shell checks; `scripts/build/verify-spa-shell.ts` reads the generated module and `dist/`. `test/scripts/spa-shell-checks.test.ts` pins them. Mail-Meow's visual layer is local, so CSS is checked for presence only — there is no `@rexezuge/web` token list to assert.
+- `test/backup/` covers the fail-closed destination policy, D1 target resolution (including the fresh-database guard), filename/retention rules and S3 listing safety.
+- `pnpm run typecheck` now includes `scripts/` through `typecheck:scripts` (`scripts/tsconfig.json`); new script modules are typechecked, not just linted.
 - `apps/web/scripts/validate_locales.py` — run in CI. Checks **parity** (JSON-valid, key parity
   including no extra keys, `{{placeholder}}` parity, no empty values; 12 locales) **and usage**.
   The usage check is the one that matters and the one that was missing: parity alone reported
