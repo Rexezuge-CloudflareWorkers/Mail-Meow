@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "migrations": {
+    "0001_create_database.sql": "sha256:0ebb7856ec68e272a815534edb21f35d5cf05888ba540c821e4b9de1c43ba5e2",
+    "0002_update_oauth_schema.sql": "sha256:d0295e63c5b33eee335a5ac8aa2d0c4915df016c364bfca454f322f88ab79ab9",
+    "0003_rename_column_to_hash_password.sql": "sha256:068108e81f2a4fc0a2d045f76133dd8ac3a2695cdf1eda4db4edd664bb666e69",
+    "0004_add_updated_at_trigger.sql": "sha256:43b85a8ff4f7b051036b8f62ee218afd2bad073a2d8710a7b93e11abb3c4c368",
+    "0005_encrypt_oauth_fields.sql": "sha256:51b662082bea65dac5eabf3ff534e8778b80fc8135bed6070e49a2ccf0cca713",
+    "0006_add_updated_at_column.sql": "sha256:cb0af6cccf6a15e4de40e95037443a8a562967a8b01e44205d28c4dd26af7d43",
+    "0007_v3_reset_schema.sql": "sha256:2cd9eb1bd311741ab46b2801adc93b131638a7c56928e11a1721c9b27ead84ac",
+    "0008_background_task_runs.sql": "sha256:94a906a7d49129a7e54a2a9718f91b1c5a30ee1e7b762fdd09d1f34af524d73f",
+    "0009_oauth2_refresh_status.sql": "sha256:c0b595bf002c95d6a568b0256355667d40007cc21a840e3be904f4a5968c5c16",
+    "0010_user_language.sql": "sha256:8e7280bebc8a4ade9a0fe0c68fd342743172c9a1c1339298c3fb2bd274ea4067",
+    "0011_user_identity.sql": "sha256:3d31681f2f06bafdd7a7a0b9d4126b55aa92b66f2a18948eed5b4aac2b79d1b5"
+  }
+}

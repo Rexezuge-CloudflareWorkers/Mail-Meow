@@ -33,7 +33,7 @@ Layer 3. May import layers 0–2 (`shared`, `backend-runtime`, `backend-data`,
   `setPrimaryEmail` claims → moves → revokes, in that order, and never touches the frozen anchor;
   `linkVerifiedEmail` is the ops path. **Not routed**: Access is the sole authenticator, so a
   self-service address change needs a proof-of-control confirm step first
-  (`scripts/change-email.ts` is the ops route).
+  (`scripts/ops/change-email.ts` is the ops route).
 - Address normalization is `normalizeEmail` from `@rexezuge/shared` and nothing else. It used to be re-implemented in four places and the copies disagreed — the service layer trimmed, the DAOs lowercased only — so a padded address was the same account to `resolveAccount` and a different one to the DAO, and a registry row written with padding could never resolve its own account. Never inline `trim().toLowerCase()` for an address.
 - `composition/` — `createRequestScope(env)`, the per-request composition root. See below.
 

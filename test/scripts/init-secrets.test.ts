@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isEmptySecretsStoreListing, parseWranglerTableRows } from '../../scripts/wrangler-table';
+import { isEmptySecretsStoreListing, parseWranglerTableRows } from '../../scripts/lib/wrangler-table';
 
 /**
  * Captured from `wrangler secrets-store secret list <store-id> --remote`

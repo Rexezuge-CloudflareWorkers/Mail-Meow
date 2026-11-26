@@ -52,7 +52,12 @@ export function parseWranglerTableRows(output: string): string[][] {
       .split(COLUMN_SEPARATOR)
       .map((cell) => cell.trim())
       .filter(Boolean);
-    if (cells.length < 2 || cells[0] === HEADER_FIRST_CELL || cells[0].includes(RULE_CHARACTER)) {
+    const firstCell = cells[0];
+    if (firstCell === undefined || cells.length < 2) {
+      continue;
+    }
+    // The header row and the horizontal rules are frame, not data.
+    if (firstCell === HEADER_FIRST_CELL || firstCell.includes(RULE_CHARACTER)) {
       continue;
     }
     rows.push(cells);

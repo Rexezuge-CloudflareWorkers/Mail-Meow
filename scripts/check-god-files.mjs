@@ -17,6 +17,10 @@ const EXCLUDE_SUFFIX = ['.test.ts', '.spec.ts', '.int.test.ts', '.d.ts'];
 
 function shouldSkip(path) {
   return Boolean(
+    // Tooling is not product source: the scripts directory grows with the
+    // surface of the repo (backup rules, migration-lock rules, wrangler helpers),
+    // not with the complexity of any one feature. Guard product + test code.
+    path.includes('/scripts/') ||
     path.includes('/locales/') ||
     path.includes('/generated/') ||
     path.includes('/__tests__/') ||

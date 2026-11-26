@@ -7,10 +7,10 @@ Guidance for agents working in Mail-Meow. `CLAUDE.md` is a symbolic link to this
 Mail-Meow is a Cloudflare Worker API + Vite React SPA in a pnpm workspace (`@mail-meow/monorepo`, `packageManager: pnpm@11.2.2`).
 
 - **Core**: Cloudflare Zero Trust on `/user/*` (JWT `cf-access-jwt-assertion`); public delivery endpoints under `/api/*` use API keys embedded in the path.
-- **Identity**: `users.id` is the stable account key; the email address is a mutable attribute, so an address can change without touching the user's applications, API keys, or task-run history. Migration `0011_user_identity.sql` adds `users.id` + `users.current_email`, the `user_emails` address registry (`is_verified=1` may authenticate; a changed-from address is kept `is_verified=0` for attribution and released for re-registration), and a `user_id` FK on `connected_applications` (backfilled case-insensitively via the registry; `NULL` = a row written by pre-0011 code, still reachable through the `*_email` fallback). `users.email` is now the **frozen anchor** — immutable, and the target of the one surviving foreign key — because D1 honours neither `PRAGMA foreign_keys = off` nor `PRAGMA legacy_alter_table = on` and `defer_foreign_keys` does not suppress `ON DELETE CASCADE`, so that reference cannot be repointed without losing rows. Login resolves through `user_emails`; every user-keyed read matches `user_id` with the address as the pre-0011 fallback. `UserIdentityService` (`packages/backend-services/src/identity/`, a re-export of `@rexezuge/identity` — one instance per request scope) owns `resolveAccount`/`resolveUserId`/`setPrimaryEmail`/`linkVerifiedEmail`; `UserService.upsertUser` is resolve-then-create through it, so an address can never fork a second account. `setPrimaryEmail` is deliberately **not routed** — Access is the only authenticator, so a self-service change needs a proof-of-control confirm step first. Ops path: `scripts/change-email.ts`.
+- **Identity**: `users.id` is the stable account key; the email address is a mutable attribute, so an address can change without touching the user's applications, API keys, or task-run history. Migration `0011_user_identity.sql` adds `users.id` + `users.current_email`, the `user_emails` address registry (`is_verified=1` may authenticate; a changed-from address is kept `is_verified=0` for attribution and released for re-registration), and a `user_id` FK on `connected_applications` (backfilled case-insensitively via the registry; `NULL` = a row written by pre-0011 code, still reachable through the `*_email` fallback). `users.email` is now the **frozen anchor** — immutable, and the target of the one surviving foreign key — because D1 honours neither `PRAGMA foreign_keys = off` nor `PRAGMA legacy_alter_table = on` and `defer_foreign_keys` does not suppress `ON DELETE CASCADE`, so that reference cannot be repointed without losing rows. Login resolves through `user_emails`; every user-keyed read matches `user_id` with the address as the pre-0011 fallback. `UserIdentityService` (`packages/backend-services/src/identity/`, a re-export of `@rexezuge/identity` — one instance per request scope) owns `resolveAccount`/`resolveUserId`/`setPrimaryEmail`/`linkVerifiedEmail`; `UserService.upsertUser` is resolve-then-create through it, so an address can never fork a second account. `setPrimaryEmail` is deliberately **not routed** — Access is the only authenticator, so a self-service change needs a proof-of-control confirm step first. Ops path: `scripts/ops/change-email.ts`.
 - **Background**: `apps/background` auto-refreshes OAuth2 tokens via `CronTasksWorker` DO (2-phase `TaskRegistry`) + `OAuth2TokenRefreshWorker` DO (per-application serialization, KV cache).
 - **Providers**: `google-gmail`, `microsoft-outlook` (`oauth2`), `amazon-sns` (`access-keys`). See `packages/provider-clients/AGENTS.md`.
-- **Features**: 12-locale i18n (frontend `apps/web/src/locales` + `apps/web/src/i18n.ts`, validated against `LocaleUtil` from `@rexezuge/shared`), task-run visibility, API-key management. See Index below.
+- **Features**: 12-locale i18n (frontend `apps/web/src/locales` + `apps/web/src/i18n.ts`, validated against `LocaleUtil` from `@rexezuge/shared`), task-run visibility, API-key management, encrypted daily D1 backups. See Index below.
 
 ## Cloudflare Documentation
 
@@ -76,17 +76,18 @@ now: `background → api`, `web → @mail-meow/*`, and `api → backend-data` va
 
 ## Index
 
-| Area                                            | Guide                                           |
-| ----------------------------------------------- | ----------------------------------------------- |
-| API worker, auth, routes                        | `apps/api/AGENTS.md`                            |
-| Background worker, cron phases, task visibility | `apps/background/AGENTS.md`                     |
-| Web SPA, frontend i18n, UI text conventions     | `apps/web/AGENTS.md`                            |
-| Provider clients, naming                        | `packages/provider-clients/AGENTS.md`           |
-| D1/DAO layer                                    | `packages/backend-data/AGENTS.md`               |
-| Business logic, service domain map              | `packages/backend-services/AGENTS.md`           |
-| Bindings, wrangler, env vars                    | `docs/agents/runtime/AGENTS.md`                 |
-| Tests, thresholds, mock patterns                | `docs/agents/testing/AGENTS.md`                 |
-| Email delivery                                  | `docs/agents/features/email-delivery/AGENTS.md` |
+| Area                                            | Guide                                            |
+| ----------------------------------------------- | ------------------------------------------------ |
+| API worker, auth, routes                        | `apps/api/AGENTS.md`                             |
+| Background worker, cron phases, task visibility | `apps/background/AGENTS.md`                      |
+| Web SPA, frontend i18n, UI text conventions     | `apps/web/AGENTS.md`                             |
+| Provider clients, naming                        | `packages/provider-clients/AGENTS.md`            |
+| D1/DAO layer                                    | `packages/backend-data/AGENTS.md`                |
+| Business logic, service domain map              | `packages/backend-services/AGENTS.md`            |
+| Bindings, wrangler, env vars                    | `docs/agents/runtime/AGENTS.md`                  |
+| Tests, thresholds, mock patterns                | `docs/agents/testing/AGENTS.md`                  |
+| Email delivery                                  | `docs/agents/features/email-delivery/AGENTS.md`  |
+| Encrypted D1 backups                            | `docs/agents/features/database-backup/AGENTS.md` |
 
 ## Keeping AGENTS.md Current
 
